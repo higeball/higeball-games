@@ -23,6 +23,7 @@ type PartyMember = {
   name: string;
   job: string;
   lv: number;
+  xp: number;
   maxHp: number;
   hp: number;
   maxMp: number;
@@ -30,6 +31,10 @@ type PartyMember = {
   atk: number;
   def: number;
   spd: number;
+  strength: number;
+  stamina: number;
+  magicPower: number;
+  evade: number;
   magic?: string;
   steal?: boolean;
   weapon?: string;
@@ -305,10 +310,10 @@ const colors = {
 };
 
 const partyBase: PartyMember[] = [
-  { name: "yos", job: "ゲーマス", lv: 1, maxHp: 50, hp: 50, maxMp: 14, mp: 14, atk: 12, def: 6, spd: 7, magic: "ホイミ", weapon: "stick", armor: "cloth" },
-  { name: "もじさん", job: "百姓貴族", lv: 1, maxHp: 68, hp: 68, maxMp: 8, mp: 8, atk: 18, def: 8, spd: 4, magic: "オニオンソード", weapon: "onionSword", armor: "cloth" },
-  { name: "ヤス", job: "賢者", lv: 1, maxHp: 46, hp: 46, maxMp: 28, mp: 28, atk: 8, def: 5, spd: 5, magic: "メラヒゲ", weapon: "stick", armor: "cloth" },
-  { name: "貧", job: "盗賊", lv: 1, maxHp: 42, hp: 42, maxMp: 6, mp: 6, atk: 11, def: 4, spd: 11, steal: true, weapon: "stick", armor: "cloth" },
+  { name: "yos", job: "ゲーマス", lv: 1, xp: 0, maxHp: 50, hp: 50, maxMp: 14, mp: 14, atk: 12, def: 6, spd: 7, strength: 12, stamina: 8, magicPower: 13, evade: 8, magic: "ホイミ", weapon: "stick", armor: "cloth" },
+  { name: "もじさん", job: "百姓貴族", lv: 5, xp: 140, maxHp: 116, hp: 116, maxMp: 24, mp: 24, atk: 30, def: 16, spd: 4, strength: 30, stamina: 20, magicPower: 8, evade: 5, magic: "オニオンソード", weapon: "onionSword", armor: "cloth" },
+  { name: "ヤス", job: "賢者", lv: 1, xp: 0, maxHp: 46, hp: 46, maxMp: 28, mp: 28, atk: 8, def: 5, spd: 5, strength: 8, stamina: 7, magicPower: 18, evade: 7, magic: "メラヒゲ", weapon: "stick", armor: "cloth" },
+  { name: "貧", job: "盗賊", lv: 1, xp: 0, maxHp: 42, hp: 42, maxMp: 6, mp: 6, atk: 11, def: 4, spd: 11, strength: 11, stamina: 6, magicPower: 6, evade: 14, steal: true, weapon: "stick", armor: "cloth" },
 ];
 
 const catalog: Record<string, ShopEntry> = {
@@ -333,6 +338,24 @@ const shopStock: Record<"item" | "weapon" | "armor", string[]> = {
 
 function copyMember(member: PartyMember): PartyMember {
   return { ...member };
+}
+
+function normalizeMember(member: Partial<PartyMember>): PartyMember {
+  const base = partyBase.find((item) => item.name === member.name) || partyBase[0];
+  const lv = member.lv || base.lv;
+  const xp = member.xp ?? LEVEL_XP[Math.max(0, lv - 1)] ?? base.xp;
+  return {
+    ...base,
+    ...member,
+    lv,
+    xp,
+    hp: Math.min(member.hp ?? base.hp, member.maxHp ?? base.maxHp),
+    mp: Math.min(member.mp ?? base.mp, member.maxMp ?? base.maxMp),
+    strength: member.strength ?? member.atk ?? base.strength,
+    stamina: member.stamina ?? member.def ?? base.stamina,
+    magicPower: member.magicPower ?? base.magicPower,
+    evade: member.evade ?? Math.max(base.evade, member.spd ?? base.spd),
+  };
 }
 
 function dungeonMap(name: string, next: string | null, prev: string, encounter: number): GameMap {
@@ -687,7 +710,7 @@ class HigeQuestScene extends Phaser.Scene {
       if (npc.shopType) this.openShop(npc.shopType);
       if (npc.join && !this.joined[npc.join]) {
         const member = partyBase.find((item) => item.name === npc.join);
-        if (member) this.party.push(this.memberAtCurrentLevel(member));
+        if (member) this.party.push(copyMember(member));
         this.joined[npc.join] = true;
         this.inventory.stick = (this.inventory.stick || 0) + 1;
         this.inventory.cloth = (this.inventory.cloth || 0) + 1;
@@ -787,8 +810,11 @@ class HigeQuestScene extends Phaser.Scene {
     if (item === "もちもの") this.openItemsMenu();
     if (item === "ステータス") {
       this.message = [
-        ...this.party.map((member) => `${member.name} Lv${member.lv} HP${member.hp}/${member.maxHp} 攻${this.totalAtk(member)} 守${this.totalDef(member)}`),
-        `EXP ${this.xp} / 次まで ${this.xpToNext()}。`,
+        ...this.party.flatMap((member) => [
+          `${member.name} Lv${member.lv} HP${member.hp}/${member.maxHp} MP${member.mp}/${member.maxMp}`,
+          `力${member.strength} 守${this.totalDef(member)} 速${member.spd} 体${member.stamina} 魔${member.magicPower} 回${member.evade}`,
+          `EXP ${member.xp} / 次まで ${this.xpToNext(member)}。`,
+        ]),
       ];
       this.menu = null;
     }
@@ -822,6 +848,11 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.battle.submenu) {
       const skill = this.skillsFor(actor)[this.battle.submenu.cursor];
       if (!skill) return;
+      if (actor.mp < skill.mp) {
+        this.pushBattle(`${skill.name}を使うにはMPが足りない。`);
+        this.audio.playSe("cancel");
+        return;
+      }
       this.battle.submenu = null;
       this.battle.waiting = true;
       this.battle.actingIndex = this.party.indexOf(actor);
@@ -952,14 +983,16 @@ class HigeQuestScene extends Phaser.Scene {
     this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + targetIndex * PARTY_BATTLE_GAP, `-${damage}`, "#ffdf7a");
     this.pushBattle(`${this.battle.enemy.name}${action.text}${target.name}に${damage}ダメージ。${guarded ? " 防御が効いた。" : ""}`);
     if (!this.party.some((member) => member.hp > 0)) {
-      this.pushBattle("全滅した。チバの村で目を覚ました。");
+      const lostToBoss = Boolean(this.battle.enemy.boss);
+      this.pushBattle(lostToBoss ? "全滅した。もじさんは山頂へ戻っていった。" : "全滅した。チバの村で目を覚ました。");
       this.time.delayedCall(900, () => {
         this.mode = "field";
         this.battle = null;
         this.mapId = "village";
         this.player = { x: 5, y: 8, dir: "down" };
+        if (lostToBoss) this.removeMojisanAfterBossLoss();
         this.fullHeal();
-        this.message = ["教会の祈りで復活した。準備を整えよう。"];
+        this.message = [lostToBoss ? "教会の祈りで復活した。もじさんを助けるには、もう一度山頂へ向かおう。" : "教会の祈りで復活した。準備を整えよう。"];
       });
     }
   }
@@ -986,6 +1019,9 @@ class HigeQuestScene extends Phaser.Scene {
     this.pushBattle(`${enemy.name}を倒した！`);
     this.gold += enemy.gold;
     this.xp += enemy.xp;
+    this.party.forEach((member) => {
+      member.xp += enemy.xp;
+    });
     this.pushBattle(`${enemy.xp}EXPと${enemy.gold}Gを得た。`);
     this.applyLevelUps();
     this.battle.won = true;
@@ -1065,7 +1101,7 @@ class HigeQuestScene extends Phaser.Scene {
     }
     this.mapId = data.mapId;
     this.player = data.player;
-    this.party = data.party;
+    this.party = data.party.map((member) => normalizeMember({ ...member, xp: member.xp ?? (member.name === "yos" ? data.xp : undefined) }));
     this.joined = data.joined || { yos: true };
     this.flags = data.flags || {};
     this.items = data.items || { やくそう: 3, まほうの水: 1 };
@@ -1095,7 +1131,7 @@ class HigeQuestScene extends Phaser.Scene {
     return {
       mapId: data.mapId,
       player: data.player,
-      party: data.party,
+      party: data.party.map((member) => normalizeMember({ ...member, xp: member.xp ?? (member.name === "yos" ? data.xp : undefined) })),
       joined: data.joined || { yos: true },
       flags: data.flags || {},
       items: data.items || { やくそう: 3, まほうの水: 1 },
@@ -2042,11 +2078,11 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private totalAtk(member: PartyMember) {
-    return member.atk + (catalog[member.weapon || ""]?.atk || 0);
+    return member.strength + (catalog[member.weapon || ""]?.atk || 0);
   }
 
   private totalDef(member: PartyMember) {
-    return member.def + (catalog[member.armor || ""]?.def || 0);
+    return member.stamina + (catalog[member.armor || ""]?.def || 0);
   }
 
   private equipmentName(id?: string) {
@@ -2054,46 +2090,41 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private applyLevelUps() {
+    const leveledMembers = this.party.filter((member) => this.levelUpMember(member));
+    if (leveledMembers.length) {
+      this.party.forEach((member) => {
+        if (leveledMembers.includes(member)) {
+          member.hp = member.maxHp;
+          member.mp = member.maxMp;
+        }
+      });
+      this.pushBattle(`${leveledMembers.map((member) => member.name).join("、")}のレベルが上がった！`);
+    }
+  }
+
+  private levelUpMember(member: PartyMember) {
     let leveled = false;
-    while (this.party[0].lv < LEVEL_XP.length && this.xp >= LEVEL_XP[this.party[0].lv]) {
-      this.levelUpOnce();
+    while (member.lv < LEVEL_XP.length && member.xp >= LEVEL_XP[member.lv]) {
+      member.lv += 1;
+      const hpGain = member.name === "もじさん" ? 12 : member.name === "貧" ? 8 : 10;
+      member.maxHp += hpGain;
+      member.maxMp += member.maxMp > 0 ? (member.name === "ヤス" ? 6 : 4) : 0;
+      member.atk += member.name === "もじさん" ? 3 : 2;
+      member.def += member.name === "貧" ? 1 : 2;
+      member.strength += member.name === "もじさん" ? 3 : 2;
+      member.stamina += member.name === "貧" ? 1 : 2;
+      member.magicPower += member.name === "yos" || member.name === "ヤス" ? 2 : 1;
+      member.spd += member.lv % 3 === 0 ? 1 : 0;
+      member.evade += member.lv % 4 === 0 ? 1 : 0;
       leveled = true;
     }
-    if (leveled) this.fullHeal();
+    return leveled;
   }
 
-  private levelUpOnce() {
-    this.party.forEach((member) => {
-      member.lv += 1;
-      const hpGain = member.name === "もじさん" ? 12 : member.name === "貧" ? 8 : 10;
-      member.maxHp += hpGain;
-      member.maxMp += member.maxMp > 0 ? (member.name === "ヤス" ? 6 : 4) : 0;
-      member.atk += member.name === "もじさん" ? 3 : 2;
-      member.def += member.name === "貧" ? 1 : 2;
-    });
-    this.pushBattle(`みんなはLv${this.party[0].lv}に上がった！`);
-  }
-
-  private memberAtCurrentLevel(base: PartyMember) {
-    const member = copyMember(base);
-    const targetLevel = this.party[0]?.lv || 1;
-    while (member.lv < targetLevel) {
-      member.lv += 1;
-      const hpGain = member.name === "もじさん" ? 12 : member.name === "貧" ? 8 : 10;
-      member.maxHp += hpGain;
-      member.maxMp += member.maxMp > 0 ? (member.name === "ヤス" ? 6 : 4) : 0;
-      member.atk += member.name === "もじさん" ? 3 : 2;
-      member.def += member.name === "貧" ? 1 : 2;
-    }
-    member.hp = member.maxHp;
-    member.mp = member.maxMp;
-    return member;
-  }
-
-  private xpToNext() {
-    const next = LEVEL_XP[this.party[0].lv];
+  private xpToNext(member: PartyMember) {
+    const next = LEVEL_XP[member.lv];
     if (next === undefined) return 0;
-    return Math.max(0, next - this.xp);
+    return Math.max(0, next - member.xp);
   }
 
   private pushBattle(text: string) {
@@ -2107,6 +2138,15 @@ class HigeQuestScene extends Phaser.Scene {
       member.hp = member.maxHp;
       member.mp = member.maxMp;
     });
+  }
+
+  private removeMojisanAfterBossLoss() {
+    this.party = this.party.filter((member) => member.name !== "もじさん");
+    this.joined["もじさん"] = false;
+    if (this.inventory.onionSword) {
+      this.inventory.onionSword -= 1;
+      if (this.inventory.onionSword <= 0) delete this.inventory.onionSword;
+    }
   }
 
   private facingTile() {
@@ -2176,7 +2216,7 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.ending) return;
     if (!this.joined["もじさん"]) {
       const member = partyBase.find((item) => item.name === "もじさん");
-      if (member) this.party.push(this.memberAtCurrentLevel(member));
+      if (member && !this.party.some((item) => item.name === "もじさん")) this.party.push(copyMember(member));
       this.joined["もじさん"] = true;
       this.inventory.onionSword = (this.inventory.onionSword || 0) + 1;
     }
