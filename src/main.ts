@@ -16,7 +16,7 @@ const UI_FONT = '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-s
 
 type Direction = "up" | "down" | "left" | "right";
 type SceneMode = "title" | "field" | "battle";
-type BgmTrack = "title" | "village" | "forest" | "dungeon" | "battle" | "boss" | "ending";
+type BgmTrack = "title" | "world" | "village" | "forest" | "dungeon" | "battle" | "boss" | "ending";
 type SeKey = "confirm" | "cancel" | "move" | "attack" | "magic" | "heal" | "chest" | "stairs";
 
 type PartyMember = {
@@ -244,6 +244,7 @@ class AudioSystem {
   private pattern(track: BgmTrack) {
     const patterns: Record<BgmTrack, { stepMs: number; lead: number[]; bass: number[]; leadGain: number; bassGain: number }> = {
       title: { stepMs: 280, lead: [72, 76, 79, 84, 79, 76, 74, 0], bass: [48, 0, 55, 0], leadGain: 0.1, bassGain: 0.08 },
+      world: { stepMs: 310, lead: [67, 71, 74, 71, 69, 67, 64, 0], bass: [43, 0, 48, 0], leadGain: 0.07, bassGain: 0.06 },
       village: { stepMs: 330, lead: [67, 69, 71, 74, 72, 69, 67, 0], bass: [43, 0, 50, 0], leadGain: 0.075, bassGain: 0.065 },
       forest: { stepMs: 250, lead: [69, 72, 74, 76, 74, 72, 69, 67], bass: [45, 0, 52, 0], leadGain: 0.08, bassGain: 0.06 },
       dungeon: { stepMs: 390, lead: [57, 0, 60, 0, 62, 0, 60, 0], bass: [33, 0, 36, 0], leadGain: 0.07, bassGain: 0.075 },
@@ -388,6 +389,33 @@ function dungeonMap(name: string, next: string | null, prev: string, encounter: 
 }
 
 const maps: Record<string, GameMap> = {
+  world: {
+    name: "フィールド",
+    encounter: 0,
+    tiles: [
+      "XXXXXXXXXXXX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XGGGGGGGGGGX",
+      "XXXXXXXXXXXX",
+    ],
+    exits: [
+      { x: 2, y: 10, to: "village", tx: 5, ty: 12, text: "チバの村に入った。" },
+      { x: 7, y: 7, to: "forest", tx: 5, ty: 12, text: "ヒョーゴの村に入った。" },
+      { x: 9, y: 4, to: "dungeon1", tx: 5, ty: 1, text: "山道ふもとへ入った。" },
+    ],
+    npcs: [],
+    chests: [],
+  },
   village: {
     name: "チバの村",
     encounter: 0,
@@ -407,7 +435,7 @@ const maps: Record<string, GameMap> = {
       "GGGGGPPPGGGG",
       "GGGGGPPPGGGG",
     ],
-    exits: [{ x: 5, y: 13, to: "forest", tx: 5, ty: 1, text: "電車に乗ってヒョーゴの村へ向かった。" }],
+    exits: [{ x: 5, y: 13, to: "world", tx: 2, ty: 9, text: "電車でフィールドへ出た。" }],
     npcs: [
       { x: 5, y: 3, name: "yos", lines: ["yos: 60歳でシステムエンジニアをリタイヤした。", "yos: 第二の人生か……まずは10年会っていない旧友を探してみよう。", "yos: 一番頼りになるのは、やっぱりもじさんだ。"] },
       { x: 2, y: 5, name: "宿屋", lines: ["宿屋: ひと晩休んでいくかい？", "宿屋: 第二の人生にも休息は必要だよ。", "HPとMPを全回復した。"], inn: true },
@@ -440,8 +468,7 @@ const maps: Record<string, GameMap> = {
       "GGGGGPPPGGGG",
     ],
     exits: [
-      { x: 5, y: 0, to: "village", tx: 5, ty: 12, text: "電車でチバの村へ戻った。" },
-      { x: 5, y: 12, to: "dungeon1", tx: 5, ty: 1, text: "もじさんを探して山道へ入った。" },
+      { x: 5, y: 0, to: "world", tx: 7, ty: 8, text: "フィールドへ戻った。" },
     ],
     npcs: [
       { x: 3, y: 3, name: "農家", lines: ["農家: もじさんなら畑を充実させる新しい野菜を探しに山へ行ったよ。", "農家: でも、まだ帰ってこないんだ。山頂まで見に行けるかい？"], flag: "heardMojisanMountain" },
@@ -450,7 +477,7 @@ const maps: Record<string, GameMap> = {
     ],
     chests: [{ x: 8, y: 10, item: "やくそう", opened: false }],
   },
-  dungeon1: dungeonMap("山道 ふもと", "dungeon2", "forest", 0.16),
+  dungeon1: dungeonMap("山道 ふもと", "dungeon2", "world", 0.16),
   dungeon2: dungeonMap("山道 中腹", "dungeon3", "dungeon1", 0.18),
   dungeon3: { ...dungeonMap("山頂", null, "dungeon2", 0.2), boss: { x: 5, y: 9 } },
 };
@@ -1177,6 +1204,7 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.mode === "title") return "title";
     if (this.mode === "battle") return this.battle?.enemy.boss ? "boss" : "battle";
     if (this.ending) return "ending";
+    if (this.mapId === "world") return "world";
     if (this.mapId === "village") return "village";
     if (this.mapId === "forest") return "forest";
     return "dungeon";
@@ -1184,8 +1212,8 @@ class HigeQuestScene extends Phaser.Scene {
 
   private startNewGame() {
     this.mode = "field";
-    this.mapId = "village";
-    this.player = { x: 5, y: 8, dir: "down" };
+    this.mapId = "world";
+    this.player = { x: 3, y: 11, dir: "up" };
     this.party = [copyMember(partyBase[0])];
     this.joined = { yos: true };
     this.flags = {};
@@ -1200,7 +1228,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.ending = false;
     this.pendingBossBattle = false;
     this.resetChestState();
-    this.message = ["60歳でリタイヤしたyosの第二の人生が始まる。旧友もじさんの手がかりを探そう。"];
+    this.message = ["60歳でリタイヤしたyosの第二の人生が始まる。まずはフィールドの村へ向かおう。"];
   }
 
   private redraw() {
@@ -1250,10 +1278,15 @@ class HigeQuestScene extends Phaser.Scene {
     this.graphics.fillRect(0, 0, WIDTH, HEIGHT);
     map.tiles.forEach((row, y) => [...row].forEach((cell, x) => this.drawTile(cell, ox + x * tile, oy + y * tile, tile)));
     this.drawMapAtmosphere(map, ox, oy, tile);
-    map.exits.forEach((exit) => {
-      this.drawStairs(ox + exit.x * tile, oy + exit.y * tile, tile);
-      this.drawExitMarker(ox + exit.x * tile + tile / 2, oy + exit.y * tile + tile / 2);
-    });
+    if (this.mapId === "world") {
+      this.drawWorldRoutes(ox, oy, tile);
+      map.exits.forEach((exit) => this.drawWorldIcon(exit, ox, oy, tile));
+    } else {
+      map.exits.forEach((exit) => {
+        this.drawStairs(ox + exit.x * tile, oy + exit.y * tile, tile);
+        this.drawExitMarker(ox + exit.x * tile + tile / 2, oy + exit.y * tile + tile / 2);
+      });
+    }
     map.chests.forEach((chest) => {
       this.drawChest(ox + chest.x * tile, oy + chest.y * tile, chest.opened, tile);
       if (!chest.opened) this.drawSparkle(ox + chest.x * tile + tile * 0.72, oy + chest.y * tile + tile * 0.32);
@@ -1292,6 +1325,10 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private drawMapAtmosphere(map: GameMap, ox: number, oy: number, tile: number) {
+    if (this.mapId === "world") {
+      this.drawWorldAtmosphere(ox, oy, tile);
+      return;
+    }
     if (this.mapId === "village") {
       this.drawRailPlatform(ox, oy, tile);
       this.drawGuidancePulse(ox + 7 * tile + tile / 2, oy + 3 * tile + tile / 2, 0xffe58a);
@@ -1303,6 +1340,67 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     this.drawMountainDetails(map, ox, oy, tile);
+  }
+
+  private drawWorldAtmosphere(ox: number, oy: number, tile: number) {
+    this.graphics.fillStyle(0x8ab86a, 0.12);
+    this.graphics.fillRect(ox + 1.2 * tile, oy + 1.1 * tile, 3.5 * tile, 2.1 * tile);
+    this.graphics.fillRect(ox + 6.2 * tile, oy + 2.1 * tile, 3.4 * tile, 2.2 * tile);
+    this.graphics.fillStyle(0x5d8fdf, 0.14);
+    this.graphics.fillRect(ox + 8.5 * tile, oy + 7.3 * tile, 2.8 * tile, 3.2 * tile);
+    this.graphics.fillStyle(0xe7e7ef, 0.34);
+    this.graphics.fillEllipse(ox + 2.5 * tile, oy + 2.2 * tile, 46, 14);
+    this.graphics.fillEllipse(ox + 8.8 * tile, oy + 1.8 * tile, 42, 12);
+    this.graphics.fillEllipse(ox + 5.4 * tile, oy + 4.1 * tile, 36, 10);
+  }
+
+  private drawWorldRoutes(ox: number, oy: number, tile: number) {
+    this.graphics.lineStyle(5, 0xc49b62, 0.5);
+    this.graphics.lineBetween(ox + 2.1 * tile, oy + 10.2 * tile, ox + 4.7 * tile, oy + 8.8 * tile);
+    this.graphics.lineBetween(ox + 4.7 * tile, oy + 8.8 * tile, ox + 7.0 * tile, oy + 7.6 * tile);
+    this.graphics.lineBetween(ox + 7.0 * tile, oy + 7.6 * tile, ox + 8.9 * tile, oy + 4.4 * tile);
+    this.graphics.lineStyle(2, 0xffe58a, 0.42);
+    this.graphics.lineBetween(ox + 2.1 * tile, oy + 10.2 * tile, ox + 4.7 * tile, oy + 8.8 * tile);
+    this.graphics.lineBetween(ox + 4.7 * tile, oy + 8.8 * tile, ox + 7.0 * tile, oy + 7.6 * tile);
+    this.graphics.lineBetween(ox + 7.0 * tile, oy + 7.6 * tile, ox + 8.9 * tile, oy + 4.4 * tile);
+  }
+
+  private drawWorldIcon(exit: Exit, ox: number, oy: number, tile: number) {
+    const x = ox + exit.x * tile + tile / 2;
+    const y = oy + exit.y * tile + tile / 2;
+    const pulse = 0.52 + Math.sin(this.time.now * 0.005 + exit.x) * 0.12;
+    if (exit.to === "village") {
+      this.graphics.fillStyle(0x4d85a5, pulse);
+      this.graphics.fillCircle(x, y - 10, 14);
+      this.graphics.fillStyle(0xa8473d);
+      this.graphics.fillTriangle(x, y - 18, x - 14, y - 2, x + 14, y - 2);
+      this.graphics.fillStyle(0xe7dfc6);
+      this.graphics.fillRect(x - 12, y - 2, 24, 16);
+      this.graphics.fillStyle(0x8b5a38);
+      this.graphics.fillRect(x - 4, y + 4, 8, 10);
+      return;
+    }
+    if (exit.to === "forest") {
+      this.graphics.fillStyle(0x63a05a, pulse);
+      this.graphics.fillCircle(x, y - 10, 14);
+      this.graphics.fillStyle(0x7b3f35);
+      this.graphics.fillTriangle(x - 2, y - 18, x - 16, y - 2, x + 12, y - 2);
+      this.graphics.fillStyle(0xc8d88a);
+      this.graphics.fillRect(x - 13, y - 1, 26, 14);
+      this.graphics.fillStyle(0x8b5a38);
+      this.graphics.fillRect(x + 7, y - 8, 4, 21);
+      this.graphics.fillStyle(0x395b34);
+      this.graphics.fillRect(x - 14, y + 6, 6, 4);
+      return;
+    }
+    this.graphics.fillStyle(0xf3d17b, pulse);
+    this.graphics.fillCircle(x, y - 8, 16);
+    this.graphics.fillStyle(0x5c3035);
+    this.graphics.fillTriangle(x, y - 18, x - 16, y + 6, x + 16, y + 6);
+    this.graphics.fillStyle(0x17191f);
+    this.graphics.fillRect(x - 10, y - 1, 20, 12);
+    this.graphics.fillStyle(0x3d4652);
+    this.graphics.fillRect(x - 4, y - 10, 8, 8);
   }
 
   private drawRailPlatform(ox: number, oy: number, tile: number) {
