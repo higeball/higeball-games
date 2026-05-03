@@ -17,7 +17,7 @@ const UI_FONT = '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-s
 type Direction = "up" | "down" | "left" | "right";
 type SceneMode = "title" | "field" | "battle";
 type BgmTrack = "title" | "world" | "village" | "forest" | "dungeon" | "battle" | "boss" | "ending";
-type SeKey = "confirm" | "cancel" | "move" | "attack" | "magic" | "heal" | "chest" | "stairs";
+type SeKey = "confirm" | "cancel" | "move" | "attack" | "magic" | "heal" | "chest" | "stairs" | "boss" | "victory" | "levelup" | "equip";
 
 type PartyMember = {
   name: string;
@@ -142,7 +142,7 @@ type BattleEffect = {
 };
 
 type MenuState = {
-  mode: "main" | "save" | "load" | "shop" | "equip" | "equipGear" | "items";
+  mode: "main" | "save" | "load" | "shop" | "equip" | "equipGear" | "items" | "status";
   cursor: number;
   items: string[];
   shopType?: "item" | "weapon" | "armor";
@@ -158,9 +158,22 @@ type ShopEntry = {
   atk?: number;
   def?: number;
   users?: string[];
+  traits?: {
+    atk?: number;
+    def?: number;
+    crit?: number;
+    speed?: number;
+    magic?: number;
+    evade?: number;
+    heal?: number;
+    exp?: number;
+    mp?: number;
+    guard?: number;
+  };
 };
 
 type SaveData = {
+  schemaVersion?: number;
   mapId: string;
   player: { x: number; y: number; dir: Direction };
   party: PartyMember[];
@@ -172,7 +185,9 @@ type SaveData = {
   ending: boolean;
   chests: Record<string, boolean[]>;
   flags?: Record<string, boolean>;
+  storyFlags?: Record<string, boolean>;
   savedAt?: string;
+  playTimeMs?: number;
 };
 
 class AudioSystem {
@@ -224,6 +239,10 @@ class AudioSystem {
     }
     if (key === "magic") this.arpeggio([523, 659, 784, 1047], 0.05, "sine", 0.13);
     if (key === "heal") this.arpeggio([392, 523, 659, 784], 0.065, "triangle", 0.11);
+    if (key === "boss") this.arpeggio([196, 247, 311], 0.09, "sawtooth", 0.16);
+    if (key === "victory") this.arpeggio([523, 659, 784, 1047], 0.08, "triangle", 0.13);
+    if (key === "levelup") this.arpeggio([784, 988, 1175], 0.06, "square", 0.12);
+    if (key === "equip") this.tone(560, 0.05, now, "triangle", 0.1);
   }
 
   private startLoop(track: BgmTrack) {
@@ -331,15 +350,15 @@ const partyBase: PartyMember[] = [
 const catalog: Record<string, ShopEntry> = {
   herb: { id: "herb", name: "やくそう", kind: "item", price: 8 },
   water: { id: "water", name: "まほうの水", kind: "item", price: 18 },
-  stick: { id: "stick", name: "木の棒", kind: "weapon", price: 0, atk: 1 },
-  onionSword: { id: "onionSword", name: "オニオンソード", kind: "weapon", price: 0, atk: 4, users: ["もじさん"] },
-  copperSword: { id: "copperSword", name: "銅の剣", kind: "weapon", price: 45, atk: 5, users: ["yos", "もじさん", "貧"] },
-  sageStaff: { id: "sageStaff", name: "賢者の杖", kind: "weapon", price: 52, atk: 3, users: ["yos", "ヤス"] },
-  ironAxe: { id: "ironAxe", name: "鉄の斧", kind: "weapon", price: 78, atk: 8, users: ["もじさん"] },
-  cloth: { id: "cloth", name: "布の服", kind: "armor", price: 0, def: 1 },
-  traveler: { id: "traveler", name: "旅人の服", kind: "armor", price: 35, def: 4 },
-  ironArmor: { id: "ironArmor", name: "鉄の胸当て", kind: "armor", price: 70, def: 7, users: ["yos", "もじさん"] },
-  lightCloak: { id: "lightCloak", name: "身かわしマント", kind: "armor", price: 64, def: 5, users: ["ヤス", "貧"] },
+  stick: { id: "stick", name: "木の棒", kind: "weapon", price: 0, atk: 1, traits: { speed: 1, atk: 1 } },
+  onionSword: { id: "onionSword", name: "オニオンソード", kind: "weapon", price: 0, atk: 4, users: ["もじさん"], traits: { crit: 0.2, atk: 2, speed: 1 } },
+  copperSword: { id: "copperSword", name: "銅の剣", kind: "weapon", price: 45, atk: 5, users: ["yos", "もじさん", "貧"], traits: { crit: 0.08, atk: 1 } },
+  sageStaff: { id: "sageStaff", name: "賢者の杖", kind: "weapon", price: 52, atk: 3, users: ["yos", "ヤス"], traits: { magic: 3, mp: 4 } },
+  ironAxe: { id: "ironAxe", name: "鉄の斧", kind: "weapon", price: 78, atk: 8, users: ["もじさん"], traits: { crit: 0.1, speed: -1, atk: 3 } },
+  cloth: { id: "cloth", name: "布の服", kind: "armor", price: 0, def: 1, traits: { evade: 1, def: 1 } },
+  traveler: { id: "traveler", name: "旅人の服", kind: "armor", price: 35, def: 4, traits: { speed: 1, exp: 0.1, def: 1 } },
+  ironArmor: { id: "ironArmor", name: "鉄の胸当て", kind: "armor", price: 70, def: 7, users: ["yos", "もじさん"], traits: { guard: 2, def: 3 } },
+  lightCloak: { id: "lightCloak", name: "身かわしマント", kind: "armor", price: 64, def: 5, users: ["ヤス", "貧"], traits: { evade: 3, speed: 1 } },
 };
 
 const shopStock: Record<"item" | "weapon" | "armor", string[]> = {
@@ -548,6 +567,8 @@ class HigeQuestScene extends Phaser.Scene {
   private audio = new AudioSystem();
   private ending = false;
   private pendingBossBattle = false;
+  private bossCinematic: { kind: "intro" | "outro"; startedAt: number; until: number } | null = null;
+  private sessionStartedAt = Date.now();
   private graphics!: Phaser.GameObjects.Graphics;
   private labels: Phaser.GameObjects.Text[] = [];
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
@@ -665,6 +686,14 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     if (this.menu) {
+      if (this.menu.mode === "status") {
+        if (dir === "up" || dir === "down") {
+          const delta = dir === "down" ? 1 : -1;
+          this.menu.cursor = (this.menu.cursor + delta + this.menu.items.length) % this.menu.items.length;
+          this.audio.playSe("move");
+        }
+        return;
+      }
       if (dir === "up" || dir === "down") {
         const delta = dir === "down" ? 1 : -1;
         this.menu.cursor = (this.menu.cursor + delta + this.menu.items.length) % this.menu.items.length;
@@ -857,6 +886,10 @@ class HigeQuestScene extends Phaser.Scene {
       this.menu = null;
       return true;
     }
+    if (this.menu.mode === "status") {
+      this.menu = this.mainMenu();
+      return true;
+    }
     if (this.menu.mode === "save") {
       this.saveGame(this.menu.cursor + 1);
       return true;
@@ -869,16 +902,7 @@ class HigeQuestScene extends Phaser.Scene {
     if (item === "つづきから") this.openLoadMenu();
     if (item === "そうび") this.openEquipMenu();
     if (item === "もちもの") this.openItemsMenu();
-    if (item === "ステータス") {
-      this.message = [
-        ...this.party.flatMap((member) => [
-          `${member.name} Lv${member.lv} HP${member.hp}/${member.maxHp} MP${member.mp}/${member.maxMp}`,
-          `力${member.strength} 守${this.totalDef(member)} 速${member.spd} 体${member.stamina} 魔${member.magicPower} 回${member.evade}`,
-          `EXP ${member.xp} / 次まで ${this.xpToNext(member)}。`,
-        ]),
-      ];
-      this.menu = null;
-    }
+    if (item === "ステータス") this.openStatusMenu();
     return true;
   }
 
@@ -887,13 +911,14 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.battle.waiting) return;
     if (this.battle.won) {
       const wonBoss = this.battle.wonBoss;
+      if (wonBoss && this.bossCinematic && this.time.now < this.bossCinematic.until) return;
       this.mode = "field";
-      this.battle = null;
       if (wonBoss) {
         this.mapId = "forest";
         this.player = { x: 5, y: 8, dir: "down" };
         this.moveAnim = null;
         this.flags.chapter1Complete = true;
+        this.battle = null;
         this.message = [
           "オニオンJK: まさか、玉ねぎの力をここまで引き出すとは……。",
           "もじさん: 畑を充実させる野菜を探していたら、妙なやつに絡まれてな。",
@@ -901,7 +926,9 @@ class HigeQuestScene extends Phaser.Scene {
           "もじさん: よし、正式に仲間になる。次の旧友探しも手伝おう。",
           "第1章 もじさん加入 完",
         ];
+        return;
       }
+      this.battle = null;
       return;
     }
     const actor = this.currentActor();
@@ -940,7 +967,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.battle.actingIndex = this.party.indexOf(actor);
     this.battle.actingUntil = this.time.now + 260;
     if (command === "たたかう") {
-      const damage = this.damage({ atk: this.totalAtk(actor) }, this.battle.enemy);
+      const damage = this.physicalDamage(actor, this.battle.enemy);
       this.battle.enemy.hp = Math.max(0, this.battle.enemy.hp - damage);
       this.flashEnemy();
       this.audio.playSe("attack");
@@ -980,7 +1007,7 @@ class HigeQuestScene extends Phaser.Scene {
         ? this.party.filter((member) => member.hp > 0)
         : [this.party.reduce((low, member) => (member.hp / member.maxHp < low.hp / low.maxHp ? member : low), this.party[0])];
       healTargets.forEach((target, index) => {
-        const heal = skill.power + Math.floor(actor.magicPower * 1.3) + (skill.target === "allheal" ? 4 : 0);
+        const heal = skill.power + Math.floor(this.totalMagic(actor) * 1.3) + (skill.target === "allheal" ? 4 : 0) + this.equipmentHealBonus(actor);
         target.hp = Math.min(target.maxHp, target.hp + heal);
         this.addBattleEffect("heal", PARTY_BATTLE_X, PARTY_BATTLE_Y + this.party.indexOf(target) * PARTY_BATTLE_GAP);
         this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + this.party.indexOf(target) * PARTY_BATTLE_GAP, `+${heal}`, "#9df09a");
@@ -991,7 +1018,8 @@ class HigeQuestScene extends Phaser.Scene {
     }
     const hits = skill.name === "オニオンラッシュ" ? 2 : skill.name === "オニオンブラスト" ? 3 : 1;
     const mult = skill.name === "オニオンソード" ? 1.5 : skill.name === "オニオンラッシュ" ? 0.92 : skill.name === "オニオンブラスト" ? 0.82 : 1.0;
-    const perHit = Math.max(1, Math.floor(this.damage({ atk: this.totalAtk(actor) + Math.floor(actor.strength / 2) }, this.battle.enemy) * mult) + Math.floor(skill.power / hits));
+    const base = this.physicalDamage(actor, this.battle.enemy, mult);
+    const perHit = Math.max(1, Math.floor(base / hits) + Math.floor(skill.power / hits));
     let totalDamage = 0;
     for (let i = 0; i < hits; i += 1) {
       const damage = Math.min(perHit, this.battle.enemy.hp);
@@ -1053,6 +1081,14 @@ class HigeQuestScene extends Phaser.Scene {
     const targetIndex = this.party.indexOf(target);
     const guarded = this.battle.defending[targetIndex];
     const action = this.enemyAction();
+    const dodgeChance = Math.min(0.3, this.totalEvade(target) / 140);
+    if (Math.random() < dodgeChance) {
+      this.battle.defending[targetIndex] = false;
+      this.flashParty(targetIndex);
+      this.audio.playSe("move");
+      this.pushBattle(`${target.name}は${this.battle.enemy.name}${action.text}をかわした。`);
+      return;
+    }
     const baseDamage = this.damage({ atk: action.atk }, { def: this.totalDef(target) });
     const damage = guarded ? Math.max(1, Math.floor(baseDamage / 2)) : baseDamage;
     if (action.heal && this.battle.enemy.hp > 0) {
@@ -1128,10 +1164,12 @@ class HigeQuestScene extends Phaser.Scene {
     this.pushBattle(`${enemy.name}を倒した！`);
     this.gold += enemy.gold;
     this.xp += enemy.xp;
+    const bonusRate = Math.max(0, ...this.party.map((member) => this.totalExpBonus(member)));
+    const bonusXp = Math.floor(enemy.xp * bonusRate);
     this.party.forEach((member) => {
-      member.xp += enemy.xp;
+      member.xp += enemy.xp + bonusXp;
     });
-    this.pushBattle(`${enemy.xp}EXPと${enemy.gold}Gを得た。`);
+    this.pushBattle(`${enemy.xp + bonusXp}EXPと${enemy.gold}Gを得た。`);
     this.applyLevelUps();
     this.maybeLearnEventSkill();
     this.battle.won = true;
@@ -1139,7 +1177,11 @@ class HigeQuestScene extends Phaser.Scene {
     this.battle.waiting = false;
     this.battle.submenu = null;
     this.battle.actingIndex = null;
-    if (enemy.boss) this.ending = true;
+    if (enemy.boss) {
+      this.ending = true;
+      this.bossCinematic = { kind: "outro", startedAt: this.time.now, until: this.time.now + 1100 };
+    }
+    this.audio.playSe(enemy.boss ? "victory" : "levelup");
   }
 
   private startBattle(kind: "random" | "boss" = "random") {
@@ -1187,17 +1229,20 @@ class HigeQuestScene extends Phaser.Scene {
 
   private saveGame(slot: number) {
     const data: SaveData = {
+      schemaVersion: 2,
       mapId: this.mapId,
       player: this.player,
       party: this.party,
       joined: this.joined,
       flags: this.flags,
+      storyFlags: { ...this.flags },
       items: this.items,
       inventory: this.inventory,
       gold: this.gold,
       xp: this.xp,
       ending: this.ending,
       chests: this.chestState(),
+      playTimeMs: Date.now() - this.sessionStartedAt,
       savedAt: new Date().toISOString(),
     };
     localStorage.setItem(`higeballquest-save-${slot}`, JSON.stringify(data));
@@ -1222,10 +1267,12 @@ class HigeQuestScene extends Phaser.Scene {
     this.gold = data.gold ?? 60;
     this.xp = data.xp ?? 0;
     this.ending = data.ending || false;
+    this.flags = { ...(data.flags || {}), ...(data.storyFlags || {}) };
     this.applyChestState(data.chests);
     this.mode = "field";
     this.battle = null;
     this.encounterEffect = null;
+    this.sessionStartedAt = Date.now() - (data.playTimeMs || 0);
     this.message = [`スロット${slot}をロードした。`];
   }
 
@@ -1242,11 +1289,13 @@ class HigeQuestScene extends Phaser.Scene {
       return null;
     }
     return {
+      schemaVersion: data.schemaVersion ?? 1,
       mapId: data.mapId,
       player: data.player,
       party: data.party.map((member) => normalizeMember({ ...member, xp: member.xp ?? (member.name === "yos" ? data.xp : undefined) })),
       joined: data.joined || { yos: true },
       flags: data.flags || {},
+      storyFlags: data.storyFlags || data.flags || {},
       items: data.items || { やくそう: 3, まほうの水: 1 },
       inventory: data.inventory || { stick: data.party.length, cloth: data.party.length },
       gold: data.gold ?? 60,
@@ -1254,6 +1303,7 @@ class HigeQuestScene extends Phaser.Scene {
       ending: data.ending || false,
       chests: data.chests || {},
       savedAt: data.savedAt,
+      playTimeMs: data.playTimeMs || 0,
     };
   }
 
@@ -1302,6 +1352,8 @@ class HigeQuestScene extends Phaser.Scene {
     this.encounterEffect = null;
     this.ending = false;
     this.pendingBossBattle = false;
+    this.bossCinematic = null;
+    this.sessionStartedAt = Date.now();
     this.resetChestState();
     this.message = ["60歳でリタイヤしたyosの第二の人生が始まる。まずはフィールドの村へ向かおう。"];
   }
@@ -1383,6 +1435,7 @@ class HigeQuestScene extends Phaser.Scene {
     const visual = this.visualPlayerPosition();
     this.drawFieldFollowers(visual, ox, oy, tile);
     this.drawPerson(ox + visual.x * tile + tile / 2, oy + visual.y * tile + tile * 0.62, 0xe9d9b0, true, 0.88, this.player.dir, this.walkPhase());
+    this.drawBossCinematic(map, ox, oy, tile);
   }
 
   private drawFieldFollowers(leader: { x: number; y: number }, ox: number, oy: number, tile: number) {
@@ -1557,6 +1610,29 @@ class HigeQuestScene extends Phaser.Scene {
     const radius = 10 + Math.sin(this.time.now * 0.006) * 2;
     this.graphics.lineStyle(2, color, 0.42);
     this.graphics.strokeCircle(x, y, radius);
+  }
+
+  private drawBossCinematic(map: GameMap, ox: number, oy: number, tile: number) {
+    if (!this.bossCinematic) return;
+    if (this.time.now >= this.bossCinematic.until) {
+      this.bossCinematic = null;
+      return;
+    }
+    const progress = Phaser.Math.Clamp((this.time.now - this.bossCinematic.startedAt) / (this.bossCinematic.until - this.bossCinematic.startedAt), 0, 1);
+    const fade = this.bossCinematic.kind === "intro" ? Math.sin(progress * Math.PI) : 1 - progress;
+    const boss = map.boss || { x: 5, y: 9 };
+    const bx = ox + boss.x * tile + tile / 2;
+    const by = oy + boss.y * tile + tile * 0.62;
+    this.graphics.fillStyle(0x05060a, 0.28 + fade * 0.28);
+    this.graphics.fillRect(0, 0, WIDTH, HEIGHT);
+    this.graphics.lineStyle(3, this.bossCinematic.kind === "intro" ? 0xffe58a : 0xf8f3dc, 0.75 * fade);
+    this.graphics.strokeCircle(bx, by, 30 + fade * 28);
+    this.graphics.lineStyle(2, this.bossCinematic.kind === "intro" ? 0xff9fdb : 0x9df09a, 0.55 * fade);
+    for (let i = 0; i < 4; i += 1) {
+      const offset = (i - 1.5) * 10;
+      this.graphics.lineBetween(bx - 40, by + offset, bx + 40, by - offset);
+    }
+    this.text(WIDTH / 2, this.bossCinematic.kind === "intro" ? 40 : 54, this.bossCinematic.kind === "intro" ? "オニオンJK との対峙" : "ボス撃破", 16, "#fff3cb", "center");
   }
 
   private drawBattle() {
@@ -1869,7 +1945,12 @@ class HigeQuestScene extends Phaser.Scene {
     this.ffWindow(8, PANEL_Y + 70, 118, 94);
     if (this.battle.won) {
       this.ffWindow(132, PANEL_Y + 70, 220, 94);
-      this.text(242, PANEL_Y + 118, "Aで進む", 15, "#ffe58a", "center");
+      if (this.battle.wonBoss && this.bossCinematic && this.time.now < this.bossCinematic.until) {
+        this.text(242, PANEL_Y + 104, "オニオンJK 撃破", 16, "#fff3cb", "center");
+        this.text(242, PANEL_Y + 128, "山頂の空気が変わった。", 12, "#d8c98f", "center");
+      } else {
+        this.text(242, PANEL_Y + 118, "Aで進む", 15, "#ffe58a", "center");
+      }
       return;
     }
     const actor = this.currentActor();
@@ -1980,8 +2061,12 @@ class HigeQuestScene extends Phaser.Scene {
 
   private drawMenu() {
     if (!this.menu) return;
-    const wide = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "equipGear" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load";
+    const wide = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "equipGear" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load" || this.menu.mode === "status";
     const mainMenu = this.menu.mode === "main";
+    if (this.menu.mode === "status") {
+      this.drawStatusMenu();
+      return;
+    }
     this.panel(wide ? 28 : mainMenu ? 62 : 78, wide ? 112 : mainMenu ? 128 : 154, wide ? 304 : mainMenu ? 236 : 204, wide ? 236 : mainMenu ? 208 : 156);
     const title =
       this.menu.mode === "save"
@@ -2005,6 +2090,35 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.menu.mode === "shop") this.drawShopHelp();
     if (this.menu.mode === "equip") this.text(44, 326, "A:選ぶ / B:戻る", 12, "#d8c98f");
     if (this.menu.mode === "equipGear") this.drawEquipHelp();
+  }
+
+  private drawStatusMenu() {
+    if (!this.menu) return;
+    const member = this.party[this.menu.cursor] || this.party[0];
+    this.panel(20, 88, 320, 320);
+    this.text(36, 112, "ステータス", 15, "#ffe58a");
+    this.text(36, 136, "↑↓:切替  A/B:戻る", 11, "#d8c98f");
+    this.party.forEach((entry, i) => {
+      const y = 166 + i * 26;
+      if (i === this.menu!.cursor) this.graphics.fillStyle(0xffffff, 0.12), this.graphics.fillRect(30, y - 10, 118, 18);
+      this.text(38, y, `${i === this.menu!.cursor ? ">" : " "} ${entry.name} Lv${entry.lv}`, 13, i === this.menu!.cursor ? "#ffe58a" : "#fff3cb");
+      this.text(132, y, `HP ${entry.hp}/${entry.maxHp} MP ${entry.mp}/${entry.maxMp}`, 12, entry.hp <= 0 ? "#a89c8d" : "#fff3cb");
+    });
+    this.ffWindow(168, 120, 160, 260);
+    this.text(182, 140, `${member.name} ${member.job}`, 13, "#ffe58a");
+    this.text(182, 162, `Lv ${member.lv}  EXP ${member.xp}`, 12);
+    this.text(182, 184, `HP ${member.hp}/${member.maxHp}`, 12);
+    this.text(182, 204, `MP ${member.mp}/${member.maxMp}`, 12);
+    this.text(182, 228, `力 ${this.totalAtk(member)}`, 12);
+    this.text(182, 248, `体 ${this.totalDef(member)}`, 12);
+    this.text(182, 268, `速 ${this.totalSpd(member)}`, 12);
+    this.text(182, 288, `魔 ${this.totalMagic(member)}`, 12);
+    this.text(182, 308, `回 ${this.totalEvade(member)}`, 12);
+    this.text(182, 330, `武 ${this.equipmentName(member.weapon)}`, 11, "#d8c98f");
+    this.text(182, 350, `防 ${this.equipmentName(member.armor)}`, 11, "#d8c98f");
+    const skills = member.skills.filter((name) => this.skillsFor(member).some((skill) => skill.name === name));
+    this.text(182, 372, `技 ${skills.join(" / ") || "-"}`, 10, "#d8c98f");
+    this.text(182, 392, `EXPボーナス ${Math.round(this.totalExpBonus(member) * 100)}%`, 10, "#d8c98f");
   }
 
   private drawShopHelp() {
@@ -2213,6 +2327,7 @@ class HigeQuestScene extends Phaser.Scene {
       cursor: 0,
       items: ["全員 最強装備", ...this.party.map((member) => `${member.name} 武:${this.equipmentName(member.weapon)} 防:${this.equipmentName(member.armor)}`)],
     };
+    this.audio.playSe("equip");
   }
 
   private openEquipGearMenu(memberIndex: number) {
@@ -2256,6 +2371,15 @@ class HigeQuestScene extends Phaser.Scene {
     };
   }
 
+  private openStatusMenu() {
+    this.menu = {
+      mode: "status",
+      cursor: 0,
+      items: this.party.map((member) => member.name),
+    };
+    this.audio.playSe("equip");
+  }
+
   private autoEquipAll() {
     this.party.forEach((member) => {
       const bestWeapon = this.bestEquipment(member, "weapon");
@@ -2284,11 +2408,69 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private totalAtk(member: PartyMember) {
-    return member.strength + (catalog[member.weapon || ""]?.atk || 0);
+    return member.strength + (catalog[member.weapon || ""]?.atk || 0) + this.equipmentAtkBonus(member);
   }
 
   private totalDef(member: PartyMember) {
-    return member.stamina + (catalog[member.armor || ""]?.def || 0);
+    return member.stamina + (catalog[member.armor || ""]?.def || 0) + this.equipmentDefBonus(member);
+  }
+
+  private totalSpd(member: PartyMember) {
+    return member.spd + this.equipmentSpeedBonus(member);
+  }
+
+  private totalMagic(member: PartyMember) {
+    return member.magicPower + this.equipmentMagicBonus(member);
+  }
+
+  private totalEvade(member: PartyMember) {
+    return member.evade + this.equipmentEvadeBonus(member);
+  }
+
+  private equipmentEntry(member: PartyMember, kind: "weapon" | "armor") {
+    const id = kind === "weapon" ? member.weapon : member.armor;
+    return id ? catalog[id] : undefined;
+  }
+
+  private equipmentAtkBonus(member: PartyMember) {
+    return this.equipmentEntry(member, "weapon")?.traits?.atk || 0;
+  }
+
+  private equipmentDefBonus(member: PartyMember) {
+    return this.equipmentEntry(member, "armor")?.traits?.def || 0;
+  }
+
+  private equipmentSpeedBonus(member: PartyMember) {
+    return (this.equipmentEntry(member, "weapon")?.traits?.speed || 0) + (this.equipmentEntry(member, "armor")?.traits?.speed || 0);
+  }
+
+  private equipmentMagicBonus(member: PartyMember) {
+    return (this.equipmentEntry(member, "weapon")?.traits?.magic || 0) + (this.equipmentEntry(member, "armor")?.traits?.magic || 0);
+  }
+
+  private equipmentEvadeBonus(member: PartyMember) {
+    return (this.equipmentEntry(member, "weapon")?.traits?.evade || 0) + (this.equipmentEntry(member, "armor")?.traits?.evade || 0);
+  }
+
+  private equipmentHealBonus(member: PartyMember) {
+    return (this.equipmentEntry(member, "weapon")?.traits?.heal || 0) + (this.equipmentEntry(member, "armor")?.traits?.heal || 0);
+  }
+
+  private equipmentCritBonus(member: PartyMember) {
+    return (this.equipmentEntry(member, "weapon")?.traits?.crit || 0) + (this.equipmentEntry(member, "armor")?.traits?.crit || 0);
+  }
+
+  private totalExpBonus(member: PartyMember) {
+    return this.equipmentExpBonus(member);
+  }
+
+  private equipmentExpBonus(member: PartyMember) {
+    return (this.equipmentEntry(member, "weapon")?.traits?.exp || 0) + (this.equipmentEntry(member, "armor")?.traits?.exp || 0);
+  }
+
+  private physicalDamage(member: PartyMember, enemy: Enemy, multiplier = 1) {
+    const raw = Math.max(1, this.damage({ atk: this.totalAtk(member) }, enemy) * multiplier);
+    return Math.random() < this.equipmentCritBonus(member) ? Math.floor(raw * 1.5) : Math.floor(raw);
   }
 
   private equipmentName(id?: string) {
@@ -2304,6 +2486,7 @@ class HigeQuestScene extends Phaser.Scene {
           member.mp = member.maxMp;
         }
       });
+      this.audio.playSe("levelup");
       this.pushBattle(`${leveledMembers.map((member) => member.name).join("、")}のレベルが上がった！`);
     }
   }
@@ -2490,7 +2673,7 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.mode !== "field") return;
     this.encounterEffect = { startedAt: this.time.now, kind };
     this.inputLock = true;
-    this.audio.playSe(kind === "boss" ? "magic" : "attack");
+    this.audio.playSe(kind === "boss" ? "boss" : "attack");
     this.time.delayedCall(220, () => {
       this.encounterEffect = null;
       this.inputLock = false;
@@ -2507,6 +2690,8 @@ class HigeQuestScene extends Phaser.Scene {
       this.inventory.onionSword = (this.inventory.onionSword || 0) + 1;
     }
     this.pendingBossBattle = true;
+    this.bossCinematic = { kind: "intro", startedAt: this.time.now, until: this.time.now + 900 };
+    this.audio.playSe("boss");
     this.message = [
       "もじさん: yos、久しぶりだな。山頂で会うとは思わなかったぞ。",
       "オニオンJK: 新しい野菜を探す者よ、玉ねぎの審査を受けてもらう。",
