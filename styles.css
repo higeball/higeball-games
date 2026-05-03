@@ -83,7 +83,7 @@ button.is-down {
 
 .dpad {
   position: absolute;
-  left: 18px;
+  left: 14px;
   bottom: 22px;
   display: grid;
   grid-template-columns: 54px 54px 54px;
@@ -119,11 +119,11 @@ button.is-down {
 
 .actions {
   position: absolute;
-  right: 20px;
-  bottom: 32px;
+  right: 14px;
+  bottom: 30px;
   display: flex;
   align-items: flex-end;
-  gap: 14px;
+  gap: 18px;
 }
 
 .actions button {
@@ -139,6 +139,9 @@ button.is-down {
 }
 
 #btn-b {
-  margin-bottom: 20px;
+  width: 58px;
+  height: 58px;
+  margin-right: 12px;
+  margin-bottom: 42px;
   background: #2e4858;
 }

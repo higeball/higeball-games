@@ -92,6 +92,7 @@ type BattleState = {
   command: number;
   log: string[];
   won: boolean;
+  waiting: boolean;
   enemyFlashUntil: number;
   partyFlashUntil: number[];
   shakeUntil: number;
@@ -569,6 +570,7 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     if (this.mode === "battle" && this.battle) {
+      if (this.battle.waiting || this.battle.won) return;
       const delta = dir === "up" || dir === "left" ? -1 : 1;
       this.battle.command = (this.battle.command + delta + 4) % 4;
       this.audio.playSe("move");
@@ -690,7 +692,7 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     if (this.mode === "battle" && this.battle) {
-      if (!this.battle.won) this.battle.command = (this.battle.command + 1) % 4;
+      if (!this.battle.won && !this.battle.waiting) this.battle.command = (this.battle.command + 1) % 4;
       return;
     }
     if (this.message.length) {
@@ -757,6 +759,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private battleA() {
     if (!this.battle) return;
+    if (this.battle.waiting) return;
     if (this.battle.won) {
       this.mode = "field";
       this.battle = null;
@@ -777,6 +780,7 @@ class HigeQuestScene extends Phaser.Scene {
     }
     const actor = this.currentActor();
     if (!actor) return;
+    this.battle.waiting = true;
     const command = this.battleCommands(actor)[this.battle.command];
     if (command === "たたかう") {
       const damage = this.damage({ atk: this.totalAtk(actor) }, this.battle.enemy);
@@ -810,7 +814,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.battle.defending[this.party.indexOf(actor)] = true;
       this.pushBattle(`${actor.name}は身を守っている。`);
     }
-    this.nextActor();
+    this.time.delayedCall(420, () => this.nextActor());
   }
 
   private useSkill(actor: PartyMember, command: string) {
@@ -850,9 +854,17 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.battle.actor >= this.party.length) {
       this.enemyTurn();
       this.battle.actor = 0;
+      this.time.delayedCall(460, () => {
+        if (!this.battle || this.battle.won) return;
+        this.battle.waiting = false;
+        this.battle.command = 0;
+        this.currentActor();
+      });
+      return;
     }
     this.battle.command = 0;
     this.currentActor();
+    this.battle.waiting = false;
   }
 
   private enemyTurn() {
@@ -869,7 +881,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.audio.playSe("attack");
     this.addBattleEffect("hit", PARTY_BATTLE_X, PARTY_BATTLE_Y + targetIndex * PARTY_BATTLE_GAP);
     this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + targetIndex * PARTY_BATTLE_GAP, `-${damage}`, "#ffdf7a");
-    this.pushBattle(`${this.battle.enemy.name}の攻撃。${target.name}に${damage}ダメージ。`);
+    this.pushBattle(`${this.battle.enemy.name}の攻撃。${target.name}に${damage}ダメージ。${guarded ? " 防御が効いた。" : ""}`);
     if (!this.party.some((member) => member.hp > 0)) {
       this.pushBattle("全滅した。チバの村で目を覚ました。");
       this.time.delayedCall(900, () => {
@@ -892,6 +904,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.pushBattle(`${enemy.xp}EXPと${enemy.gold}Gを得た。`);
     this.applyLevelUps();
     this.battle.won = true;
+    this.battle.waiting = false;
     if (enemy.boss) this.ending = true;
   }
 
@@ -905,6 +918,7 @@ class HigeQuestScene extends Phaser.Scene {
       command: 0,
       log: [],
       won: false,
+      waiting: false,
       enemyFlashUntil: 0,
       partyFlashUntil: [],
       shakeUntil: 0,
@@ -1393,7 +1407,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.ffWindow(8, PANEL_Y + 64, 118, 100);
     if (this.battle.won) {
       this.ffWindow(132, PANEL_Y + 64, 220, 100);
-      this.text(242, PANEL_Y + 114, "Aでフィールドへ", 15, "#ffe58a", "center");
+      this.text(242, PANEL_Y + 114, "Aで進む", 15, "#ffe58a", "center");
       return;
     }
     const actor = this.currentActor();
@@ -1406,6 +1420,7 @@ class HigeQuestScene extends Phaser.Scene {
       }
       this.text(24, PANEL_Y + 89 + i * 20, `${i === this.battle?.command ? ">" : " "}${command}`, 15, i === this.battle?.command ? "#ffe58a" : "#fff3cb");
     });
+    if (this.battle.waiting) this.text(67, PANEL_Y + 158, "行動中", 12, "#d8c98f", "center");
     this.text(146, PANEL_Y + 80, actor ? `${actor.name}  ${actor.job}` : "", 13, "#ffe58a");
     this.party.forEach((member, i) => {
       const rowY = PANEL_Y + 99 + i * 16;
@@ -1475,7 +1490,8 @@ class HigeQuestScene extends Phaser.Scene {
   private drawMenu() {
     if (!this.menu) return;
     const wide = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "equipGear" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load";
-    this.panel(wide ? 28 : 78, wide ? 112 : 154, wide ? 304 : 204, wide ? 236 : 156);
+    const mainMenu = this.menu.mode === "main";
+    this.panel(wide ? 28 : mainMenu ? 62 : 78, wide ? 112 : mainMenu ? 128 : 154, wide ? 304 : mainMenu ? 236 : 204, wide ? 236 : mainMenu ? 208 : 156);
     const title =
       this.menu.mode === "save"
         ? "セーブ先"
@@ -1490,10 +1506,10 @@ class HigeQuestScene extends Phaser.Scene {
               : this.menu.mode === "items"
                 ? "もちもの"
                 : "旅のメニュー";
-    this.text(wide ? 44 : 112, wide ? 138 : 184, title, 14, "#ffe58a");
+    this.text(wide ? 44 : mainMenu ? 94 : 112, wide ? 138 : mainMenu ? 154 : 184, title, 14, "#ffe58a");
     this.menu.items.forEach((item, i) => {
-      const y = (wide ? 166 : 214) + i * (wide ? 24 : 28);
-      this.text(wide ? 44 : 116, y, `${i === this.menu?.cursor ? ">" : " "}${item}`, this.menu?.mode === "save" || this.menu?.mode === "load" ? 12 : wide ? 14 : 18, i === this.menu?.cursor ? "#ffe58a" : "#fff3cb");
+      const y = (wide ? 166 : mainMenu ? 184 : 214) + i * (wide ? 24 : mainMenu ? 24 : 28);
+      this.text(wide ? 44 : mainMenu ? 92 : 116, y, `${i === this.menu?.cursor ? ">" : " "}${item}`, this.menu?.mode === "save" || this.menu?.mode === "load" ? 12 : wide ? 14 : mainMenu ? 16 : 18, i === this.menu?.cursor ? "#ffe58a" : "#fff3cb");
     });
     if (this.menu.mode === "shop") this.drawShopHelp();
     if (this.menu.mode === "equip") this.text(44, 326, "A:選ぶ / B:戻る", 12, "#d8c98f");
