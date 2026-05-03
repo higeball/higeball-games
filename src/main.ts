@@ -1179,7 +1179,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.graphics.fillRect(x + 18, 284, 8, 28);
     }
     this.drawBoss(260, 238, 1.25);
-    this.drawPerson(92, 272, 0xe9d9b0, true, 1.25, "right");
+    this.drawPerson(92, 272, 0xe9d9b0, true, 1.25, "right", 0.4);
     this.text(WIDTH / 2, 104, "HIGEBALL", 34, "#ffe58a", "center");
     this.text(WIDTH / 2, 140, "QUEST", 30, "#fff3cb", "center");
     this.panel(48, 330, 264, 108);
@@ -1214,18 +1214,34 @@ class HigeQuestScene extends Phaser.Scene {
     map.npcs.forEach((npc) => {
       const x = ox + npc.x * tile + tile / 2;
       const y = oy + npc.y * tile + tile * 0.62;
-      this.drawPerson(x, y, this.npcColor(npc.name), false, 0.88);
+      this.drawPerson(x, y, this.npcColor(npc.name), false, 0.88, "down", this.idlePhase(npc.x, npc.y));
       this.drawInteractMarker(x, y - 28, npc.name);
     });
     if (map.boss && !this.ending) {
       this.drawBoss(ox + map.boss.x * tile + tile / 2, oy + map.boss.y * tile + tile * 0.62, 0.88);
       if (this.pendingBossBattle || this.joined["もじさん"]) {
-        this.drawPartySprite(ox + (map.boss.x + 1) * tile + tile / 2, oy + map.boss.y * tile + tile * 0.62, partyBase[1]);
+        this.drawPartySprite(ox + (map.boss.x + 1) * tile + tile / 2, oy + map.boss.y * tile + tile * 0.62, partyBase[1], 0.92, 0.2);
         this.drawInteractMarker(ox + (map.boss.x + 1) * tile + tile / 2, oy + map.boss.y * tile + tile * 0.62 - 28, "もじさん");
       }
     }
     const visual = this.visualPlayerPosition();
-    this.drawPerson(ox + visual.x * tile + tile / 2, oy + visual.y * tile + tile * 0.62, 0xe9d9b0, true, 0.88, this.player.dir);
+    this.drawFieldFollowers(visual, ox, oy, tile);
+    this.drawPerson(ox + visual.x * tile + tile / 2, oy + visual.y * tile + tile * 0.62, 0xe9d9b0, true, 0.88, this.player.dir, this.walkPhase());
+  }
+
+  private drawFieldFollowers(leader: { x: number; y: number }, ox: number, oy: number, tile: number) {
+    if (this.pendingBossBattle) return;
+    const followers = this.party.slice(1, 3);
+    if (!followers.length) return;
+    const dx = this.player.dir === "left" ? 1 : this.player.dir === "right" ? -1 : 0;
+    const dy = this.player.dir === "up" ? 1 : this.player.dir === "down" ? -1 : 0;
+    followers.forEach((member, i) => {
+      const offset = 0.62 + i * 0.5;
+      const side = i % 2 === 0 ? -0.18 : 0.18;
+      const x = ox + (leader.x + dx * offset + (dy ? side : 0)) * tile + tile / 2;
+      const y = oy + (leader.y + dy * offset + (dx ? side : 0)) * tile + tile * 0.62;
+      this.drawPartySprite(x, y, member, 0.82, this.walkPhase() + i * 0.7);
+    });
   }
 
   private drawMapAtmosphere(map: GameMap, ox: number, oy: number, tile: number) {
@@ -1369,13 +1385,22 @@ class HigeQuestScene extends Phaser.Scene {
     }
   }
 
-  private drawPerson(x: number, y: number, skin: number, hero: boolean, scale = 1, dir: Direction = "down") {
+  private drawPerson(x: number, y: number, skin: number, hero: boolean, scale = 1, dir: Direction = "down", phase = 0) {
+    const bob = Math.abs(Math.sin(phase)) * 2 * scale;
+    const sway = Math.sin(phase) * 2.2 * scale;
+    y -= bob;
     this.graphics.fillStyle(0x222836);
     this.graphics.fillRect(x - 8 * scale, y + 10 * scale, 16 * scale, 5 * scale);
+    this.graphics.fillStyle(hero ? 0x2b4768 : 0x5e3f61);
+    this.graphics.fillRect(x - 8 * scale, y + 10 * scale + Math.max(0, sway), 5 * scale, 7 * scale);
+    this.graphics.fillRect(x + 3 * scale, y + 10 * scale - Math.min(0, sway), 5 * scale, 7 * scale);
     this.graphics.fillStyle(skin);
     this.graphics.fillRect(x - 6 * scale, y - 15 * scale, 12 * scale, 12 * scale);
     this.graphics.fillStyle(hero ? 0x466b91 : 0x7d5572);
     this.graphics.fillRect(x - 8 * scale, y - 3 * scale, 16 * scale, 18 * scale);
+    this.graphics.fillStyle(hero ? 0xc9d8e8 : 0xb99162);
+    this.graphics.fillRect(x - 13 * scale - sway, y - 2 * scale, 4 * scale, 15 * scale);
+    this.graphics.fillRect(x + 9 * scale - sway, y - 2 * scale, 4 * scale, 15 * scale);
     this.graphics.fillStyle(0x2a1b17);
     this.graphics.fillRect(x - 6 * scale, y - 17 * scale, 12 * scale, 4 * scale);
     this.graphics.fillStyle(0x12151b);
@@ -1476,7 +1501,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private drawPartyBattler(x: number, y: number, member: PartyMember, active: boolean, flash = false) {
-    this.drawPartySprite(x, y, member);
+    this.drawPartySprite(x, y - (active ? Math.sin(this.time.now * 0.008) * 2 : 0), member, 1, active ? this.time.now * 0.012 : 0);
     this.drawHpBar(x - 18, y + 20, 36, 4, member.hp, member.maxHp);
     if (active) {
       this.graphics.fillStyle(0xffe58a);
@@ -1492,38 +1517,53 @@ class HigeQuestScene extends Phaser.Scene {
     }
   }
 
-  private drawPartySprite(x: number, y: number, member: PartyMember) {
+  private drawPartySprite(x: number, y: number, member: PartyMember, scale = 1, phase = 0) {
     const skin = member.name === "もじさん" || member.name === "貧" ? 0x9b6a4c : 0xe4c09c;
     const outfit = member.name === "yos" ? 0x466b91 : member.name === "もじさん" ? 0x7b3f35 : member.name === "ヤス" ? 0x5b4f92 : 0x3f6a57;
+    const bob = Math.abs(Math.sin(phase)) * 2 * scale;
+    const sway = Math.sin(phase) * 2 * scale;
+    y -= bob;
     this.graphics.fillStyle(0x151820, 0.5);
-    this.graphics.fillEllipse(x, y + 16, 24, 6);
+    this.graphics.fillEllipse(x, y + 16 * scale + bob, 24 * scale, 6 * scale);
+    this.graphics.fillStyle(0x2a2f3a);
+    this.graphics.fillRect(x - 7 * scale, y + 11 * scale + Math.max(0, sway), 5 * scale, 8 * scale);
+    this.graphics.fillRect(x + 2 * scale, y + 11 * scale - Math.min(0, sway), 5 * scale, 8 * scale);
     this.graphics.fillStyle(outfit);
-    this.graphics.fillRect(x - 8, y - 2, 16, 18);
+    this.graphics.fillRect(x - 8 * scale, y - 2 * scale, 16 * scale, 18 * scale);
+    this.graphics.fillStyle(member.name === "もじさん" ? 0xd8e277 : 0xd1d7e0);
+    this.graphics.fillRect(x - 13 * scale - sway, y - 1 * scale, 5 * scale, 14 * scale);
+    this.graphics.fillRect(x + 8 * scale - sway, y - 1 * scale, 5 * scale, 14 * scale);
     this.graphics.fillStyle(skin);
-    this.graphics.fillRect(x - 6, y - 16, 12, 13);
+    this.graphics.fillRect(x - 6 * scale, y - 16 * scale, 12 * scale, 13 * scale);
     this.graphics.fillStyle(member.name === "貧" ? 0x2a1b17 : 0x34251f);
-    this.graphics.fillRect(x - 7, y - 19, 14, 5);
+    this.graphics.fillRect(x - 7 * scale, y - 19 * scale, 14 * scale, 5 * scale);
     this.graphics.fillStyle(0x14161e);
-    this.graphics.fillRect(x - 4, y - 11, 3, 2);
-    this.graphics.fillRect(x + 2, y - 11, 3, 2);
+    this.graphics.fillRect(x - 4 * scale, y - 11 * scale, 3 * scale, 2 * scale);
+    this.graphics.fillRect(x + 2 * scale, y - 11 * scale, 3 * scale, 2 * scale);
     if (member.name === "yos") {
       this.graphics.fillStyle(0xd9e7f2);
-      this.graphics.fillRect(x - 5, y - 12, 4, 3);
-      this.graphics.fillRect(x + 1, y - 12, 4, 3);
+      this.graphics.fillRect(x - 5 * scale, y - 12 * scale, 4 * scale, 3 * scale);
+      this.graphics.fillRect(x + 1 * scale, y - 12 * scale, 4 * scale, 3 * scale);
       this.graphics.fillStyle(0xc9d8e8);
-      this.graphics.fillRect(x - 15, y - 3, 4, 24);
+      this.graphics.fillRect(x - 15 * scale, y - 3 * scale, 4 * scale, 24 * scale);
+      this.graphics.fillStyle(0xf4d35e);
+      this.graphics.fillRect(x + 10 * scale, y - 5 * scale, 5 * scale, 7 * scale);
     } else if (member.name === "もじさん") {
       this.graphics.fillStyle(0xb99162);
-      this.graphics.fillRect(x - 14, y - 1, 6, 16);
-      this.graphics.fillRect(x + 8, y - 1, 6, 16);
+      this.graphics.fillRect(x - 14 * scale, y - 1 * scale, 6 * scale, 16 * scale);
+      this.graphics.fillRect(x + 8 * scale, y - 1 * scale, 6 * scale, 16 * scale);
+      this.graphics.fillStyle(0x6f9a55);
+      this.graphics.fillRect(x - 11 * scale, y - 24 * scale, 22 * scale, 4 * scale);
+      this.graphics.fillStyle(0xf3d17b);
+      this.graphics.fillCircle(x + 13 * scale, y - 8 * scale, 4 * scale);
     } else if (member.name === "ヤス") {
       this.graphics.fillStyle(0xff9fdb);
-      this.graphics.fillCircle(x + 14, y - 5, 4);
+      this.graphics.fillCircle(x + 14 * scale, y - 5 * scale, 4 * scale);
     } else {
       this.graphics.fillStyle(0x222836);
-      this.graphics.fillRect(x - 12, y - 4, 4, 18);
+      this.graphics.fillRect(x - 12 * scale, y - 4 * scale, 4 * scale, 18 * scale);
       this.graphics.fillStyle(0xffe58a);
-      this.graphics.fillRect(x + 8, y + 2, 8, 3);
+      this.graphics.fillRect(x + 8 * scale, y + 2 * scale, 8 * scale, 3 * scale);
     }
   }
 
@@ -1577,7 +1617,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.party.forEach((member, i) => {
       const x = 112 + (i % 2) * 116;
       const y = 22 + Math.floor(i / 2) * 19;
-      this.text(x, y, `${member.name.slice(0, 4)} ${member.hp}/${member.maxHp}`, 12, member.hp <= 0 ? "#a89c8d" : "#fff3cb");
+      this.text(x, y, `${member.name.slice(0, 4)} Lv${member.lv} ${member.hp}/${member.maxHp}`, 11, member.hp <= 0 ? "#a89c8d" : "#fff3cb");
     });
   }
 
@@ -2083,6 +2123,16 @@ class HigeQuestScene extends Phaser.Scene {
       x: Phaser.Math.Linear(this.moveAnim.fromX, this.moveAnim.toX, eased),
       y: Phaser.Math.Linear(this.moveAnim.fromY, this.moveAnim.toY, eased),
     };
+  }
+
+  private walkPhase() {
+    if (!this.moveAnim) return 0;
+    const progress = Phaser.Math.Clamp((this.time.now - this.moveAnim.startedAt) / this.moveAnim.duration, 0, 1);
+    return progress * Math.PI * 2;
+  }
+
+  private idlePhase(x: number, y: number) {
+    return Math.sin(this.time.now * 0.003 + x * 0.9 + y * 0.6) * 0.22;
   }
 
   private tileAt(map: GameMap, x: number, y: number) {
