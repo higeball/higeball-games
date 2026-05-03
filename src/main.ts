@@ -1,16 +1,17 @@
 import Phaser from "phaser";
+import { COLORS, DISPLAY, FONT, LAYOUT } from "./ui/layout";
 
-const WIDTH = 360;
-const HEIGHT = 472;
+const WIDTH = LAYOUT.CANVAS.w;
+const HEIGHT = LAYOUT.CANVAS.h;
 const TILE = 32;
 const FIELD_TILE = 28;
-const FIELD_TOP = 62;
-const PANEL_Y = 306;
-const BATTLE_ENEMY_X = 104;
-const BATTLE_ENEMY_Y = 154;
-const PARTY_BATTLE_X = 252;
-const PARTY_BATTLE_Y = 142;
-const PARTY_BATTLE_GAP = 34;
+const FIELD_TOP = LAYOUT.FIELD_TOP;
+const PANEL_Y = LAYOUT.PANEL_Y;
+const BATTLE_ENEMY_X = LAYOUT.BATTLE.ENEMY_X;
+const BATTLE_ENEMY_Y = LAYOUT.BATTLE.ENEMY_Y;
+const PARTY_BATTLE_X = LAYOUT.BATTLE.PARTY_X;
+const PARTY_BATTLE_Y = LAYOUT.BATTLE.PARTY_Y;
+const PARTY_BATTLE_GAP = LAYOUT.BATTLE.PARTY_GAP;
 const LEVEL_XP = [0, 20, 48, 88, 140, 210, 300];
 const UI_FONT = '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
 const TEXT_RESOLUTION = 4;
@@ -152,6 +153,7 @@ type LevelUpSummary = {
 type BattleSubmenu = {
   kind: "じゅもん" | "ベジタブル";
   cursor: number;
+  page: number;
 };
 
 type BattleSkill = {
@@ -417,6 +419,29 @@ function normalizeMember(member: Partial<PartyMember>): PartyMember {
     evade: member.evade ?? Math.max(base.evade, member.spd ?? base.spd),
     skills: [...(member.skills || base.skills || [])],
   };
+}
+
+function fitLines(text: string, containerWidthPx: number, fontPx: number): string[] {
+  const maxUnits = containerWidthPx / fontPx;
+  const lines: string[] = [];
+  const paragraphs = text.split("\n");
+  for (const paragraph of paragraphs) {
+    let line = "";
+    let width = 0;
+    for (const char of paragraph) {
+      const charWidth = /[　-鿿＀-￯]/.test(char) ? 1 : 0.55;
+      if (line && width + charWidth > maxUnits) {
+        lines.push(line);
+        line = "";
+        width = 0;
+      }
+      line += char;
+      width += charWidth;
+    }
+    if (line) lines.push(line);
+    if (!paragraph.length) lines.push("");
+  }
+  return lines;
 }
 
 function dungeonMap(name: string, next: string | null, prev: string, encounter: number): GameMap {
@@ -740,8 +765,18 @@ class HigeQuestScene extends Phaser.Scene {
         const actor = this.currentActor();
         const skills = actor ? this.skillsFor(actor, this.battle.submenu.kind) : [];
         if (!skills.length) return;
-        const delta = dir === "up" || dir === "left" ? -1 : 1;
-        this.battle.submenu.cursor = (this.battle.submenu.cursor + delta + skills.length) % skills.length;
+        const pageSize = 3;
+        const pageCount = Math.max(1, Math.ceil(skills.length / pageSize));
+        if (dir === "left" || dir === "right") {
+          this.battle.submenu.page = (this.battle.submenu.page + (dir === "left" ? -1 : 1) + pageCount) % pageCount;
+          const pageSkills = skills.slice(this.battle.submenu.page * pageSize, this.battle.submenu.page * pageSize + pageSize);
+          this.battle.submenu.cursor = Math.min(this.battle.submenu.cursor, Math.max(0, pageSkills.length - 1));
+          this.audio.playSe("move");
+          return;
+        }
+        const pageSkills = skills.slice(this.battle.submenu.page * pageSize, this.battle.submenu.page * pageSize + pageSize);
+        const delta = dir === "up" ? -1 : 1;
+        this.battle.submenu.cursor = (this.battle.submenu.cursor + delta + pageSkills.length) % pageSkills.length;
         this.audio.playSe("move");
         return;
       }
@@ -977,7 +1012,8 @@ class HigeQuestScene extends Phaser.Scene {
     const actor = this.currentActor();
     if (!actor) return;
     if (this.battle.submenu) {
-      const skill = this.skillsFor(actor, this.battle.submenu.kind)[this.battle.submenu.cursor];
+      const skills = this.skillsFor(actor, this.battle.submenu.kind);
+      const skill = skills[this.battle.submenu.page * 3 + this.battle.submenu.cursor];
       if (!skill) return;
       if (actor.mp < skill.mp) {
         this.pushBattle(`${skill.name}を使うにはMPが足りない。`);
@@ -1001,7 +1037,7 @@ class HigeQuestScene extends Phaser.Scene {
         this.audio.playSe("cancel");
         return;
       }
-      this.battle.submenu = { kind: command, cursor: 0 };
+      this.battle.submenu = { kind: command, cursor: 0, page: 0 };
       this.audio.playSe("move");
       return;
     }
@@ -1443,8 +1479,8 @@ class HigeQuestScene extends Phaser.Scene {
     }
     this.drawBoss(260, 238, 1.25);
     this.drawPerson(92, 272, 0xe9d9b0, true, 1.25, "right", 0.4);
-    this.text(WIDTH / 2, 104, "HIGEBALL", 34, "#ffe58a", "center");
-    this.text(WIDTH / 2, 140, "QUEST", 30, "#fff3cb", "center");
+    this.text(WIDTH / 2, 104, "HIGEBALL", DISPLAY.D4, "#ffe58a", "center");
+    this.text(WIDTH / 2, 140, "QUEST", DISPLAY.D3, "#fff3cb", "center");
     this.panel(48, 330, 264, 108);
     ["はじめから", "つづきから"].forEach((item, i) => {
       const y = 366 + i * 28;
@@ -1452,9 +1488,9 @@ class HigeQuestScene extends Phaser.Scene {
         this.graphics.fillStyle(0xffffff, 0.14);
         this.graphics.fillRect(76, y - 12, 208, 23);
       }
-      this.text(WIDTH / 2, y, `${i === this.titleCursor ? "> " : "  "}${item}`, 17, i === this.titleCursor ? "#ffe58a" : "#fff3cb", "center");
+      this.text(WIDTH / 2, y, `${i === this.titleCursor ? "> " : "  "}${item}`, FONT.L, i === this.titleCursor ? COLORS.text.accent : COLORS.text.primary, "center");
     });
-    this.text(WIDTH / 2, 424, "A:決定 / B:ロード", 12, "#d8c98f", "center");
+    this.text(WIDTH / 2, 424, "A:決定 / B:ロード", FONT.S, COLORS.text.muted, "center");
   }
 
   private drawField() {
@@ -1693,7 +1729,7 @@ class HigeQuestScene extends Phaser.Scene {
       const offset = (i - 1.5) * 10;
       this.graphics.lineBetween(bx - 40, by + offset, bx + 40, by - offset);
     }
-    this.text(WIDTH / 2, this.bossCinematic.kind === "intro" ? 40 : 54, this.bossCinematic.kind === "intro" ? "オニオンJK との対峙" : "ボス撃破", 16, "#fff3cb", "center");
+    this.text(WIDTH / 2, this.bossCinematic.kind === "intro" ? 40 : 54, this.bossCinematic.kind === "intro" ? "オニオンJK との対峙" : "ボス撃破", DISPLAY.D1, COLORS.text.primary, "center");
   }
 
   private drawBattle() {
@@ -1983,65 +2019,77 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private drawHud() {
-    this.panel(8, 6, 344, 50);
-    this.text(20, 24, maps[this.mapId].name, 14, "#ffe58a");
-    this.text(20, 43, `${this.gold}G 薬:${this.items["やくそう"] || 0} 水:${this.items["まほうの水"] || 0}`, 12);
-    this.party.forEach((member, i) => {
-      const x = 112 + (i % 2) * 116;
-      const y = 22 + Math.floor(i / 2) * 19;
-      this.text(x, y, `${member.name.slice(0, 4)} Lv${member.lv} ${member.hp}/${member.maxHp}`, 11, member.hp <= 0 ? "#a89c8d" : "#fff3cb");
+    this.panel(LAYOUT.HUD.x, LAYOUT.HUD.y, LAYOUT.HUD.w, LAYOUT.HUD.h);
+    this.text(20, 23, maps[this.mapId].name, FONT.M, "#ffe58a");
+    this.text(20, 41, `${this.gold}G  薬:${this.items["やくそう"] || 0}  水:${this.items["まほうの水"] || 0}`, FONT.S);
+    const rows = this.party.slice(0, 3);
+    rows.forEach((member, i) => {
+      const y = 19 + i * 16;
+      const color = member.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary;
+      this.text(154, y, member.name, FONT.S, color);
+      this.text(210, y, `Lv ${member.lv}`, FONT.XS, color);
+      this.text(246, y, `${member.hp}/${member.maxHp}`, FONT.XS, member.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary);
+      this.drawHpBar(282, y - 1, 58, 5, member.hp, member.maxHp);
     });
   }
 
   private drawBattlePanel() {
     if (!this.battle) return;
-    this.ffWindow(8, PANEL_Y + 4, 344, 62);
+    this.ffWindow(LAYOUT.BATTLE.MSG.x, LAYOUT.BATTLE.MSG.y, LAYOUT.BATTLE.MSG.w, LAYOUT.BATTLE.MSG.h);
     const logText = this.battle.log.at(-1) || "";
     const cueActive = this.battle.cueText && this.time.now < this.battle.cueUntil;
     if (cueActive && this.battle.cueText) {
-      this.text(180, PANEL_Y + 18, this.battle.cueText, 12, "#ffe58a", "center");
+      this.text(180, PANEL_Y + 18, this.battle.cueText, FONT.S, COLORS.text.accent, "center");
     } else {
-      this.wrap(logText, 31).slice(0, 3).forEach((line, i) => this.text(20, PANEL_Y + 22 + i * 15, line, 12));
+      fitLines(logText, 320, FONT.S).slice(0, 3).forEach((line, i) => this.text(20, PANEL_Y + 20 + i * 15, line, FONT.S));
     }
-    this.ffWindow(8, PANEL_Y + 70, 118, 94);
+    this.ffWindow(LAYOUT.BATTLE.STATUS.x, LAYOUT.BATTLE.STATUS.y, LAYOUT.BATTLE.STATUS.w, LAYOUT.BATTLE.STATUS.h);
     if (this.battle.won) {
-      this.ffWindow(132, PANEL_Y + 70, 220, 94);
+      this.ffWindow(LAYOUT.BATTLE.CMD.x, LAYOUT.BATTLE.CMD.y, LAYOUT.BATTLE.CMD.w, LAYOUT.BATTLE.CMD.h);
       if (this.battle.levelUpSummary?.length) {
         this.drawLevelUpSummary(this.battle.levelUpSummary);
         return;
       }
       if (this.battle.wonBoss && this.bossCinematic && this.time.now < this.bossCinematic.until) {
-        this.text(242, PANEL_Y + 104, "オニオンJK 撃破", 16, "#fff3cb", "center");
-        this.text(242, PANEL_Y + 128, "山頂の空気が変わった。", 12, "#d8c98f", "center");
+        this.text(252, PANEL_Y + 104, "オニオンJK 撃破", FONT.L, COLORS.text.primary, "center");
+        this.text(252, PANEL_Y + 128, "山頂の空気が変わった。", FONT.S, COLORS.text.muted, "center");
       } else {
-        this.text(242, PANEL_Y + 118, "Aで進む", 15, "#ffe58a", "center");
+        this.text(252, PANEL_Y + 118, "Aで進む", FONT.L, COLORS.text.accent, "center");
       }
       return;
     }
     const actor = this.currentActor();
-    this.ffWindow(132, PANEL_Y + 70, 220, 94);
+    this.ffWindow(LAYOUT.BATTLE.CMD.x, LAYOUT.BATTLE.CMD.y, LAYOUT.BATTLE.CMD.w, LAYOUT.BATTLE.CMD.h);
     const commands = actor ? this.battleCommands(actor) : [];
+    const cells = [
+      { x: 160, y: PANEL_Y + 84, w: 88, h: 18 },
+      { x: 252, y: PANEL_Y + 84, w: 88, h: 18 },
+      { x: 160, y: PANEL_Y + 104, w: 88, h: 18 },
+      { x: 252, y: PANEL_Y + 104, w: 88, h: 18 },
+    ];
     commands.forEach((command, i) => {
-      if (i === this.battle?.command) {
+      const cell = cells[i];
+      const selected = i === this.battle?.command;
+      if (selected) {
         this.graphics.fillStyle(0xffffff, 0.15);
-        this.graphics.fillRect(18, PANEL_Y + 83 + i * 19, 90, 16);
+        this.graphics.fillRect(cell.x - 8, cell.y - 2, cell.w, cell.h);
       }
-      this.text(24, PANEL_Y + 91 + i * 19, `${i === this.battle?.command ? ">" : " "}${command}`, 14, i === this.battle?.command ? "#ffe58a" : "#fff3cb");
+      this.text(cell.x, cell.y + 7, `${selected ? ">" : " "}${command}`, FONT.M, selected ? COLORS.text.accent : COLORS.text.primary);
     });
-    if (this.battle.waiting) this.text(67, PANEL_Y + 157, "行動中", 12, "#d8c98f", "center");
-    if (!this.battle.submenu) this.text(146, PANEL_Y + 86, actor ? `${actor.name}  ${actor.job}` : "", 13, "#ffe58a");
+    if (this.battle.waiting) this.text(206, PANEL_Y + 157, "行動中", FONT.S, COLORS.text.muted, "center");
+    if (!this.battle.submenu) this.text(160, PANEL_Y + 72, actor ? `${actor.name}  ${actor.job}` : "", FONT.S, COLORS.text.accent);
     this.party.forEach((member, i) => {
-      const rowY = PANEL_Y + 104 + i * 15;
+      const rowY = PANEL_Y + 74 + i * 16;
       const active = actor?.name === member.name && !this.battle?.won;
       if (this.battle?.submenu) return;
       if (active) {
         this.graphics.fillStyle(0xffffff, 0.12);
-        this.graphics.fillRect(142, rowY - 8, 198, 14);
+        this.graphics.fillRect(8, rowY - 8, 132, 14);
       }
-      const color = member.hp <= 0 ? "#9aa0a8" : "#fff3cb";
-      this.text(146, rowY, member.name.slice(0, 4), 12, color);
-      this.text(198, rowY, `HP ${member.hp}/${member.maxHp}`, 12, color);
-      this.text(288, rowY, `MP ${member.mp}`, 12, color);
+      const color = member.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary;
+      this.text(12, rowY, member.name, FONT.S, color);
+      this.text(52, rowY, `HP ${member.hp}/${member.maxHp}`, FONT.XS, color);
+      this.text(108, rowY, `MP ${member.mp}`, FONT.XS, color);
     });
     if (this.battle.submenu && actor) this.drawSkillSubwindow(actor);
   }
@@ -2049,10 +2097,10 @@ class HigeQuestScene extends Phaser.Scene {
   private drawLevelUpSummary(summaries: LevelUpSummary[]) {
     const page = Phaser.Math.Clamp(this.battle?.levelUpPage || 0, 0, summaries.length - 1);
     const summary = summaries[page];
-    this.ffWindow(20, 74, 320, 214);
-    this.text(180, 98, "レベルアップ", 16, "#ffe58a", "center");
-    this.text(44, 124, `${summary.name}  ${summary.job}`, 13, "#fff3cb");
-    this.text(274, 124, `${page + 1}/${summaries.length}`, 12, "#d8c98f", "center");
+    this.ffWindow(LAYOUT.MENU.WIDE.x, LAYOUT.MENU.WIDE.y, LAYOUT.MENU.WIDE.w, LAYOUT.MENU.WIDE.h);
+    this.text(180, 98, "レベルアップ", FONT.L, COLORS.text.accent, "center");
+    this.text(44, 124, `${summary.name}  ${summary.job}`, FONT.M, COLORS.text.primary);
+    this.text(274, 124, `${page + 1}/${summaries.length}`, FONT.S, COLORS.text.muted, "center");
 
     this.graphics.fillStyle(0xffffff, 0.08);
     this.graphics.fillRect(34, 138, 292, 116);
@@ -2060,10 +2108,10 @@ class HigeQuestScene extends Phaser.Scene {
     this.graphics.lineBetween(106, 140, 106, 252);
     this.graphics.lineBetween(196, 140, 196, 252);
     this.graphics.lineBetween(238, 140, 238, 252);
-    this.text(62, 153, "能力", 11, "#d8c98f", "center");
-    this.text(152, 153, "前", 11, "#d8c98f", "center");
-    this.text(217, 153, "→", 12, "#ffe58a", "center");
-    this.text(282, 153, "後", 11, "#d8c98f", "center");
+    this.text(62, 153, "能力", FONT.XS, COLORS.text.muted, "center");
+    this.text(152, 153, "前", FONT.XS, COLORS.text.muted, "center");
+    this.text(217, 153, "→", FONT.S, COLORS.text.accent, "center");
+    this.text(282, 153, "後", FONT.XS, COLORS.text.muted, "center");
 
     const rows = [
       ["Lv", summary.lvBefore, summary.lvAfter],
@@ -2080,16 +2128,16 @@ class HigeQuestScene extends Phaser.Scene {
       const x = i % 2 === 0 ? 44 : 178;
       this.drawStatChange(x, y, label, before, after);
     });
-    if (summary.learned.length) this.text(44, 264, `習得 ${summary.learned.join(" / ")}`, 11, "#9df09a");
-    this.text(180, 276, page < summaries.length - 1 ? "A:次の仲間" : this.battle?.wonBoss ? "A:次へ" : "A:閉じる", 13, "#ffe58a", "center");
+    if (summary.learned.length) this.text(44, 264, `習得 ${summary.learned.join(" / ")}`, FONT.XS, COLORS.text.mpAccent);
+    this.text(180, 276, page < summaries.length - 1 ? "A:次の仲間" : this.battle?.wonBoss ? "A:次へ" : "A:閉じる", FONT.M, COLORS.text.accent, "center");
   }
 
   private drawStatChange(x: number, y: number, label: string, before: number, after: number) {
     const changed = before !== after;
-    this.text(x, y, label, 11, changed ? "#ffe58a" : "#d8c98f");
-    this.text(x + 46, y, String(before), 11, "#fff3cb", "center");
-    this.text(x + 78, y, "→", 11, "#d8c98f", "center");
-    this.text(x + 112, y, String(after), 11, changed ? "#9df09a" : "#fff3cb", "center");
+    this.text(x, y, label, FONT.XS, changed ? COLORS.text.accent : COLORS.text.muted);
+    this.text(x + 46, y, String(before), FONT.XS, COLORS.text.primary, "center");
+    this.text(x + 78, y, "→", FONT.XS, COLORS.text.muted, "center");
+    this.text(x + 112, y, String(after), FONT.XS, changed ? COLORS.text.mpAccent : COLORS.text.primary, "center");
   }
 
   private battleCommands(actor: PartyMember) {
@@ -2107,25 +2155,40 @@ class HigeQuestScene extends Phaser.Scene {
     if (!this.battle?.submenu) return;
     const submenu = this.battle.submenu;
     const skills = this.skillsFor(actor, submenu.kind);
-    this.ffWindow(116, PANEL_Y + 76, 138, 82);
-    this.text(130, PANEL_Y + 94, `${actor.name} ${submenu.kind}`, 12, "#ffe58a");
-    skills.forEach((skill, i) => {
-      const y = PANEL_Y + 115 + i * 18;
-      if (i === submenu.cursor) {
-        this.graphics.fillStyle(0xffffff, 0.15);
-        this.graphics.fillRect(126, y - 8, 112, 16);
-      }
-      const color = actor.mp < skill.mp ? "#9aa0a8" : i === submenu.cursor ? "#ffe58a" : "#fff3cb";
-      this.text(132, y, `${i === submenu.cursor ? ">" : " "}${skill.name}`, 12, color);
+    const pageSize = 3;
+    const pageCount = Math.max(1, Math.ceil(skills.length / pageSize));
+    submenu.page = Phaser.Math.Clamp(submenu.page, 0, pageCount - 1);
+    submenu.cursor = Phaser.Math.Clamp(submenu.cursor, 0, Math.min(pageSize, skills.length - submenu.page * pageSize) - 1);
+    const start = submenu.page * pageSize;
+    const pageSkills = skills.slice(start, start + pageSize);
+    this.subWindow(LAYOUT.BATTLE.SUBMENU.x, LAYOUT.BATTLE.SUBMENU.y, LAYOUT.BATTLE.SUBMENU.w, LAYOUT.BATTLE.SUBMENU.h, {
+      x: LAYOUT.BATTLE.CMD.x,
+      y: LAYOUT.BATTLE.CMD.y,
+      w: LAYOUT.BATTLE.CMD.w,
+      h: LAYOUT.BATTLE.CMD.h,
     });
-    const skill = skills[submenu.cursor];
-    if (skill) this.text(130, PANEL_Y + 146, `MP${skill.mp} ${skill.description}`, 11, actor.mp < skill.mp ? "#ffb0a0" : "#d8c98f");
-    else this.text(130, PANEL_Y + 146, "覚えている技がない。", 11, "#d8c98f");
+    this.text(28, 326, `${actor.name} ${submenu.kind}`, FONT.S, COLORS.text.accent);
+    this.text(182, 326, pageCount > 1 ? `${submenu.page + 1}/${pageCount}` : "", FONT.XS, COLORS.text.muted, "center");
+    pageSkills.forEach((skill, i) => {
+      const y = 348 + i * 24;
+      const selected = i === submenu.cursor;
+      if (selected) {
+        this.graphics.fillStyle(0xffffff, 0.15);
+        this.graphics.fillRect(20, y - 9, 184, 20);
+      }
+      const color = actor.mp < skill.mp ? COLORS.text.disabled : selected ? COLORS.text.accent : COLORS.text.primary;
+      this.text(28, y, `${selected ? ">" : " "}${skill.name}`, FONT.M, color);
+      this.text(178, y, `MP ${skill.mp}`, FONT.S, color, "center");
+      this.text(28, y + 12, skill.description, FONT.S, COLORS.text.muted);
+    });
+    const skill = pageSkills[submenu.cursor];
+    if (skill) this.text(28, 402, `MP${skill.mp} ${skill.description}`, FONT.S, actor.mp < skill.mp ? COLORS.text.danger : COLORS.text.muted);
+    else this.text(28, 402, "覚えている技がない。", FONT.S, COLORS.text.muted);
   }
 
   private drawEnemyStatus() {
     if (!this.battle) return;
-    this.text(54, 94, this.battle.enemy.name, 13, "#fff3cb", "center");
+    this.text(54, 94, this.battle.enemy.name, FONT.M, COLORS.text.primary, "center");
     this.drawHpBar(62, 104, 84, 6, this.battle.enemy.hp, this.battle.enemy.maxHp);
   }
 
@@ -2133,7 +2196,8 @@ class HigeQuestScene extends Phaser.Scene {
     const ratio = Phaser.Math.Clamp(value / max, 0, 1);
     this.graphics.fillStyle(0x10151d, 0.86);
     this.graphics.fillRect(x, y, w, h);
-    this.graphics.fillStyle(ratio < 0.3 ? 0xd75f5f : 0x67c66b);
+    const color = ratio < 0.25 ? 0xff7a6a : ratio <= 0.5 ? 0xf5d36a : 0x7adb7a;
+    this.graphics.fillStyle(color);
     this.graphics.fillRect(x + 1, y + 1, Math.max(0, (w - 2) * ratio), h - 2);
     this.graphics.lineStyle(1, 0xf3d17b, 0.7);
     this.graphics.strokeRect(x, y, w, h);
@@ -2172,13 +2236,12 @@ class HigeQuestScene extends Phaser.Scene {
 
   private drawMenu() {
     if (!this.menu) return;
-    const wide = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "equipGear" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load" || this.menu.mode === "status";
-    const mainMenu = this.menu.mode === "main";
     if (this.menu.mode === "status") {
       this.drawStatusMenu();
       return;
     }
-    this.panel(wide ? 28 : mainMenu ? 62 : 78, wide ? 112 : mainMenu ? 128 : 154, wide ? 304 : mainMenu ? 236 : 204, wide ? 236 : mainMenu ? 208 : 156);
+    const box = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "equipGear" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load" ? LAYOUT.MENU.NARROW : LAYOUT.MENU.MAIN;
+    this.panel(box.x, box.y, box.w, box.h);
     const title =
       this.menu.mode === "save"
         ? "セーブ先"
@@ -2193,45 +2256,49 @@ class HigeQuestScene extends Phaser.Scene {
               : this.menu.mode === "items"
                 ? "もちもの"
                 : "旅のメニュー";
-    this.text(wide ? 44 : mainMenu ? 94 : 112, wide ? 138 : mainMenu ? 154 : 184, title, 14, "#ffe58a");
+    this.text(box.x + 16, box.y + 26, title, FONT.M, COLORS.text.accent);
     this.menu.items.forEach((item, i) => {
-      const y = (wide ? 166 : mainMenu ? 184 : 214) + i * (wide ? 24 : mainMenu ? 24 : 28);
-      this.text(wide ? 44 : mainMenu ? 92 : 116, y, `${i === this.menu?.cursor ? ">" : " "}${item}`, this.menu?.mode === "save" || this.menu?.mode === "load" ? 12 : wide ? 14 : mainMenu ? 16 : 18, i === this.menu?.cursor ? "#ffe58a" : "#fff3cb");
+      const y = box.y + 58 + i * 22;
+      const selected = i === this.menu?.cursor;
+      if (selected) {
+        this.graphics.fillStyle(0xffffff, 0.12);
+        this.graphics.fillRect(box.x + 10, y - 10, box.w - 20, 18);
+      }
+      this.text(box.x + 16, y, `${selected ? ">" : " "}${item}`, this.menu?.mode === "save" || this.menu?.mode === "load" ? FONT.S : FONT.M, selected ? COLORS.text.accent : COLORS.text.primary);
     });
     if (this.menu.mode === "shop") this.drawShopHelp();
-    if (this.menu.mode === "equip") this.text(44, 326, "A:選ぶ / B:戻る", 12, "#d8c98f");
+    if (this.menu.mode === "equip") this.text(44, 326, "A:選ぶ / B:戻る", FONT.S, COLORS.text.muted);
     if (this.menu.mode === "equipGear") this.drawEquipHelp();
   }
 
   private drawStatusMenu() {
     if (!this.menu) return;
     const member = this.party[this.menu.cursor] || this.party[0];
-    this.panel(20, 88, 320, 320);
-    this.text(36, 112, "ステータス", 15, "#ffe58a");
-    this.text(36, 136, "↑↓:切替  A/B:戻る", 11, "#d8c98f");
+    this.panel(LAYOUT.MENU.STATUS.x, LAYOUT.MENU.STATUS.y, LAYOUT.MENU.STATUS.w, LAYOUT.MENU.STATUS.h);
+    this.text(36, 112, "ステータス", FONT.L, COLORS.text.accent);
+    this.text(36, 136, "↑↓:切替  A/B:戻る", FONT.XS, COLORS.text.muted);
     this.party.forEach((entry, i) => {
       const y = 166 + i * 26;
       if (i === this.menu!.cursor) this.graphics.fillStyle(0xffffff, 0.12), this.graphics.fillRect(30, y - 10, 118, 18);
-      this.text(38, y, `${i === this.menu!.cursor ? ">" : " "} ${entry.name} Lv${entry.lv}`, 13, i === this.menu!.cursor ? "#ffe58a" : "#fff3cb");
-      this.text(132, y, `HP ${entry.hp}/${entry.maxHp} MP ${entry.mp}/${entry.maxMp}`, 12, entry.hp <= 0 ? "#a89c8d" : "#fff3cb");
+      this.text(38, y, `${i === this.menu!.cursor ? ">" : " "} ${entry.name} Lv${entry.lv}`, FONT.S, i === this.menu!.cursor ? COLORS.text.accent : COLORS.text.primary);
+      this.text(132, y, `HP ${entry.hp}/${entry.maxHp} MP ${entry.mp}/${entry.maxMp}`, FONT.S, entry.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary);
     });
-    this.ffWindow(168, 120, 160, 300);
-    this.text(182, 140, `${member.name} ${member.job}`, 13, "#ffe58a");
-    this.text(182, 162, `Lv ${member.lv}  EXP ${member.xp}`, 12);
-    this.text(182, 184, `HP ${member.hp}/${member.maxHp}`, 12);
-    this.text(182, 204, `MP ${member.mp}/${member.maxMp}`, 12);
-    this.text(182, 228, `力 ${this.totalAtk(member)}`, 12);
-    this.text(182, 248, `体 ${this.totalDef(member)}`, 12);
-    this.text(182, 268, `速 ${this.totalSpd(member)}`, 12);
-    this.text(182, 288, `魔 ${this.totalMagic(member)}`, 12);
-    this.text(182, 308, `回 ${this.totalEvade(member)}`, 12);
-    this.text(182, 328, `命中 ${this.accuracy(member)}%`, 11, "#d8c98f");
-    this.text(182, 346, `耐性 ${this.resistanceLabel(member)}`, 11, "#d8c98f");
-    this.text(182, 364, `武 ${this.equipmentName(member.weapon)}`, 11, "#d8c98f");
-    this.text(182, 382, `防 ${this.equipmentName(member.armor)}`, 11, "#d8c98f");
+    this.text(182, 140, `${member.name} ${member.job}`, FONT.S, COLORS.text.accent);
+    this.text(182, 162, `Lv ${member.lv}  EXP ${member.xp}`, FONT.S);
+    this.text(182, 184, `HP ${member.hp}/${member.maxHp}`, FONT.S);
+    this.text(182, 204, `MP ${member.mp}/${member.maxMp}`, FONT.S);
+    this.text(182, 228, `力 ${this.totalAtk(member)}`, FONT.S);
+    this.text(182, 248, `体 ${this.totalDef(member)}`, FONT.S);
+    this.text(182, 268, `速 ${this.totalSpd(member)}`, FONT.S);
+    this.text(182, 288, `魔 ${this.totalMagic(member)}`, FONT.S);
+    this.text(182, 308, `回 ${this.totalEvade(member)}`, FONT.S);
+    this.text(182, 328, `命中 ${this.accuracy(member)}%`, FONT.XS, COLORS.text.muted);
+    this.text(182, 346, `耐性 ${this.resistanceLabel(member)}`, FONT.XS, COLORS.text.muted);
+    this.text(182, 364, `武 ${this.equipmentName(member.weapon)}`, FONT.XS, COLORS.text.muted);
+    this.text(182, 382, `防 ${this.equipmentName(member.armor)}`, FONT.XS, COLORS.text.muted);
     const skills = member.skills.filter((name) => this.skillsFor(member).some((skill) => skill.name === name));
-    this.text(182, 398, `技 ${skills.join(" / ") || "-"}`, 10, "#d8c98f");
-    this.text(182, 412, `EXPボーナス ${Math.round(this.totalExpBonus(member) * 100)}%`, 10, "#d8c98f");
+    this.text(182, 398, `技 ${skills.join(" / ") || "-"}`, FONT.XS, COLORS.text.muted);
+    this.text(182, 412, `EXPボーナス ${Math.round(this.totalExpBonus(member) * 100)}%`, FONT.XS, COLORS.text.muted);
   }
 
   private drawShopHelp() {
@@ -2241,41 +2308,43 @@ class HigeQuestScene extends Phaser.Scene {
     if (!entry) return;
     const owned = entry.kind === "item" ? this.items[entry.name] || 0 : this.inventory[entry.id] || 0;
     const users = entry.users?.join("/") || "全員";
-    this.text(44, 286, `所持 ${owned}  装備 ${users}`, 12, "#d8c98f");
-    this.text(44, 310, this.gold >= entry.price ? "A:購入 / B:閉じる" : "お金が足りない", 12, this.gold >= entry.price ? "#d8c98f" : "#ffb0a0");
+    this.text(44, 286, `所持 ${owned}  装備 ${users}`, FONT.S, COLORS.text.muted);
+    this.text(44, 310, this.gold >= entry.price ? "A:購入 / B:閉じる" : "お金が足りない", FONT.S, this.gold >= entry.price ? COLORS.text.muted : COLORS.text.danger);
   }
 
   private drawEquipHelp() {
     if (this.menu?.memberIndex === undefined) return;
     const member = this.party[this.menu.memberIndex];
     if (!member) return;
-    this.text(44, 286, `現在 武:${this.equipmentName(member.weapon)} 防:${this.equipmentName(member.armor)}`, 12, "#d8c98f");
-    this.text(44, 308, this.equipmentTraitsText(member.weapon, "武器") || "武器の特性なし", 11, "#d8c98f");
-    this.text(44, 328, this.equipmentTraitsText(member.armor, "防具") || "防具の特性なし", 11, "#d8c98f");
-    this.text(44, 350, "A:装備 / B:戻る", 12, "#d8c98f");
+    this.text(44, 286, `現在 武:${this.equipmentName(member.weapon)} 防:${this.equipmentName(member.armor)}`, FONT.S, COLORS.text.muted);
+    this.text(44, 308, this.equipmentTraitsText(member.weapon, "武器") || "武器の特性なし", FONT.XS, COLORS.text.muted);
+    this.text(44, 328, this.equipmentTraitsText(member.armor, "防具") || "防具の特性なし", FONT.XS, COLORS.text.muted);
+    this.text(44, 350, "A:装備 / B:戻る", FONT.S, COLORS.text.muted);
   }
 
   private drawMessage(message: string) {
     const parsed = this.parseMessage(message);
-    this.graphics.fillStyle(0x080b10, 0.18);
-    this.graphics.fillRect(0, 0, WIDTH, PANEL_Y + 12);
-    this.panel(12, PANEL_Y + 10, 336, 146);
+    if (this.mode === "field") {
+      this.graphics.fillStyle(COLORS.window.dimOverlay.color, COLORS.window.dimOverlay.alphaField);
+      this.graphics.fillRect(0, 0, WIDTH, PANEL_Y + 12);
+    }
+    this.panel(LAYOUT.MESSAGE.x, LAYOUT.MESSAGE.y, LAYOUT.MESSAGE.w, LAYOUT.MESSAGE.h);
     const lines = this.messageLines(message);
     const hasMore = lines.length > 4 || this.message.length > 1;
     if (parsed.speaker) {
-      this.panel(24, PANEL_Y + 32, 52, 76);
+      this.panel(LAYOUT.MESSAGE_PORTRAIT.x, LAYOUT.MESSAGE_PORTRAIT.y, LAYOUT.MESSAGE_PORTRAIT.w, LAYOUT.MESSAGE_PORTRAIT.h);
       this.drawSpeakerPortrait(parsed.speaker, 50, PANEL_Y + 80);
       this.graphics.fillStyle(0x10151d, 0.92);
-      this.graphics.fillRect(88, PANEL_Y + 26, 100, 22);
+      this.graphics.fillRect(LAYOUT.MESSAGE_SPEAKER.x, LAYOUT.MESSAGE_SPEAKER.y, LAYOUT.MESSAGE_SPEAKER.w, LAYOUT.MESSAGE_SPEAKER.h);
       this.graphics.lineStyle(1, colors.border, 0.75);
-      this.graphics.strokeRect(88, PANEL_Y + 26, 100, 22);
-      this.text(98, PANEL_Y + 38, parsed.speaker, 12, "#ffe58a");
-      lines.slice(0, 4).forEach((line, i) => this.text(90, PANEL_Y + 62 + i * 20, line, 14));
+      this.graphics.strokeRect(LAYOUT.MESSAGE_SPEAKER.x, LAYOUT.MESSAGE_SPEAKER.y, LAYOUT.MESSAGE_SPEAKER.w, LAYOUT.MESSAGE_SPEAKER.h);
+      this.text(90, PANEL_Y + 38, parsed.speaker, FONT.S, COLORS.text.accent);
+      fitLines(parsed.body, parsed.speaker ? 240 : 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(90, PANEL_Y + 62 + i * 20, line, FONT.M));
     } else {
-      lines.slice(0, 4).forEach((line, i) => this.text(28, PANEL_Y + 44 + i * 22, line, 15));
+      fitLines(parsed.body, 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(28, PANEL_Y + 44 + i * 22, line, FONT.M));
     }
     this.drawContinueCue(hasMore);
-    this.text(216, PANEL_Y + 138, hasMore ? "A:次へ / B:閉じる" : "A/B:閉じる", 13, "#ffe58a");
+    this.text(216, PANEL_Y + 138, hasMore ? "A:次へ / B:閉じる" : "A/B:閉じる", FONT.S, COLORS.text.accent);
   }
 
   private parseMessage(message: string) {
@@ -2285,7 +2354,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private messageLines(message: string) {
     const parsed = this.parseMessage(message);
-    return this.wrap(parsed.body, parsed.speaker ? 15 : 18);
+    return fitLines(parsed.body, parsed.speaker ? 240 : 308, FONT.M);
   }
 
   private drawSpeakerPortrait(speaker: string, x: number, y: number) {
@@ -2324,7 +2393,7 @@ class HigeQuestScene extends Phaser.Scene {
     }
     this.graphics.fillStyle(color, 0.18 + alpha * 0.18);
     this.graphics.fillCircle(WIDTH / 2, FIELD_TOP + 150, 22 + progress * 120);
-    this.text(WIDTH / 2, FIELD_TOP + 154, "!", 28, "#fff3cb", "center");
+    this.text(WIDTH / 2, FIELD_TOP + 154, "!", DISPLAY.D3, COLORS.text.primary, "center");
   }
 
   private drawTopLabel(label: string) {
@@ -2332,7 +2401,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.graphics.fillRect(112, 104, 136, 28);
     this.graphics.lineStyle(1, colors.border, 0.7);
     this.graphics.strokeRect(112, 104, 136, 28);
-    this.text(180, 123, label, 14, "#fff3cb", "center");
+    this.text(180, 123, label, FONT.M, COLORS.text.primary, "center");
   }
 
   private panel(x: number, y: number, w: number, h: number) {
@@ -2345,12 +2414,20 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private ffWindow(x: number, y: number, w: number, h: number) {
-    this.graphics.fillGradientStyle(0x1d3f8f, 0x1d3f8f, 0x142457, 0x142457, 0.96);
+    this.graphics.fillGradientStyle(COLORS.window.ffTop, COLORS.window.ffTop, COLORS.window.ffBottom, COLORS.window.ffBottom, 0.96);
     this.graphics.fillRoundedRect(x, y, w, h, 4);
-    this.graphics.lineStyle(3, 0xe7e7ef, 0.95);
+    this.graphics.lineStyle(3, COLORS.window.ffBorder, 0.95);
     this.graphics.strokeRoundedRect(x + 1, y + 1, w - 2, h - 2, 4);
-    this.graphics.lineStyle(1, 0x050816, 0.9);
+    this.graphics.lineStyle(1, COLORS.window.ffInset, 0.9);
     this.graphics.strokeRoundedRect(x + 4, y + 4, w - 8, h - 8, 2);
+  }
+
+  private subWindow(x: number, y: number, w: number, h: number, parent?: { x: number; y: number; w: number; h: number }) {
+    if (parent) {
+      this.graphics.fillStyle(COLORS.window.dimOverlay.color, COLORS.window.dimOverlay.alphaSubmenu);
+      this.graphics.fillRect(parent.x, parent.y, parent.w, parent.h);
+    }
+    this.ffWindow(x, y, w, h);
   }
 
   private text(x: number, y: number, value: string, size = 14, color = "#fff3cb", align: "left" | "center" = "left") {
@@ -2360,14 +2437,14 @@ class HigeQuestScene extends Phaser.Scene {
       color,
       resolution: TEXT_RESOLUTION,
     });
-    label.setPadding(3, 3, 3, 3);
+    label.setPadding(4, 2, 4, 2);
     label.setOrigin(align === "center" ? 0.5 : 0, 0.5);
     this.labels.push(label);
   }
 
   private floatText(x: number, y: number, value: string, color: string) {
     const label = this.add.text(Math.round(x), Math.round(y), value, { fontFamily: UI_FONT, fontSize: "18px", color, fontStyle: "bold", resolution: TEXT_RESOLUTION });
-    label.setPadding(3, 3, 3, 3);
+    label.setPadding(4, 2, 4, 2);
     label.setOrigin(0.5);
     this.tweens.add({ targets: label, y: y - 26, alpha: 0, duration: 620, onComplete: () => label.destroy() });
   }
@@ -2918,24 +2995,6 @@ class HigeQuestScene extends Phaser.Scene {
 
   private npcColor(name: string) {
     return name === "もじさん" || name === "貧" ? 0x9b6a4c : 0xe4c09c;
-  }
-
-  private wrap(text: string, max: number) {
-    const rows: string[] = [];
-    let row = "";
-    let width = 0;
-    for (const char of text) {
-      const charWidth = char.charCodeAt(0) > 255 ? 1 : 0.58;
-      if (row && width + charWidth > max) {
-        rows.push(row);
-        row = "";
-        width = 0;
-      }
-      row += char;
-      width += charWidth;
-    }
-    if (row) rows.push(row);
-    return rows;
   }
 
   private chestState() {

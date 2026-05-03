@@ -64,10 +64,12 @@ button {
   color: #f8f3dc;
   background: #28303b;
   box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28);
-  font: 700 18px/1 system-ui, sans-serif;
+  font: 700 22px/1 system-ui, sans-serif;
   pointer-events: auto;
   touch-action: none;
   user-select: none;
+  position: relative;
+  transition: transform 60ms ease-out;
 }
 
 button:focus {
@@ -79,6 +81,12 @@ button.is-down {
   transform: translateY(2px);
   background: #485d63;
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.32), 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+button::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
 }
 
 .dpad {
@@ -131,16 +139,16 @@ button.is-down {
 
 #btn-a {
   right: 18px;
-  bottom: 32px;
-  width: 74px;
-  height: 74px;
+  bottom: 18px;
+  width: 76px;
+  height: 76px;
   background: #5b374a;
 }
 
 #btn-b {
-  right: 104px;
-  bottom: 80px;
-  width: 58px;
-  height: 58px;
+  right: 32px;
+  bottom: 110px;
+  width: 60px;
+  height: 60px;
   background: #2e4858;
 }
