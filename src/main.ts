@@ -93,6 +93,7 @@ type BattleState = {
   enemy: Enemy;
   actor: number;
   command: number;
+  submenu: BattleSubmenu | null;
   log: string[];
   won: boolean;
   wonBoss: boolean;
@@ -103,6 +104,17 @@ type BattleState = {
   defending: boolean[];
   actingIndex: number | null;
   actingUntil: number;
+};
+
+type BattleSubmenu = {
+  kind: "じゅもん" | "ベジタブル";
+  cursor: number;
+};
+
+type BattleSkill = {
+  name: string;
+  mp: number;
+  description: string;
 };
 
 type BattleEffect = {
@@ -577,6 +589,15 @@ class HigeQuestScene extends Phaser.Scene {
     }
     if (this.mode === "battle" && this.battle) {
       if (this.battle.waiting || this.battle.won) return;
+      if (this.battle.submenu) {
+        const actor = this.currentActor();
+        const skills = actor ? this.skillsFor(actor) : [];
+        if (!skills.length) return;
+        const delta = dir === "up" || dir === "left" ? -1 : 1;
+        this.battle.submenu.cursor = (this.battle.submenu.cursor + delta + skills.length) % skills.length;
+        this.audio.playSe("move");
+        return;
+      }
       const delta = dir === "up" || dir === "left" ? -1 : 1;
       this.battle.command = (this.battle.command + delta + 4) % 4;
       this.audio.playSe("move");
@@ -698,7 +719,13 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     if (this.mode === "battle" && this.battle) {
-      if (!this.battle.won && !this.battle.waiting) this.battle.command = (this.battle.command + 1) % 4;
+      if (!this.battle.won && !this.battle.waiting) {
+        if (this.battle.submenu) {
+          this.battle.submenu = null;
+          return;
+        }
+        this.battle.command = (this.battle.command + 1) % 4;
+      }
       return;
     }
     if (this.message.length) {
@@ -787,10 +814,26 @@ class HigeQuestScene extends Phaser.Scene {
     }
     const actor = this.currentActor();
     if (!actor) return;
+    if (this.battle.submenu) {
+      const skill = this.skillsFor(actor)[this.battle.submenu.cursor];
+      if (!skill) return;
+      this.battle.submenu = null;
+      this.battle.waiting = true;
+      this.battle.actingIndex = this.party.indexOf(actor);
+      this.battle.actingUntil = this.time.now + 260;
+      this.useSkill(actor, skill.name);
+      this.time.delayedCall(420, () => this.nextActor());
+      return;
+    }
+    const command = this.battleCommands(actor)[this.battle.command];
+    if (command === "じゅもん" || command === "ベジタブル") {
+      this.battle.submenu = { kind: command, cursor: 0 };
+      this.audio.playSe("move");
+      return;
+    }
     this.battle.waiting = true;
     this.battle.actingIndex = this.party.indexOf(actor);
     this.battle.actingUntil = this.time.now + 260;
-    const command = this.battleCommands(actor)[this.battle.command];
     if (command === "たたかう") {
       const damage = this.damage({ atk: this.totalAtk(actor) }, this.battle.enemy);
       this.battle.enemy.hp = Math.max(0, this.battle.enemy.hp - damage);
@@ -799,8 +842,6 @@ class HigeQuestScene extends Phaser.Scene {
       this.addBattleEffect("slash", BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 4);
       this.floatText(BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 34, `-${damage}`, "#ffdf7a");
       this.pushBattle(`${actor.name}の攻撃。${damage}ダメージ。`);
-    } else if (command === "じゅもん" || command === "ベジタブル") {
-      this.useSkill(actor, command);
     } else if (command === "もちもの") {
       if ((this.items["やくそう"] || 0) > 0 && actor.hp < actor.maxHp) {
         this.items["やくそう"] -= 1;
@@ -826,9 +867,9 @@ class HigeQuestScene extends Phaser.Scene {
     this.time.delayedCall(420, () => this.nextActor());
   }
 
-  private useSkill(actor: PartyMember, command: string) {
+  private useSkill(actor: PartyMember, skillName: string) {
     if (!this.battle) return;
-    if (command === "じゅもん" && actor.name === "yos" && actor.mp >= 4) {
+    if (skillName === "ホイミ" && actor.name === "yos" && actor.mp >= 4) {
       actor.mp -= 4;
       const target = this.party.reduce((low, member) => (member.hp / member.maxHp < low.hp / low.maxHp ? member : low), this.party[0]);
       const heal = 18 + actor.lv * 4;
@@ -839,7 +880,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.pushBattle(`${actor.name}はホイミを唱えた。`);
       return;
     }
-    if (command === "ベジタブル" && actor.name === "もじさん" && actor.mp >= 3) {
+    if (skillName === "オニオンソード" && actor.name === "もじさん" && actor.mp >= 3) {
       actor.mp -= 3;
       const damage = Math.max(1, Math.floor(this.damage({ atk: this.totalAtk(actor) }, this.battle.enemy) * 1.5));
       this.battle.enemy.hp = Math.max(0, this.battle.enemy.hp - damage);
@@ -860,6 +901,7 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     this.battle.actor += 1;
+    this.battle.submenu = null;
     if (this.battle.actor >= this.party.length) {
       this.enemyTurn();
       this.battle.actor = 0;
@@ -873,6 +915,7 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     this.battle.command = 0;
+    this.battle.submenu = null;
     this.currentActor();
     this.battle.waiting = false;
     this.battle.actingIndex = null;
@@ -943,6 +986,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.battle.won = true;
     this.battle.wonBoss = Boolean(enemy.boss);
     this.battle.waiting = false;
+    this.battle.submenu = null;
     this.battle.actingIndex = null;
     if (enemy.boss) this.ending = true;
   }
@@ -955,6 +999,7 @@ class HigeQuestScene extends Phaser.Scene {
       enemy: { ...template, maxHp: template.hp },
       actor: 0,
       command: 0,
+      submenu: null,
       log: [],
       won: false,
       wonBoss: false,
@@ -1150,6 +1195,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.graphics.fillStyle(0x10151d);
     this.graphics.fillRect(0, 0, WIDTH, HEIGHT);
     map.tiles.forEach((row, y) => [...row].forEach((cell, x) => this.drawTile(cell, ox + x * tile, oy + y * tile, tile)));
+    this.drawMapAtmosphere(map, ox, oy, tile);
     map.exits.forEach((exit) => {
       this.drawStairs(ox + exit.x * tile, oy + exit.y * tile, tile);
       this.drawExitMarker(ox + exit.x * tile + tile / 2, oy + exit.y * tile + tile / 2);
@@ -1173,6 +1219,86 @@ class HigeQuestScene extends Phaser.Scene {
     }
     const visual = this.visualPlayerPosition();
     this.drawPerson(ox + visual.x * tile + tile / 2, oy + visual.y * tile + tile * 0.62, 0xe9d9b0, true, 0.88, this.player.dir);
+  }
+
+  private drawMapAtmosphere(map: GameMap, ox: number, oy: number, tile: number) {
+    if (this.mapId === "village") {
+      this.drawRailPlatform(ox, oy, tile);
+      this.drawGuidancePulse(ox + 7 * tile + tile / 2, oy + 3 * tile + tile / 2, 0xffe58a);
+      return;
+    }
+    if (this.mapId === "forest") {
+      this.drawFarmRows(ox, oy, tile);
+      this.drawGuidancePulse(ox + 3 * tile + tile / 2, oy + 3 * tile + tile / 2, 0x9df09a);
+      return;
+    }
+    this.drawMountainDetails(map, ox, oy, tile);
+  }
+
+  private drawRailPlatform(ox: number, oy: number, tile: number) {
+    const y = oy + 12.35 * tile;
+    this.graphics.fillStyle(0x4b4f55, 0.95);
+    this.graphics.fillRect(ox + 3.9 * tile, y, 3.35 * tile, 5);
+    this.graphics.fillRect(ox + 3.9 * tile, y + 14, 3.35 * tile, 5);
+    this.graphics.lineStyle(2, 0xe7e7ef, 0.7);
+    for (let x = ox + 4.1 * tile; x < ox + 7 * tile; x += 18) this.graphics.lineBetween(x, y - 1, x + 8, y + 20);
+    this.graphics.fillStyle(0xf3d17b, 0.72);
+    this.graphics.fillRect(ox + 4.2 * tile, oy + 11.25 * tile, 2.65 * tile, 4);
+  }
+
+  private drawFarmRows(ox: number, oy: number, tile: number) {
+    const rows = [
+      { x: 2, y: 7, w: 3 },
+      { x: 7, y: 7, w: 3 },
+      { x: 2, y: 8, w: 3 },
+    ];
+    rows.forEach((row, i) => {
+      const x = ox + row.x * tile + 4;
+      const y = oy + row.y * tile + 8;
+      this.graphics.fillStyle(0x6b4a2d, 0.42);
+      this.graphics.fillRect(x, y, row.w * tile - 8, 4);
+      this.graphics.fillRect(x, y + 10, row.w * tile - 8, 4);
+      this.graphics.fillStyle(i % 2 ? 0xd8e277 : 0x7fcd6f, 0.9);
+      for (let n = 0; n < row.w * 3; n += 1) this.graphics.fillCircle(x + 8 + n * 9, y + 2 + (n % 2) * 10, 2);
+    });
+  }
+
+  private drawMountainDetails(map: GameMap, ox: number, oy: number, tile: number) {
+    map.tiles.forEach((row, y) => {
+      [...row].forEach((cell, x) => {
+        if (cell !== ".") return;
+        const seed = x * 17 + y * 31;
+        const px = ox + x * tile;
+        const py = oy + y * tile;
+        if (seed % 5 === 0) {
+          this.graphics.fillStyle(0x726248, 0.5);
+          this.graphics.fillRect(px + 7, py + 11, 9, 3);
+          this.graphics.fillRect(px + 16, py + 14, 5, 2);
+        }
+        if (seed % 7 === 0) {
+          this.graphics.lineStyle(1, 0x4d4650, 0.45);
+          this.graphics.lineBetween(px + 8, py + 21, px + 18, py + 16);
+          this.graphics.lineBetween(px + 18, py + 16, px + 23, py + 20);
+        }
+      });
+    });
+    const depth = this.mapId === "dungeon1" ? 0.14 : this.mapId === "dungeon2" ? 0.22 : 0.3;
+    this.graphics.fillStyle(0x0f131a, depth);
+    this.graphics.fillRect(ox, oy, map.tiles[0].length * tile, 14 * tile);
+    if (this.mapId === "dungeon3") {
+      const pulse = 0.22 + Math.sin(this.time.now * 0.006) * 0.08;
+      this.graphics.fillStyle(0xffe58a, pulse);
+      this.graphics.fillEllipse(ox + 5.5 * tile, oy + 9.6 * tile, 92, 38);
+      this.graphics.lineStyle(1, 0xfff3cb, 0.42);
+      this.graphics.lineBetween(ox + 3.8 * tile, oy + 8.6 * tile, ox + 7.1 * tile, oy + 8.15 * tile);
+      this.graphics.lineBetween(ox + 4.2 * tile, oy + 10.35 * tile, ox + 7.2 * tile, oy + 10.8 * tile);
+    }
+  }
+
+  private drawGuidancePulse(x: number, y: number, color: number) {
+    const radius = 10 + Math.sin(this.time.now * 0.006) * 2;
+    this.graphics.lineStyle(2, color, 0.42);
+    this.graphics.strokeCircle(x, y, radius);
   }
 
   private drawBattle() {
@@ -1425,7 +1551,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private drawInteractMarker(x: number, y: number, name: string) {
-    if (name === "立て札") {
+    if (name === "立て札" || name.includes("案内")) {
       this.graphics.fillStyle(0xffe58a);
       this.graphics.fillRect(x - 2, y - 6, 4, 10);
       this.graphics.fillCircle(x, y + 8, 2);
@@ -1450,43 +1576,69 @@ class HigeQuestScene extends Phaser.Scene {
 
   private drawBattlePanel() {
     if (!this.battle) return;
-    this.ffWindow(8, PANEL_Y + 6, 344, 52);
+    this.ffWindow(8, PANEL_Y + 4, 344, 62);
     const logText = this.battle.log.at(-1) || "";
-    this.wrap(logText, 28).slice(0, 2).forEach((line, i) => this.text(20, PANEL_Y + 27 + i * 18, line, 13));
-    this.ffWindow(8, PANEL_Y + 64, 118, 100);
+    this.wrap(logText, 31).slice(0, 3).forEach((line, i) => this.text(20, PANEL_Y + 22 + i * 15, line, 12));
+    this.ffWindow(8, PANEL_Y + 70, 118, 94);
     if (this.battle.won) {
-      this.ffWindow(132, PANEL_Y + 64, 220, 100);
-      this.text(242, PANEL_Y + 114, "Aで進む", 15, "#ffe58a", "center");
+      this.ffWindow(132, PANEL_Y + 70, 220, 94);
+      this.text(242, PANEL_Y + 118, "Aで進む", 15, "#ffe58a", "center");
       return;
     }
     const actor = this.currentActor();
-    this.ffWindow(132, PANEL_Y + 64, 220, 100);
+    this.ffWindow(132, PANEL_Y + 70, 220, 94);
     const commands = actor ? this.battleCommands(actor) : [];
     commands.forEach((command, i) => {
       if (i === this.battle?.command) {
         this.graphics.fillStyle(0xffffff, 0.15);
-        this.graphics.fillRect(18, PANEL_Y + 80 + i * 20, 90, 17);
+        this.graphics.fillRect(18, PANEL_Y + 83 + i * 19, 90, 16);
       }
-      this.text(24, PANEL_Y + 89 + i * 20, `${i === this.battle?.command ? ">" : " "}${command}`, 15, i === this.battle?.command ? "#ffe58a" : "#fff3cb");
+      this.text(24, PANEL_Y + 91 + i * 19, `${i === this.battle?.command ? ">" : " "}${command}`, 14, i === this.battle?.command ? "#ffe58a" : "#fff3cb");
     });
-    if (this.battle.waiting) this.text(67, PANEL_Y + 158, "行動中", 12, "#d8c98f", "center");
-    this.text(146, PANEL_Y + 80, actor ? `${actor.name}  ${actor.job}` : "", 13, "#ffe58a");
+    if (this.battle.waiting) this.text(67, PANEL_Y + 157, "行動中", 12, "#d8c98f", "center");
+    this.text(146, PANEL_Y + 86, actor ? `${actor.name}  ${actor.job}` : "", 13, "#ffe58a");
     this.party.forEach((member, i) => {
-      const rowY = PANEL_Y + 99 + i * 16;
+      const rowY = PANEL_Y + 104 + i * 15;
       const active = actor?.name === member.name && !this.battle?.won;
       if (active) {
         this.graphics.fillStyle(0xffffff, 0.12);
-        this.graphics.fillRect(142, rowY - 8, 198, 15);
+        this.graphics.fillRect(142, rowY - 8, 198, 14);
       }
       const color = member.hp <= 0 ? "#9aa0a8" : "#fff3cb";
       this.text(146, rowY, member.name.slice(0, 4), 12, color);
       this.text(198, rowY, `HP ${member.hp}/${member.maxHp}`, 12, color);
       this.text(288, rowY, `MP ${member.mp}`, 12, color);
     });
+    if (this.battle.submenu && actor) this.drawSkillSubwindow(actor);
   }
 
   private battleCommands(actor: PartyMember) {
     return ["たたかう", actor.name === "もじさん" ? "ベジタブル" : "じゅもん", "ぼうぎょ", "もちもの"];
+  }
+
+  private skillsFor(actor: PartyMember): BattleSkill[] {
+    if (actor.name === "もじさん") return [{ name: "オニオンソード", mp: 3, description: "1.5倍攻撃" }];
+    if (actor.name === "yos") return [{ name: "ホイミ", mp: 4, description: "HP小回復" }];
+    return [];
+  }
+
+  private drawSkillSubwindow(actor: PartyMember) {
+    if (!this.battle?.submenu) return;
+    const submenu = this.battle.submenu;
+    const skills = this.skillsFor(actor);
+    this.ffWindow(112, PANEL_Y + 76, 142, 82);
+    this.text(126, PANEL_Y + 94, submenu.kind, 12, "#ffe58a");
+    skills.forEach((skill, i) => {
+      const y = PANEL_Y + 115 + i * 18;
+      if (i === submenu.cursor) {
+        this.graphics.fillStyle(0xffffff, 0.15);
+        this.graphics.fillRect(122, y - 8, 118, 16);
+      }
+      const color = actor.mp < skill.mp ? "#9aa0a8" : i === submenu.cursor ? "#ffe58a" : "#fff3cb";
+      this.text(128, y, `${i === submenu.cursor ? ">" : " "}${skill.name}`, 12, color);
+    });
+    const skill = skills[submenu.cursor];
+    if (skill) this.text(126, PANEL_Y + 146, `MP${skill.mp} ${skill.description}`, 11, actor.mp < skill.mp ? "#ffb0a0" : "#d8c98f");
   }
 
   private drawEnemyStatus() {
