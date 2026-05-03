@@ -12,7 +12,8 @@ const PARTY_BATTLE_X = 252;
 const PARTY_BATTLE_Y = 142;
 const PARTY_BATTLE_GAP = 34;
 const LEVEL_XP = [0, 20, 48, 88, 140, 210, 300];
-const UI_FONT = '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
+const UI_FONT = '"Press Start 2P", "DotGothic16", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
+const TEXT_RESOLUTION = 1;
 
 type Direction = "up" | "down" | "left" | "right";
 type SceneMode = "title" | "field" | "battle";
@@ -2311,14 +2312,14 @@ class HigeQuestScene extends Phaser.Scene {
       fontFamily: UI_FONT,
       fontSize: `${size}px`,
       color,
-      resolution: 3,
+      resolution: TEXT_RESOLUTION,
     });
     label.setOrigin(align === "center" ? 0.5 : 0, 0.5);
     this.labels.push(label);
   }
 
   private floatText(x: number, y: number, value: string, color: string) {
-    const label = this.add.text(Math.round(x), Math.round(y), value, { fontFamily: UI_FONT, fontSize: "18px", color, fontStyle: "bold", resolution: 3 });
+    const label = this.add.text(Math.round(x), Math.round(y), value, { fontFamily: UI_FONT, fontSize: "18px", color, fontStyle: "bold", resolution: TEXT_RESOLUTION });
     label.setOrigin(0.5);
     this.tweens.add({ targets: label, y: y - 26, alpha: 0, duration: 620, onComplete: () => label.destroy() });
   }
@@ -2911,20 +2912,28 @@ class HigeQuestScene extends Phaser.Scene {
   }
 }
 
-new Phaser.Game({
-  type: Phaser.AUTO,
-  parent: "game-root",
-  width: WIDTH,
-  height: HEIGHT,
-  backgroundColor: "#12151b",
-  pixelArt: true,
-  scale: {
-    mode: Phaser.Scale.FIT,
-    autoCenter: Phaser.Scale.CENTER_BOTH,
-  },
-  scene: HigeQuestScene,
-  render: {
-    antialias: true,
-    roundPixels: true,
-  },
-});
+const startGame = () => {
+  new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: "game-root",
+    width: WIDTH,
+    height: HEIGHT,
+    backgroundColor: "#12151b",
+    pixelArt: true,
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH,
+    },
+    scene: HigeQuestScene,
+    render: {
+      antialias: false,
+      roundPixels: true,
+    },
+  });
+};
+
+if ("fonts" in document) {
+  Promise.all([document.fonts.load(`16px ${UI_FONT}`), document.fonts.ready]).then(startGame).catch(startGame);
+} else {
+  startGame();
+}
