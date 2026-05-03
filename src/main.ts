@@ -936,25 +936,36 @@ class HigeQuestScene extends Phaser.Scene {
       this.winBattle();
       return;
     }
-    this.battle.actor += 1;
+    const currentIndex = this.battle.actor;
+    const nextIndex = this.nextLivingActorIndex(currentIndex);
+    if (nextIndex === null) {
+      this.winBattle();
+      return;
+    }
+    this.battle.actor = nextIndex;
+    this.battle.command = 0;
     this.battle.submenu = null;
-    if (this.battle.actor >= this.party.length) {
+    if (nextIndex <= currentIndex) {
       this.enemyTurn();
-      this.battle.actor = 0;
       this.time.delayedCall(460, () => {
         if (!this.battle || this.battle.won) return;
         this.battle.waiting = false;
         this.battle.actingIndex = null;
-        this.battle.command = 0;
         this.currentActor();
       });
       return;
     }
-    this.battle.command = 0;
-    this.battle.submenu = null;
     this.currentActor();
     this.battle.waiting = false;
     this.battle.actingIndex = null;
+  }
+
+  private nextLivingActorIndex(startIndex: number) {
+    for (let offset = 1; offset <= this.party.length; offset += 1) {
+      const index = (startIndex + offset) % this.party.length;
+      if (this.party[index].hp > 0) return index;
+    }
+    return null;
   }
 
   private enemyTurn() {
