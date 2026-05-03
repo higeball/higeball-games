@@ -92,11 +92,14 @@ type BattleState = {
   command: number;
   log: string[];
   won: boolean;
+  wonBoss: boolean;
   waiting: boolean;
   enemyFlashUntil: number;
   partyFlashUntil: number[];
   shakeUntil: number;
   defending: boolean[];
+  actingIndex: number | null;
+  actingUntil: number;
 };
 
 type BattleEffect = {
@@ -423,7 +426,7 @@ const enemyTemplates = {
     { name: "ねぐせナイト", hp: 48, atk: 14, def: 5, xp: 24, gold: 18, color: 0x927c68 },
     { name: "うすげメイジ", hp: 40, atk: 16, def: 4, xp: 28, gold: 20, color: 0x79518a },
   ],
-  boss: [{ name: "オニオンJK", hp: 190, atk: 20, def: 7, xp: 110, gold: 120, color: 0x7f5a52, boss: true }],
+  boss: [{ name: "オニオンJK", hp: 320, atk: 29, def: 10, xp: 180, gold: 180, color: 0x7f5a52, boss: true }],
 };
 
 class HigeQuestScene extends Phaser.Scene {
@@ -761,9 +764,10 @@ class HigeQuestScene extends Phaser.Scene {
     if (!this.battle) return;
     if (this.battle.waiting) return;
     if (this.battle.won) {
+      const wonBoss = this.battle.wonBoss;
       this.mode = "field";
       this.battle = null;
-      if (this.ending) {
+      if (wonBoss) {
         this.mapId = "forest";
         this.player = { x: 5, y: 8, dir: "down" };
         this.moveAnim = null;
@@ -781,6 +785,8 @@ class HigeQuestScene extends Phaser.Scene {
     const actor = this.currentActor();
     if (!actor) return;
     this.battle.waiting = true;
+    this.battle.actingIndex = this.party.indexOf(actor);
+    this.battle.actingUntil = this.time.now + 260;
     const command = this.battleCommands(actor)[this.battle.command];
     if (command === "たたかう") {
       const damage = this.damage({ atk: this.totalAtk(actor) }, this.battle.enemy);
@@ -857,6 +863,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.time.delayedCall(460, () => {
         if (!this.battle || this.battle.won) return;
         this.battle.waiting = false;
+        this.battle.actingIndex = null;
         this.battle.command = 0;
         this.currentActor();
       });
@@ -865,6 +872,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.battle.command = 0;
     this.currentActor();
     this.battle.waiting = false;
+    this.battle.actingIndex = null;
   }
 
   private enemyTurn() {
@@ -904,7 +912,9 @@ class HigeQuestScene extends Phaser.Scene {
     this.pushBattle(`${enemy.xp}EXPと${enemy.gold}Gを得た。`);
     this.applyLevelUps();
     this.battle.won = true;
+    this.battle.wonBoss = Boolean(enemy.boss);
     this.battle.waiting = false;
+    this.battle.actingIndex = null;
     if (enemy.boss) this.ending = true;
   }
 
@@ -918,11 +928,14 @@ class HigeQuestScene extends Phaser.Scene {
       command: 0,
       log: [],
       won: false,
+      wonBoss: false,
       waiting: false,
       enemyFlashUntil: 0,
       partyFlashUntil: [],
       shakeUntil: 0,
       defending: [],
+      actingIndex: null,
+      actingUntil: 0,
     };
     this.battleEffects = [];
     this.audio.playSe(kind === "boss" ? "magic" : "attack");
@@ -1138,9 +1151,10 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.battle.enemy.boss) this.drawBoss(BATTLE_ENEMY_X + shake, BATTLE_ENEMY_Y, 2.2, enemyFlash);
     else this.drawEnemySprite(this.battle.enemy, BATTLE_ENEMY_X + shake, BATTLE_ENEMY_Y, enemyFlash);
     this.drawEnemyStatus();
-    this.party.forEach((member, i) =>
-      this.drawPartyBattler(PARTY_BATTLE_X, PARTY_BATTLE_Y + i * PARTY_BATTLE_GAP, member, i === this.battle?.actor && !this.battle?.won, this.time.now < (this.battle?.partyFlashUntil[i] || 0)),
-    );
+    this.party.forEach((member, i) => {
+      const lunge = this.battle?.actingIndex === i && this.time.now < this.battle.actingUntil ? Math.sin((1 - (this.battle.actingUntil - this.time.now) / 260) * Math.PI) * 18 : 0;
+      this.drawPartyBattler(PARTY_BATTLE_X - lunge, PARTY_BATTLE_Y + i * PARTY_BATTLE_GAP, member, i === this.battle?.actor && !this.battle?.won, this.time.now < (this.battle?.partyFlashUntil[i] || 0));
+    });
     this.drawBattleEffects();
     this.drawBattlePanel();
   }

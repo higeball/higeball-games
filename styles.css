@@ -119,29 +119,28 @@ button.is-down {
 
 .actions {
   position: absolute;
-  right: 14px;
-  bottom: 30px;
-  display: flex;
-  align-items: flex-end;
-  gap: 18px;
+  inset: 0;
 }
 
 .actions button {
+  position: absolute;
   width: 64px;
   height: 64px;
   border-radius: 50%;
 }
 
 #btn-a {
+  right: 18px;
+  bottom: 32px;
   width: 74px;
   height: 74px;
   background: #5b374a;
 }
 
 #btn-b {
+  right: 104px;
+  bottom: 80px;
   width: 58px;
   height: 58px;
-  margin-right: 12px;
-  margin-bottom: 42px;
   background: #2e4858;
 }
