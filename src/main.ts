@@ -12,8 +12,8 @@ const PARTY_BATTLE_X = 252;
 const PARTY_BATTLE_Y = 142;
 const PARTY_BATTLE_GAP = 34;
 const LEVEL_XP = [0, 20, 48, 88, 140, 210, 300];
-const UI_FONT = '"Press Start 2P", "DotGothic16", "Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
-const TEXT_RESOLUTION = 1;
+const UI_FONT = '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
+const TEXT_RESOLUTION = 3;
 
 type Direction = "up" | "down" | "left" | "right";
 type SceneMode = "title" | "field" | "battle";
@@ -2314,12 +2314,14 @@ class HigeQuestScene extends Phaser.Scene {
       color,
       resolution: TEXT_RESOLUTION,
     });
+    label.setPadding(3, 3, 3, 3);
     label.setOrigin(align === "center" ? 0.5 : 0, 0.5);
     this.labels.push(label);
   }
 
   private floatText(x: number, y: number, value: string, color: string) {
     const label = this.add.text(Math.round(x), Math.round(y), value, { fontFamily: UI_FONT, fontSize: "18px", color, fontStyle: "bold", resolution: TEXT_RESOLUTION });
+    label.setPadding(3, 3, 3, 3);
     label.setOrigin(0.5);
     this.tweens.add({ targets: label, y: y - 26, alpha: 0, duration: 620, onComplete: () => label.destroy() });
   }
@@ -2926,14 +2928,10 @@ const startGame = () => {
     },
     scene: HigeQuestScene,
     render: {
-      antialias: false,
+      antialias: true,
       roundPixels: true,
     },
   });
 };
 
-if ("fonts" in document) {
-  Promise.all([document.fonts.load(`16px ${UI_FONT}`), document.fonts.ready]).then(startGame).catch(startGame);
-} else {
-  startGame();
-}
+startGame();

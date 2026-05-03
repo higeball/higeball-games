@@ -14,11 +14,9 @@ body {
   overflow: hidden;
   background: #12151b;
   color: #f8f3dc;
-  font-family: "Press Start 2P", "DotGothic16", system-ui, sans-serif;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   touch-action: none;
   overscroll-behavior: none;
-  -webkit-font-smoothing: none;
-  text-rendering: geometricPrecision;
 }
 
 body {
@@ -45,10 +43,7 @@ body {
 
 #game-root canvas {
   display: block;
-  width: 100%;
-  height: 100%;
-  image-rendering: pixelated;
-  image-rendering: crisp-edges;
+  image-rendering: auto;
 }
 
 .controls {
@@ -67,11 +62,10 @@ button {
   color: #f8f3dc;
   background: #28303b;
   box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28);
-  font: 400 16px/1 "Press Start 2P", "DotGothic16", system-ui, sans-serif;
+  font: 700 18px/1 system-ui, sans-serif;
   pointer-events: auto;
   touch-action: none;
   user-select: none;
-  text-rendering: geometricPrecision;
 }
 
 button:focus {
