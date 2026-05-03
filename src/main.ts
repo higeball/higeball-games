@@ -121,6 +121,20 @@ type ShopEntry = {
   users?: string[];
 };
 
+type SaveData = {
+  mapId: string;
+  player: { x: number; y: number; dir: Direction };
+  party: PartyMember[];
+  joined: Record<string, boolean>;
+  items: Record<string, number>;
+  inventory: Record<string, number>;
+  gold: number;
+  xp: number;
+  ending: boolean;
+  chests: Record<string, boolean[]>;
+  savedAt?: string;
+};
+
 class AudioSystem {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -418,6 +432,7 @@ class HigeQuestScene extends Phaser.Scene {
   private xp = 0;
   private message: string[] = [];
   private menu: MenuState | null = null;
+  private titleCursor = 0;
   private battle: BattleState | null = null;
   private battleEffects: BattleEffect[] = [];
   private audio = new AudioSystem();
@@ -522,7 +537,7 @@ class HigeQuestScene extends Phaser.Scene {
           : Phaser.Input.Keyboard.JustDown(this.cursors.right)
             ? "right"
             : null;
-    if (this.menu || this.mode === "battle") {
+    if (this.menu || this.mode === "battle" || this.mode === "title") {
       if (justDir) this.directionInput(justDir);
       return;
     }
@@ -532,6 +547,13 @@ class HigeQuestScene extends Phaser.Scene {
 
   private directionInput(dir: Direction) {
     this.audio.unlock();
+    if (this.mode === "title" && !this.menu) {
+      if (dir === "up" || dir === "down") {
+        this.titleCursor = this.titleCursor === 0 ? 1 : 0;
+        this.audio.playSe("move");
+      }
+      return;
+    }
     if (this.menu) {
       if (dir === "up" || dir === "down") {
         const delta = dir === "down" ? 1 : -1;
@@ -599,7 +621,8 @@ class HigeQuestScene extends Phaser.Scene {
         return;
       }
       if (this.menu && this.menuA()) return;
-      this.startNewGame();
+      if (this.titleCursor === 0) this.startNewGame();
+      else this.openLoadMenu();
       return;
     }
     if (this.mode === "battle") {
@@ -652,7 +675,7 @@ class HigeQuestScene extends Phaser.Scene {
         this.message = [];
         return;
       }
-      this.menu = this.menu ? null : { mode: "load", cursor: 0, items: ["スロット1", "スロット2", "スロット3"] };
+      this.menu = this.menu ? null : this.loadMenu();
       return;
     }
     if (this.mode === "battle" && this.battle) {
@@ -669,10 +692,10 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     if (this.menu && this.menu.mode !== "main") {
-      this.menu = { mode: "main", cursor: 0, items: ["セーブ", "ロード", "そうび", "もちもの", "ステータス"] };
+      this.menu = this.mainMenu();
       return;
     }
-    this.menu = this.menu ? null : { mode: "main", cursor: 0, items: ["セーブ", "ロード", "そうび", "もちもの", "ステータス"] };
+    this.menu = this.menu ? null : this.mainMenu();
   }
 
   private menuA() {
@@ -698,8 +721,8 @@ class HigeQuestScene extends Phaser.Scene {
       this.loadGame(this.menu.cursor + 1);
       return true;
     }
-    if (item === "セーブ") this.menu = { mode: "save", cursor: 0, items: ["スロット1", "スロット2", "スロット3"] };
-    if (item === "ロード") this.menu = { mode: "load", cursor: 0, items: ["スロット1", "スロット2", "スロット3"] };
+    if (item === "記録する") this.menu = this.saveMenu();
+    if (item === "つづきから") this.openLoadMenu();
     if (item === "そうび") this.openEquipMenu();
     if (item === "もちもの") this.openItemsMenu();
     if (item === "ステータス") {
@@ -872,8 +895,24 @@ class HigeQuestScene extends Phaser.Scene {
     this.pushBattle(`${this.battle.enemy.name}が あらわれた！`);
   }
 
+  private mainMenu(): MenuState {
+    return { mode: "main", cursor: 0, items: ["記録する", "つづきから", "そうび", "もちもの", "ステータス"] };
+  }
+
+  private saveMenu(): MenuState {
+    return { mode: "save", cursor: 0, items: this.saveSlotLines() };
+  }
+
+  private loadMenu(): MenuState {
+    return { mode: "load", cursor: 0, items: this.saveSlotLines() };
+  }
+
+  private openLoadMenu() {
+    this.menu = this.loadMenu();
+  }
+
   private saveGame(slot: number) {
-    const data = {
+    const data: SaveData = {
       mapId: this.mapId,
       player: this.player,
       party: this.party,
@@ -884,6 +923,7 @@ class HigeQuestScene extends Phaser.Scene {
       xp: this.xp,
       ending: this.ending,
       chests: this.chestState(),
+      savedAt: new Date().toISOString(),
     };
     localStorage.setItem(`higeballquest-save-${slot}`, JSON.stringify(data));
     this.menu = null;
@@ -891,32 +931,10 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private loadGame(slot: number) {
-    const raw = localStorage.getItem(`higeballquest-save-${slot}`);
     this.menu = null;
-    if (!raw) {
+    const data = this.readSaveSlot(slot);
+    if (!data) {
       this.message = [`スロット${slot}にセーブデータがない。`];
-      return;
-    }
-    let data: Partial<{
-      mapId: string;
-      player: { x: number; y: number; dir: Direction };
-      party: PartyMember[];
-      joined: Record<string, boolean>;
-      items: Record<string, number>;
-      inventory: Record<string, number>;
-      gold: number;
-      xp: number;
-      ending: boolean;
-      chests: Record<string, boolean[]>;
-    }>;
-    try {
-      data = JSON.parse(raw);
-    } catch {
-      this.message = [`スロット${slot}のデータを読めなかった。`];
-      return;
-    }
-    if (!data.mapId || !maps[data.mapId] || !data.player || !data.party?.length) {
-      this.message = [`スロット${slot}のデータが壊れている。`];
       return;
     }
     this.mapId = data.mapId;
@@ -932,6 +950,49 @@ class HigeQuestScene extends Phaser.Scene {
     this.mode = "field";
     this.battle = null;
     this.message = [`スロット${slot}をロードした。`];
+  }
+
+  private readSaveSlot(slot: number): SaveData | null {
+    const raw = localStorage.getItem(`higeballquest-save-${slot}`);
+    if (!raw) return null;
+    let data: Partial<SaveData>;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      return null;
+    }
+    if (!data.mapId || !maps[data.mapId] || !data.player || !data.party?.length) {
+      return null;
+    }
+    return {
+      mapId: data.mapId,
+      player: data.player,
+      party: data.party,
+      joined: data.joined || { yos: true },
+      items: data.items || { やくそう: 3, まほうの水: 1 },
+      inventory: data.inventory || { stick: data.party.length, cloth: data.party.length },
+      gold: data.gold ?? 60,
+      xp: data.xp ?? 0,
+      ending: data.ending || false,
+      chests: data.chests || {},
+      savedAt: data.savedAt,
+    };
+  }
+
+  private saveSlotLines() {
+    return [1, 2, 3].map((slot) => {
+      const data = this.readSaveSlot(slot);
+      if (!data) return `スロット${slot}  空き`;
+      const leader = data.party[0];
+      return `スロット${slot}  ${maps[data.mapId].name} Lv${leader.lv} ${this.progressLabel(data)}`;
+    });
+  }
+
+  private progressLabel(data: SaveData) {
+    if (data.ending) return "クリア";
+    if (data.mapId.startsWith("dungeon")) return "攻略中";
+    if (Object.keys(data.joined).length >= 4) return "仲間集合";
+    return "旅立ち";
   }
 
   private currentBgmTrack(): BgmTrack {
@@ -987,9 +1048,16 @@ class HigeQuestScene extends Phaser.Scene {
     this.drawPerson(92, 272, 0xe9d9b0, true, 1.25, "right");
     this.text(WIDTH / 2, 104, "HIGEBALL", 34, "#ffe58a", "center");
     this.text(WIDTH / 2, 140, "QUEST", 30, "#fff3cb", "center");
-    this.panel(54, 338, 252, 86);
-    this.text(WIDTH / 2, 372, "A: はじめから", 16, "#fff3cb", "center");
-    this.text(WIDTH / 2, 398, "B: ロード", 16, "#ffe58a", "center");
+    this.panel(48, 330, 264, 108);
+    ["はじめから", "つづきから"].forEach((item, i) => {
+      const y = 366 + i * 28;
+      if (i === this.titleCursor) {
+        this.graphics.fillStyle(0xffffff, 0.14);
+        this.graphics.fillRect(76, y - 12, 208, 23);
+      }
+      this.text(WIDTH / 2, y, `${i === this.titleCursor ? "> " : "  "}${item}`, 17, i === this.titleCursor ? "#ffe58a" : "#fff3cb", "center");
+    });
+    this.text(WIDTH / 2, 424, "A:決定 / B:ロード", 12, "#d8c98f", "center");
   }
 
   private drawField() {
@@ -1375,7 +1443,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private drawMenu() {
     if (!this.menu) return;
-    const wide = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "items";
+    const wide = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load";
     this.panel(wide ? 28 : 78, wide ? 112 : 154, wide ? 304 : 204, wide ? 236 : 156);
     const title =
       this.menu.mode === "save"
@@ -1388,11 +1456,11 @@ class HigeQuestScene extends Phaser.Scene {
               ? "そうび"
               : this.menu.mode === "items"
                 ? "もちもの"
-                : "メニュー";
+                : "旅のメニュー";
     this.text(wide ? 44 : 112, wide ? 138 : 184, title, 14, "#ffe58a");
     this.menu.items.forEach((item, i) => {
       const y = (wide ? 166 : 214) + i * (wide ? 24 : 28);
-      this.text(wide ? 44 : 116, y, `${i === this.menu?.cursor ? ">" : " "}${item}`, wide ? 14 : 18, i === this.menu?.cursor ? "#ffe58a" : "#fff3cb");
+      this.text(wide ? 44 : 116, y, `${i === this.menu?.cursor ? ">" : " "}${item}`, this.menu?.mode === "save" || this.menu?.mode === "load" ? 12 : wide ? 14 : 18, i === this.menu?.cursor ? "#ffe58a" : "#fff3cb");
     });
   }
 
