@@ -46,6 +46,9 @@ type Enemy = {
   gold: number;
   color: number;
   boss?: boolean;
+  behavior?: "slime" | "bat" | "knight" | "mage" | "boss";
+  stealGold?: number;
+  stealItem?: string;
 };
 
 type Npc = {
@@ -417,16 +420,16 @@ const maps: Record<string, GameMap> = {
   dungeon3: { ...dungeonMap("山頂", null, "dungeon2", 0.2), boss: { x: 5, y: 9 } },
 };
 
-const enemyTemplates = {
+const enemyTemplates: Record<"forest" | "dungeon" | "boss", Omit<Enemy, "maxHp">[]> = {
   forest: [
-    { name: "まゆげスライム", hp: 26, atk: 8, def: 2, xp: 12, gold: 8, color: 0x79c5d8 },
-    { name: "ヒゲこうもり", hp: 32, atk: 10, def: 3, xp: 14, gold: 10, color: 0x5d5b8c },
+    { name: "まゆげスライム", hp: 26, atk: 8, def: 2, xp: 12, gold: 8, color: 0x79c5d8, behavior: "slime", stealGold: 4, stealItem: "やくそう" },
+    { name: "ヒゲこうもり", hp: 32, atk: 10, def: 3, xp: 14, gold: 10, color: 0x5d5b8c, behavior: "bat", stealGold: 6 },
   ],
   dungeon: [
-    { name: "ねぐせナイト", hp: 48, atk: 14, def: 5, xp: 24, gold: 18, color: 0x927c68 },
-    { name: "うすげメイジ", hp: 40, atk: 16, def: 4, xp: 28, gold: 20, color: 0x79518a },
+    { name: "ねぐせナイト", hp: 48, atk: 14, def: 5, xp: 24, gold: 18, color: 0x927c68, behavior: "knight", stealGold: 10 },
+    { name: "うすげメイジ", hp: 40, atk: 16, def: 4, xp: 28, gold: 20, color: 0x79518a, behavior: "mage", stealGold: 8, stealItem: "まほうの水" },
   ],
-  boss: [{ name: "オニオンJK", hp: 320, atk: 29, def: 10, xp: 180, gold: 180, color: 0x7f5a52, boss: true }],
+  boss: [{ name: "オニオンJK", hp: 480, atk: 44, def: 15, xp: 240, gold: 260, color: 0x7f5a52, boss: true, behavior: "boss", stealGold: 40, stealItem: "まほうの水" }],
 };
 
 class HigeQuestScene extends Phaser.Scene {
@@ -882,14 +885,24 @@ class HigeQuestScene extends Phaser.Scene {
     const target = Phaser.Utils.Array.GetRandom(targets);
     const targetIndex = this.party.indexOf(target);
     const guarded = this.battle.defending[targetIndex];
-    const damage = guarded ? Math.max(1, Math.floor(this.damage(this.battle.enemy, { def: this.totalDef(target) }) / 2)) : this.damage(this.battle.enemy, { def: this.totalDef(target) });
+    const action = this.enemyAction();
+    const baseDamage = this.damage({ atk: action.atk }, { def: this.totalDef(target) });
+    const damage = guarded ? Math.max(1, Math.floor(baseDamage / 2)) : baseDamage;
+    if (action.heal && this.battle.enemy.hp > 0) {
+      this.battle.enemy.hp = Math.min(this.battle.enemy.maxHp, this.battle.enemy.hp + action.heal);
+      this.audio.playSe("heal");
+      this.addBattleEffect("heal", BATTLE_ENEMY_X, BATTLE_ENEMY_Y);
+      this.floatText(BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 34, `+${action.heal}`, "#9df09a");
+      this.pushBattle(`${this.battle.enemy.name}${action.text}`);
+      return;
+    }
     target.hp = Math.max(0, target.hp - damage);
     this.battle.defending[targetIndex] = false;
     this.flashParty(targetIndex);
     this.audio.playSe("attack");
     this.addBattleEffect("hit", PARTY_BATTLE_X, PARTY_BATTLE_Y + targetIndex * PARTY_BATTLE_GAP);
     this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + targetIndex * PARTY_BATTLE_GAP, `-${damage}`, "#ffdf7a");
-    this.pushBattle(`${this.battle.enemy.name}の攻撃。${target.name}に${damage}ダメージ。${guarded ? " 防御が効いた。" : ""}`);
+    this.pushBattle(`${this.battle.enemy.name}${action.text}${target.name}に${damage}ダメージ。${guarded ? " 防御が効いた。" : ""}`);
     if (!this.party.some((member) => member.hp > 0)) {
       this.pushBattle("全滅した。チバの村で目を覚ました。");
       this.time.delayedCall(900, () => {
@@ -901,6 +914,22 @@ class HigeQuestScene extends Phaser.Scene {
         this.message = ["教会の祈りで復活した。準備を整えよう。"];
       });
     }
+  }
+
+  private enemyAction() {
+    if (!this.battle) return { atk: 1, text: "の攻撃。" };
+    const enemy = this.battle.enemy;
+    const roll = Math.random();
+    if (enemy.behavior === "slime" && roll < 0.3) return { atk: Math.max(1, enemy.atk - 3), text: "はぷるぷる体当たり。" };
+    if (enemy.behavior === "bat" && roll < 0.35) return { atk: enemy.atk + 3, text: "は急降下した。" };
+    if (enemy.behavior === "knight" && roll < 0.35) return { atk: enemy.atk + 5, text: "は力を込めて斬りかかった。" };
+    if (enemy.behavior === "mage" && roll < 0.35) return { atk: enemy.atk + 4, text: "は薄毛の呪文を唱えた。" };
+    if (enemy.behavior === "boss") {
+      if (roll < 0.25) return { atk: enemy.atk + 10, text: "の玉ねぎ審査。" };
+      if (roll < 0.45) return { atk: enemy.atk + 5, text: "の涙目スライス。" };
+      if (roll < 0.6 && enemy.hp < enemy.maxHp * 0.55) return { atk: enemy.atk, text: "は玉ねぎの皮をまとった。", heal: 28 };
+    }
+    return { atk: enemy.atk, text: "の攻撃。" };
   }
 
   private winBattle() {
@@ -939,7 +968,7 @@ class HigeQuestScene extends Phaser.Scene {
     };
     this.battleEffects = [];
     this.audio.playSe(kind === "boss" ? "magic" : "attack");
-    this.pushBattle(`${this.battle.enemy.name}が あらわれた！`);
+    this.pushBattle(`${template.name}が あらわれた！`);
   }
 
   private mainMenu(): MenuState {
@@ -1135,7 +1164,13 @@ class HigeQuestScene extends Phaser.Scene {
       this.drawPerson(x, y, this.npcColor(npc.name), false, 0.88);
       this.drawInteractMarker(x, y - 28, npc.name);
     });
-    if (map.boss && !this.ending) this.drawBoss(ox + map.boss.x * tile + tile / 2, oy + map.boss.y * tile + tile * 0.62, 0.88);
+    if (map.boss && !this.ending) {
+      this.drawBoss(ox + map.boss.x * tile + tile / 2, oy + map.boss.y * tile + tile * 0.62, 0.88);
+      if (this.pendingBossBattle || this.joined["もじさん"]) {
+        this.drawPartySprite(ox + (map.boss.x + 1) * tile + tile / 2, oy + map.boss.y * tile + tile * 0.62, partyBase[1]);
+        this.drawInteractMarker(ox + (map.boss.x + 1) * tile + tile / 2, oy + map.boss.y * tile + tile * 0.62 - 28, "もじさん");
+      }
+    }
     const visual = this.visualPlayerPosition();
     this.drawPerson(ox + visual.x * tile + tile / 2, oy + visual.y * tile + tile * 0.62, 0xe9d9b0, true, 0.88, this.player.dir);
   }
