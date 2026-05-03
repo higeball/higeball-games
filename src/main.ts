@@ -460,6 +460,7 @@ class HigeQuestScene extends Phaser.Scene {
   private titleCursor = 0;
   private battle: BattleState | null = null;
   private battleEffects: BattleEffect[] = [];
+  private encounterEffect: { startedAt: number; kind: "random" | "boss" } | null = null;
   private audio = new AudioSystem();
   private ending = false;
   private pendingBossBattle = false;
@@ -643,17 +644,20 @@ class HigeQuestScene extends Phaser.Scene {
     this.player.x = nx;
     this.player.y = ny;
     this.stepReady = false;
+    const shouldEncounter = Boolean(map.encounter && Math.random() < map.encounter);
+    if (shouldEncounter) this.inputLock = true;
     this.time.delayedCall(132, () => {
       this.stepReady = true;
       this.moveAnim = null;
+      if (shouldEncounter) this.startEncounter("random");
     });
     this.audio.playSe("move");
-    if (map.encounter && Math.random() < map.encounter) this.startBattle();
   }
 
   private actionA() {
     this.audio.unlock();
     this.audio.playSe("confirm");
+    if (this.encounterEffect) return;
     if (this.mode === "title") {
       if (this.message.length) {
         this.advanceMessage();
@@ -710,6 +714,7 @@ class HigeQuestScene extends Phaser.Scene {
   private actionB() {
     this.audio.unlock();
     this.audio.playSe("cancel");
+    if (this.encounterEffect) return;
     if (this.mode === "title") {
       if (this.message.length) {
         this.message = [];
@@ -1012,7 +1017,6 @@ class HigeQuestScene extends Phaser.Scene {
       actingUntil: 0,
     };
     this.battleEffects = [];
-    this.audio.playSe(kind === "boss" ? "magic" : "attack");
     this.pushBattle(`${template.name}が あらわれた！`);
   }
 
@@ -1072,6 +1076,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.applyChestState(data.chests);
     this.mode = "field";
     this.battle = null;
+    this.encounterEffect = null;
     this.message = [`スロット${slot}をロードした。`];
   }
 
@@ -1144,6 +1149,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.menu = null;
     this.battle = null;
     this.battleEffects = [];
+    this.encounterEffect = null;
     this.ending = false;
     this.pendingBossBattle = false;
     this.resetChestState();
@@ -1156,6 +1162,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.graphics.clear();
     this.mode === "title" ? this.drawTitle() : this.mode === "battle" ? this.drawBattle() : this.drawField();
     if (this.mode === "field") this.drawHud();
+    if (this.encounterEffect) this.drawEncounterEffect();
     if (this.menu) this.drawMenu();
     if (this.message.length) this.drawMessage(this.message[0]);
   }
@@ -1596,10 +1603,11 @@ class HigeQuestScene extends Phaser.Scene {
       this.text(24, PANEL_Y + 91 + i * 19, `${i === this.battle?.command ? ">" : " "}${command}`, 14, i === this.battle?.command ? "#ffe58a" : "#fff3cb");
     });
     if (this.battle.waiting) this.text(67, PANEL_Y + 157, "行動中", 12, "#d8c98f", "center");
-    this.text(146, PANEL_Y + 86, actor ? `${actor.name}  ${actor.job}` : "", 13, "#ffe58a");
+    if (!this.battle.submenu) this.text(146, PANEL_Y + 86, actor ? `${actor.name}  ${actor.job}` : "", 13, "#ffe58a");
     this.party.forEach((member, i) => {
       const rowY = PANEL_Y + 104 + i * 15;
       const active = actor?.name === member.name && !this.battle?.won;
+      if (this.battle?.submenu) return;
       if (active) {
         this.graphics.fillStyle(0xffffff, 0.12);
         this.graphics.fillRect(142, rowY - 8, 198, 14);
@@ -1626,19 +1634,19 @@ class HigeQuestScene extends Phaser.Scene {
     if (!this.battle?.submenu) return;
     const submenu = this.battle.submenu;
     const skills = this.skillsFor(actor);
-    this.ffWindow(112, PANEL_Y + 76, 142, 82);
-    this.text(126, PANEL_Y + 94, submenu.kind, 12, "#ffe58a");
+    this.ffWindow(116, PANEL_Y + 76, 138, 82);
+    this.text(130, PANEL_Y + 94, `${actor.name} ${submenu.kind}`, 12, "#ffe58a");
     skills.forEach((skill, i) => {
       const y = PANEL_Y + 115 + i * 18;
       if (i === submenu.cursor) {
         this.graphics.fillStyle(0xffffff, 0.15);
-        this.graphics.fillRect(122, y - 8, 118, 16);
+        this.graphics.fillRect(126, y - 8, 112, 16);
       }
       const color = actor.mp < skill.mp ? "#9aa0a8" : i === submenu.cursor ? "#ffe58a" : "#fff3cb";
-      this.text(128, y, `${i === submenu.cursor ? ">" : " "}${skill.name}`, 12, color);
+      this.text(132, y, `${i === submenu.cursor ? ">" : " "}${skill.name}`, 12, color);
     });
     const skill = skills[submenu.cursor];
-    if (skill) this.text(126, PANEL_Y + 146, `MP${skill.mp} ${skill.description}`, 11, actor.mp < skill.mp ? "#ffb0a0" : "#d8c98f");
+    if (skill) this.text(130, PANEL_Y + 146, `MP${skill.mp} ${skill.description}`, 11, actor.mp < skill.mp ? "#ffb0a0" : "#d8c98f");
   }
 
   private drawEnemyStatus() {
@@ -1737,11 +1745,75 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private drawMessage(message: string) {
-    this.panel(12, PANEL_Y + 16, 336, 136);
-    const lines = this.wrap(message, 18);
-    lines.slice(0, 4).forEach((line, i) => this.text(28, PANEL_Y + 46 + i * 22, line, 15));
+    const parsed = this.parseMessage(message);
+    this.graphics.fillStyle(0x080b10, 0.18);
+    this.graphics.fillRect(0, 0, WIDTH, PANEL_Y + 12);
+    this.panel(12, PANEL_Y + 10, 336, 146);
+    const lines = this.messageLines(message);
     const hasMore = lines.length > 4 || this.message.length > 1;
-    this.text(216, PANEL_Y + 132, hasMore ? "A:次へ / B:閉じる" : "A/B:閉じる", 13, "#ffe58a");
+    if (parsed.speaker) {
+      this.panel(24, PANEL_Y + 32, 52, 76);
+      this.drawSpeakerPortrait(parsed.speaker, 50, PANEL_Y + 80);
+      this.graphics.fillStyle(0x10151d, 0.92);
+      this.graphics.fillRect(88, PANEL_Y + 26, 100, 22);
+      this.graphics.lineStyle(1, colors.border, 0.75);
+      this.graphics.strokeRect(88, PANEL_Y + 26, 100, 22);
+      this.text(98, PANEL_Y + 38, parsed.speaker, 12, "#ffe58a");
+      lines.slice(0, 4).forEach((line, i) => this.text(90, PANEL_Y + 62 + i * 20, line, 14));
+    } else {
+      lines.slice(0, 4).forEach((line, i) => this.text(28, PANEL_Y + 44 + i * 22, line, 15));
+    }
+    this.drawContinueCue(hasMore);
+    this.text(216, PANEL_Y + 138, hasMore ? "A:次へ / B:閉じる" : "A/B:閉じる", 13, "#ffe58a");
+  }
+
+  private parseMessage(message: string) {
+    const match = message.match(/^([^:：]{1,10})[:：]\s*(.+)$/);
+    return match ? { speaker: match[1], body: match[2] } : { speaker: "", body: message };
+  }
+
+  private messageLines(message: string) {
+    const parsed = this.parseMessage(message);
+    return this.wrap(parsed.body, parsed.speaker ? 15 : 18);
+  }
+
+  private drawSpeakerPortrait(speaker: string, x: number, y: number) {
+    if (speaker === "yos") {
+      this.drawPerson(x, y, 0xe9d9b0, true, 1.15, "down");
+      return;
+    }
+    if (speaker === "もじさん") {
+      this.drawPartySprite(x, y - 2, partyBase[1]);
+      return;
+    }
+    if (speaker === "オニオンJK") {
+      this.drawBoss(x, y - 4, 0.64);
+      return;
+    }
+    this.drawPerson(x, y, this.npcColor(speaker), false, 1.05);
+  }
+
+  private drawContinueCue(hasMore: boolean) {
+    const y = PANEL_Y + 136 + Math.sin(this.time.now * 0.008) * 2;
+    this.graphics.fillStyle(hasMore ? 0xffe58a : 0xd8c98f, 0.9);
+    this.graphics.fillTriangle(324, y, 316, y - 6, 332, y - 6);
+  }
+
+  private drawEncounterEffect() {
+    if (!this.encounterEffect) return;
+    const progress = Phaser.Math.Clamp((this.time.now - this.encounterEffect.startedAt) / 220, 0, 1);
+    const alpha = 1 - Math.abs(progress - 0.5) * 1.4;
+    const color = this.encounterEffect.kind === "boss" ? 0xffe58a : 0xfff3cb;
+    this.graphics.fillStyle(0x05060a, 0.38 + alpha * 0.22);
+    this.graphics.fillRect(0, 0, WIDTH, HEIGHT);
+    this.graphics.lineStyle(3, color, 0.75 * alpha);
+    for (let i = 0; i < 5; i += 1) {
+      const offset = i * 48 + progress * 90;
+      this.graphics.lineBetween(-40 + offset, 0, 42 + offset, HEIGHT);
+    }
+    this.graphics.fillStyle(color, 0.18 + alpha * 0.18);
+    this.graphics.fillCircle(WIDTH / 2, FIELD_TOP + 150, 22 + progress * 120);
+    this.text(WIDTH / 2, FIELD_TOP + 154, "!", 28, "#fff3cb", "center");
   }
 
   private drawTopLabel(label: string) {
@@ -2023,9 +2095,11 @@ class HigeQuestScene extends Phaser.Scene {
 
   private advanceMessage() {
     if (!this.message.length) return;
-    const lines = this.wrap(this.message[0], 18);
+    const parsed = this.parseMessage(this.message[0]);
+    const lines = this.messageLines(this.message[0]);
     if (lines.length > 4) {
-      this.message[0] = lines.slice(4).join("");
+      const rest = lines.slice(4).join("");
+      this.message[0] = parsed.speaker ? `${parsed.speaker}: ${rest}` : rest;
       return;
     }
     this.message.shift();
@@ -2033,7 +2107,19 @@ class HigeQuestScene extends Phaser.Scene {
 
   private beginPendingBossBattle() {
     this.pendingBossBattle = false;
-    this.startBattle("boss");
+    this.startEncounter("boss");
+  }
+
+  private startEncounter(kind: "random" | "boss") {
+    if (this.mode !== "field") return;
+    this.encounterEffect = { startedAt: this.time.now, kind };
+    this.inputLock = true;
+    this.audio.playSe(kind === "boss" ? "magic" : "attack");
+    this.time.delayedCall(220, () => {
+      this.encounterEffect = null;
+      this.inputLock = false;
+      this.startBattle(kind);
+    });
   }
 
   private startBossIntro() {
