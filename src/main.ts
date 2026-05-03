@@ -60,6 +60,7 @@ type Enemy = {
 type EnemyAction = {
   atk: number;
   text: string;
+  kind?: "physical" | "magic";
   heal?: number;
   hits?: number;
   mpDrain?: number;
@@ -110,6 +111,8 @@ type BattleState = {
   submenu: BattleSubmenu | null;
   cueText: string | null;
   cueUntil: number;
+  levelUpSummary: LevelUpSummary[] | null;
+  levelUpUntil: number;
   log: string[];
   won: boolean;
   wonBoss: boolean;
@@ -120,6 +123,28 @@ type BattleState = {
   defending: boolean[];
   actingIndex: number | null;
   actingUntil: number;
+};
+
+type LevelUpSummary = {
+  name: string;
+  job: string;
+  lvBefore: number;
+  lvAfter: number;
+  hpBefore: number;
+  hpAfter: number;
+  mpBefore: number;
+  mpAfter: number;
+  strengthBefore: number;
+  strengthAfter: number;
+  staminaBefore: number;
+  staminaAfter: number;
+  speedBefore: number;
+  speedAfter: number;
+  magicBefore: number;
+  magicAfter: number;
+  evadeBefore: number;
+  evadeAfter: number;
+  learned: string[];
 };
 
 type BattleSubmenu = {
@@ -169,6 +194,8 @@ type ShopEntry = {
     exp?: number;
     mp?: number;
     guard?: number;
+    hit?: number;
+    resist?: string[];
   };
 };
 
@@ -350,15 +377,15 @@ const partyBase: PartyMember[] = [
 const catalog: Record<string, ShopEntry> = {
   herb: { id: "herb", name: "やくそう", kind: "item", price: 8 },
   water: { id: "water", name: "まほうの水", kind: "item", price: 18 },
-  stick: { id: "stick", name: "木の棒", kind: "weapon", price: 0, atk: 1, traits: { speed: 1, atk: 1 } },
-  onionSword: { id: "onionSword", name: "オニオンソード", kind: "weapon", price: 0, atk: 4, users: ["もじさん"], traits: { crit: 0.2, atk: 2, speed: 1 } },
-  copperSword: { id: "copperSword", name: "銅の剣", kind: "weapon", price: 45, atk: 5, users: ["yos", "もじさん", "貧"], traits: { crit: 0.08, atk: 1 } },
-  sageStaff: { id: "sageStaff", name: "賢者の杖", kind: "weapon", price: 52, atk: 3, users: ["yos", "ヤス"], traits: { magic: 3, mp: 4 } },
-  ironAxe: { id: "ironAxe", name: "鉄の斧", kind: "weapon", price: 78, atk: 8, users: ["もじさん"], traits: { crit: 0.1, speed: -1, atk: 3 } },
-  cloth: { id: "cloth", name: "布の服", kind: "armor", price: 0, def: 1, traits: { evade: 1, def: 1 } },
-  traveler: { id: "traveler", name: "旅人の服", kind: "armor", price: 35, def: 4, traits: { speed: 1, exp: 0.1, def: 1 } },
-  ironArmor: { id: "ironArmor", name: "鉄の胸当て", kind: "armor", price: 70, def: 7, users: ["yos", "もじさん"], traits: { guard: 2, def: 3 } },
-  lightCloak: { id: "lightCloak", name: "身かわしマント", kind: "armor", price: 64, def: 5, users: ["ヤス", "貧"], traits: { evade: 3, speed: 1 } },
+  stick: { id: "stick", name: "木の棒", kind: "weapon", price: 0, atk: 1, traits: { speed: 1, atk: 1, hit: 2 } },
+  onionSword: { id: "onionSword", name: "オニオンソード", kind: "weapon", price: 0, atk: 4, users: ["もじさん"], traits: { crit: 0.2, atk: 2, speed: 1, hit: 3 } },
+  copperSword: { id: "copperSword", name: "銅の剣", kind: "weapon", price: 45, atk: 5, users: ["yos", "もじさん", "貧"], traits: { crit: 0.08, atk: 1, hit: 2 } },
+  sageStaff: { id: "sageStaff", name: "賢者の杖", kind: "weapon", price: 52, atk: 3, users: ["yos", "ヤス"], traits: { magic: 3, mp: 4, hit: 4 } },
+  ironAxe: { id: "ironAxe", name: "鉄の斧", kind: "weapon", price: 78, atk: 8, users: ["もじさん"], traits: { crit: 0.1, speed: -1, atk: 3, hit: 1 } },
+  cloth: { id: "cloth", name: "布の服", kind: "armor", price: 0, def: 1, traits: { evade: 1, def: 1, resist: ["物理"] } },
+  traveler: { id: "traveler", name: "旅人の服", kind: "armor", price: 35, def: 4, traits: { speed: 1, exp: 0.1, def: 1, resist: ["物理"] } },
+  ironArmor: { id: "ironArmor", name: "鉄の胸当て", kind: "armor", price: 70, def: 7, users: ["yos", "もじさん"], traits: { guard: 2, def: 3, resist: ["物理"] } },
+  lightCloak: { id: "lightCloak", name: "身かわしマント", kind: "armor", price: 64, def: 5, users: ["ヤス", "貧"], traits: { evade: 3, speed: 1, resist: ["魔法"] } },
 };
 
 const shopStock: Record<"item" | "weapon" | "armor", string[]> = {
@@ -910,6 +937,12 @@ class HigeQuestScene extends Phaser.Scene {
     if (!this.battle) return;
     if (this.battle.waiting) return;
     if (this.battle.won) {
+      if (this.battle.levelUpSummary && this.time.now < this.battle.levelUpUntil) return;
+      if (this.battle.levelUpSummary) {
+        this.battle.levelUpSummary = null;
+        this.audio.playSe("confirm");
+        return;
+      }
       const wonBoss = this.battle.wonBoss;
       if (wonBoss && this.bossCinematic && this.time.now < this.bossCinematic.until) return;
       this.mode = "field";
@@ -1089,8 +1122,11 @@ class HigeQuestScene extends Phaser.Scene {
       this.pushBattle(`${target.name}は${this.battle.enemy.name}${action.text}をかわした。`);
       return;
     }
-    const baseDamage = this.damage({ atk: action.atk }, { def: this.totalDef(target) });
-    const damage = guarded ? Math.max(1, Math.floor(baseDamage / 2)) : baseDamage;
+    const baseDamage = action.kind === "magic"
+      ? this.damage({ atk: action.atk }, { def: Math.floor(this.totalMagic(target) / 2) })
+      : this.damage({ atk: action.atk }, { def: this.totalDef(target) });
+    const resisted = this.applyResistance(target, baseDamage, action.kind === "magic" ? "magic" : "physical");
+    const damage = guarded ? Math.max(1, Math.floor(resisted / 2)) : resisted;
     if (action.heal && this.battle.enemy.hp > 0) {
       this.battle.enemy.hp = Math.min(this.battle.enemy.maxHp, this.battle.enemy.hp + action.heal);
       this.audio.playSe("heal");
@@ -1134,33 +1170,34 @@ class HigeQuestScene extends Phaser.Scene {
     const hpRate = enemy.hp / enemy.maxHp;
     if (enemy.behavior === "slime") {
       if (hpRate < 0.45 && roll < 0.35) return { atk: enemy.atk - 2, text: "はぷるぷる回復した。", heal: 10 };
-      if (roll < 0.35) return { atk: Math.max(1, enemy.atk - 3), text: "は体当たりした。" };
-      if (roll < 0.6) return { atk: Math.max(1, enemy.atk - 1), text: "は跳ね回った。", hits: 2 };
+      if (roll < 0.35) return { atk: Math.max(1, enemy.atk - 3), text: "は体当たりした。", kind: "physical" };
+      if (roll < 0.6) return { atk: Math.max(1, enemy.atk - 1), text: "は跳ね回った。", hits: 2, kind: "physical" };
     }
     if (enemy.behavior === "bat") {
-      if (roll < 0.32) return { atk: enemy.atk + 2, text: "は急降下してMPを吸った。", mpDrain: 4 };
-      if (roll < 0.6) return { atk: enemy.atk + 1, text: "は羽ばたきで翻弄した。", hits: 2 };
+      if (roll < 0.32) return { atk: enemy.atk + 2, text: "は急降下してMPを吸った。", mpDrain: 4, kind: "physical" };
+      if (roll < 0.6) return { atk: enemy.atk + 1, text: "は羽ばたきで翻弄した。", hits: 2, kind: "physical" };
     }
     if (enemy.behavior === "knight") {
-      if (roll < 0.28) return { atk: enemy.atk + 7, text: "は力を込めて二連斬り。", hits: 2 };
-      if (roll < 0.55) return { atk: enemy.atk + 5, text: "は守りを固めてから斬りかかった。" };
+      if (roll < 0.28) return { atk: enemy.atk + 7, text: "は力を込めて二連斬り。", hits: 2, kind: "physical" };
+      if (roll < 0.55) return { atk: enemy.atk + 5, text: "は守りを固めてから斬りかかった。", kind: "physical" };
     }
     if (enemy.behavior === "mage") {
-      if (roll < 0.3) return { atk: enemy.atk + 3, text: "は薄毛の呪文でMPを削った。", mpDrain: 5 };
-      if (roll < 0.55) return { atk: enemy.atk + 4, text: "は呪文を重ねてきた。", hits: 2 };
+      if (roll < 0.3) return { atk: enemy.atk + 3, text: "は薄毛の呪文でMPを削った。", mpDrain: 5, kind: "magic" };
+      if (roll < 0.55) return { atk: enemy.atk + 4, text: "は呪文を重ねてきた。", hits: 2, kind: "magic" };
     }
     if (enemy.behavior === "boss") {
-      if (hpRate < 0.55 && roll < 0.3) return { atk: enemy.atk, text: "は玉ねぎの皮をまとった。", heal: 28 };
-      if (roll < 0.24) return { atk: enemy.atk + 10, text: "の玉ねぎ審査。", hits: 2 };
-      if (roll < 0.48) return { atk: enemy.atk + 5, text: "の涙目スライス。" };
-      if (roll < 0.68) return { atk: enemy.atk + 4, text: "は鋭く目を細めた。", mpDrain: 3 };
+      if (hpRate < 0.55 && roll < 0.3) return { atk: enemy.atk, text: "は玉ねぎの皮をまとった。", heal: 28, kind: "magic" };
+      if (roll < 0.24) return { atk: enemy.atk + 10, text: "の玉ねぎ審査。", hits: 2, kind: "physical" };
+      if (roll < 0.48) return { atk: enemy.atk + 5, text: "の涙目スライス。", kind: "physical" };
+      if (roll < 0.68) return { atk: enemy.atk + 4, text: "は鋭く目を細めた。", mpDrain: 3, kind: "magic" };
     }
-    return { atk: enemy.atk, text: "の攻撃。" };
+    return { atk: enemy.atk, text: "の攻撃。", kind: "physical" };
   }
 
   private winBattle() {
     if (!this.battle) return;
     const enemy = this.battle.enemy;
+    const beforeLevelUps = this.party.map(copyMember);
     this.pushBattle(`${enemy.name}を倒した！`);
     this.gold += enemy.gold;
     this.xp += enemy.xp;
@@ -1170,7 +1207,11 @@ class HigeQuestScene extends Phaser.Scene {
       member.xp += enemy.xp + bonusXp;
     });
     this.pushBattle(`${enemy.xp + bonusXp}EXPと${enemy.gold}Gを得た。`);
-    this.applyLevelUps();
+    const summaries = this.applyLevelUps(beforeLevelUps);
+    if (this.battle) {
+      this.battle.levelUpSummary = summaries;
+      this.battle.levelUpUntil = summaries.length ? this.time.now + 1200 : 0;
+    }
     this.maybeLearnEventSkill();
     this.battle.won = true;
     this.battle.wonBoss = Boolean(enemy.boss);
@@ -1181,7 +1222,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.ending = true;
       this.bossCinematic = { kind: "outro", startedAt: this.time.now, until: this.time.now + 1100 };
     }
-    this.audio.playSe(enemy.boss ? "victory" : "levelup");
+    if (enemy.boss || !summaries.length) this.audio.playSe("victory");
   }
 
   private startBattle(kind: "random" | "boss" = "random") {
@@ -1195,6 +1236,8 @@ class HigeQuestScene extends Phaser.Scene {
       submenu: null,
       cueText: null,
       cueUntil: 0,
+      levelUpSummary: null,
+      levelUpUntil: 0,
       log: [],
       won: false,
       wonBoss: false,
@@ -1945,6 +1988,10 @@ class HigeQuestScene extends Phaser.Scene {
     this.ffWindow(8, PANEL_Y + 70, 118, 94);
     if (this.battle.won) {
       this.ffWindow(132, PANEL_Y + 70, 220, 94);
+      if (this.battle.levelUpSummary?.length) {
+        this.drawLevelUpSummary(this.battle.levelUpSummary);
+        return;
+      }
       if (this.battle.wonBoss && this.bossCinematic && this.time.now < this.bossCinematic.until) {
         this.text(242, PANEL_Y + 104, "オニオンJK 撃破", 16, "#fff3cb", "center");
         this.text(242, PANEL_Y + 128, "山頂の空気が変わった。", 12, "#d8c98f", "center");
@@ -1979,6 +2026,23 @@ class HigeQuestScene extends Phaser.Scene {
       this.text(288, rowY, `MP ${member.mp}`, 12, color);
     });
     if (this.battle.submenu && actor) this.drawSkillSubwindow(actor);
+  }
+
+  private drawLevelUpSummary(summaries: LevelUpSummary[]) {
+    this.ffWindow(24, 82, 312, 196);
+    this.text(180, 104, "レベルアップ", 16, "#ffe58a", "center");
+    this.text(180, 124, "前 → 後 で上昇内容を確認", 11, "#d8c98f", "center");
+    summaries.slice(0, 2).forEach((summary, i) => {
+      const y = 150 + i * 74;
+      this.graphics.fillStyle(0xffffff, 0.08);
+      this.graphics.fillRect(36, y - 12, 288, 60);
+      this.text(42, y, `${summary.name} Lv${summary.lvBefore} → Lv${summary.lvAfter}`, 13, "#fff3cb");
+      this.text(42, y + 18, `HP ${summary.hpBefore} → ${summary.hpAfter}  MP ${summary.mpBefore} → ${summary.mpAfter}`, 11);
+      this.text(42, y + 34, `力 ${summary.strengthBefore} → ${summary.strengthAfter}  体 ${summary.staminaBefore} → ${summary.staminaAfter}`, 11);
+      this.text(170, y + 34, `速 ${summary.speedBefore} → ${summary.speedAfter}  魔 ${summary.magicBefore} → ${summary.magicAfter}  回 ${summary.evadeBefore} → ${summary.evadeAfter}`, 11);
+      if (summary.learned.length) this.text(42, y + 50, `習得 ${summary.learned.join(" / ")}`, 10, "#9df09a");
+    });
+    this.text(180, 266, this.battle?.wonBoss ? "A:次へ" : "A:閉じる", 13, "#ffe58a", "center");
   }
 
   private battleCommands(actor: PartyMember) {
@@ -2104,7 +2168,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.text(38, y, `${i === this.menu!.cursor ? ">" : " "} ${entry.name} Lv${entry.lv}`, 13, i === this.menu!.cursor ? "#ffe58a" : "#fff3cb");
       this.text(132, y, `HP ${entry.hp}/${entry.maxHp} MP ${entry.mp}/${entry.maxMp}`, 12, entry.hp <= 0 ? "#a89c8d" : "#fff3cb");
     });
-    this.ffWindow(168, 120, 160, 260);
+    this.ffWindow(168, 120, 160, 300);
     this.text(182, 140, `${member.name} ${member.job}`, 13, "#ffe58a");
     this.text(182, 162, `Lv ${member.lv}  EXP ${member.xp}`, 12);
     this.text(182, 184, `HP ${member.hp}/${member.maxHp}`, 12);
@@ -2114,11 +2178,13 @@ class HigeQuestScene extends Phaser.Scene {
     this.text(182, 268, `速 ${this.totalSpd(member)}`, 12);
     this.text(182, 288, `魔 ${this.totalMagic(member)}`, 12);
     this.text(182, 308, `回 ${this.totalEvade(member)}`, 12);
-    this.text(182, 330, `武 ${this.equipmentName(member.weapon)}`, 11, "#d8c98f");
-    this.text(182, 350, `防 ${this.equipmentName(member.armor)}`, 11, "#d8c98f");
+    this.text(182, 328, `命中 ${this.accuracy(member)}%`, 11, "#d8c98f");
+    this.text(182, 346, `耐性 ${this.resistanceLabel(member)}`, 11, "#d8c98f");
+    this.text(182, 364, `武 ${this.equipmentName(member.weapon)}`, 11, "#d8c98f");
+    this.text(182, 382, `防 ${this.equipmentName(member.armor)}`, 11, "#d8c98f");
     const skills = member.skills.filter((name) => this.skillsFor(member).some((skill) => skill.name === name));
-    this.text(182, 372, `技 ${skills.join(" / ") || "-"}`, 10, "#d8c98f");
-    this.text(182, 392, `EXPボーナス ${Math.round(this.totalExpBonus(member) * 100)}%`, 10, "#d8c98f");
+    this.text(182, 398, `技 ${skills.join(" / ") || "-"}`, 10, "#d8c98f");
+    this.text(182, 412, `EXPボーナス ${Math.round(this.totalExpBonus(member) * 100)}%`, 10, "#d8c98f");
   }
 
   private drawShopHelp() {
@@ -2137,7 +2203,9 @@ class HigeQuestScene extends Phaser.Scene {
     const member = this.party[this.menu.memberIndex];
     if (!member) return;
     this.text(44, 286, `現在 武:${this.equipmentName(member.weapon)} 防:${this.equipmentName(member.armor)}`, 12, "#d8c98f");
-    this.text(44, 310, "A:装備 / B:戻る", 12, "#d8c98f");
+    this.text(44, 308, this.equipmentTraitsText(member.weapon, "武器") || "武器の特性なし", 11, "#d8c98f");
+    this.text(44, 328, this.equipmentTraitsText(member.armor, "防具") || "防具の特性なし", 11, "#d8c98f");
+    this.text(44, 350, "A:装備 / B:戻る", 12, "#d8c98f");
   }
 
   private drawMessage(message: string) {
@@ -2460,24 +2528,76 @@ class HigeQuestScene extends Phaser.Scene {
     return (this.equipmentEntry(member, "weapon")?.traits?.crit || 0) + (this.equipmentEntry(member, "armor")?.traits?.crit || 0);
   }
 
+  private equipmentHitBonus(member: PartyMember) {
+    return (this.equipmentEntry(member, "weapon")?.traits?.hit || 0) + (this.equipmentEntry(member, "armor")?.traits?.hit || 0);
+  }
+
   private totalExpBonus(member: PartyMember) {
     return this.equipmentExpBonus(member);
+  }
+
+  private equipmentTraitsText(id?: string, label = "") {
+    if (!id) return "";
+    const entry = catalog[id];
+    if (!entry) return "";
+    const parts: string[] = [];
+    if (entry.atk) parts.push(`攻+${entry.atk}`);
+    if (entry.def) parts.push(`守+${entry.def}`);
+    if (entry.traits?.atk) parts.push(`力+${entry.traits.atk}`);
+    if (entry.traits?.def) parts.push(`体+${entry.traits.def}`);
+    if (entry.traits?.speed) parts.push(`速${entry.traits.speed > 0 ? "+" : ""}${entry.traits.speed}`);
+    if (entry.traits?.magic) parts.push(`魔+${entry.traits.magic}`);
+    if (entry.traits?.evade) parts.push(`回+${entry.traits.evade}`);
+    if (entry.traits?.hit) parts.push(`命+${entry.traits.hit}`);
+    if (entry.traits?.crit) parts.push(`会心+${Math.round(entry.traits.crit * 100)}%`);
+    if (entry.traits?.heal) parts.push(`回復+${entry.traits.heal}`);
+    if (entry.traits?.exp) parts.push(`EXP+${Math.round(entry.traits.exp * 100)}%`);
+    if (entry.traits?.mp) parts.push(`MP+${entry.traits.mp}`);
+    if (entry.traits?.resist?.length) parts.push(`耐性 ${entry.traits.resist.join("/")}`);
+    return `${label ? `${label} ` : ""}${parts.join(" / ")}`.trim();
+  }
+
+  private resistanceLabel(member: PartyMember) {
+    const entries = [this.equipmentEntry(member, "weapon"), this.equipmentEntry(member, "armor")];
+    const resist = [...new Set(entries.flatMap((entry) => entry?.traits?.resist || []))];
+    return resist.length ? resist.join("/") : "なし";
   }
 
   private equipmentExpBonus(member: PartyMember) {
     return (this.equipmentEntry(member, "weapon")?.traits?.exp || 0) + (this.equipmentEntry(member, "armor")?.traits?.exp || 0);
   }
 
+  private accuracy(member: PartyMember) {
+    return Math.min(99, 84 + this.totalSpd(member) + this.equipmentHitBonus(member));
+  }
+
+  private physicalResistance(member: PartyMember) {
+    const traits = [this.equipmentEntry(member, "weapon")?.traits, this.equipmentEntry(member, "armor")?.traits];
+    return traits.reduce((sum, trait) => sum + (trait?.resist?.includes("物理") ? 0.12 : 0), 0);
+  }
+
+  private magicResistance(member: PartyMember) {
+    const traits = [this.equipmentEntry(member, "weapon")?.traits, this.equipmentEntry(member, "armor")?.traits];
+    return traits.reduce((sum, trait) => sum + (trait?.resist?.includes("魔法") ? 0.18 : 0), 0);
+  }
+
   private physicalDamage(member: PartyMember, enemy: Enemy, multiplier = 1) {
     const raw = Math.max(1, this.damage({ atk: this.totalAtk(member) }, enemy) * multiplier);
-    return Math.random() < this.equipmentCritBonus(member) ? Math.floor(raw * 1.5) : Math.floor(raw);
+    const hit = Math.random() < this.accuracy(member) / 120;
+    const crit = Math.random() < this.equipmentCritBonus(member);
+    return Math.max(1, Math.floor((hit ? raw : raw * 0.5) * (crit ? 1.5 : 1)));
+  }
+
+  private applyResistance(target: PartyMember, damage: number, kind: "physical" | "magic" = "physical") {
+    const resist = kind === "magic" ? this.magicResistance(target) : this.physicalResistance(target);
+    return Math.max(1, Math.floor(damage * (1 - resist)));
   }
 
   private equipmentName(id?: string) {
     return id ? catalog[id]?.name || "-" : "-";
   }
 
-  private applyLevelUps() {
+  private applyLevelUps(beforeMembers: PartyMember[]) {
     const leveledMembers = this.party.filter((member) => this.levelUpMember(member));
     if (leveledMembers.length) {
       this.party.forEach((member) => {
@@ -2489,6 +2609,40 @@ class HigeQuestScene extends Phaser.Scene {
       this.audio.playSe("levelup");
       this.pushBattle(`${leveledMembers.map((member) => member.name).join("、")}のレベルが上がった！`);
     }
+    return this.buildLevelUpSummaries(beforeMembers, this.party);
+  }
+
+  private buildLevelUpSummaries(beforeMembers: PartyMember[], afterMembers: PartyMember[]) {
+    const beforeMap = new Map(beforeMembers.map((member) => [member.name, member]));
+    return afterMembers
+      .filter((member) => {
+        const before = beforeMap.get(member.name);
+        return before && before.lv !== member.lv;
+      })
+      .map((member) => {
+        const before = beforeMap.get(member.name)!;
+        return {
+          name: member.name,
+          job: member.job,
+          lvBefore: before.lv,
+          lvAfter: member.lv,
+          hpBefore: before.maxHp,
+          hpAfter: member.maxHp,
+          mpBefore: before.maxMp,
+          mpAfter: member.maxMp,
+          strengthBefore: before.strength,
+          strengthAfter: member.strength,
+          staminaBefore: before.stamina,
+          staminaAfter: member.stamina,
+          speedBefore: before.spd,
+          speedAfter: member.spd,
+          magicBefore: before.magicPower,
+          magicAfter: member.magicPower,
+          evadeBefore: before.evade,
+          evadeAfter: member.evade,
+          learned: member.skills.filter((skill) => !before.skills.includes(skill)),
+        };
+      });
   }
 
   private levelUpMember(member: PartyMember) {
