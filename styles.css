@@ -28,16 +28,18 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  width: min(100vw, 360px);
-  height: min(100vh, 640px);
+  width: 360px;
+  height: 640px;
   background: #0b0d10;
   overflow: hidden;
+  transform: scale(var(--app-scale, 1));
+  transform-origin: center;
 }
 
 #game-root {
   display: block;
   width: 100%;
-  height: calc(100% - 168px);
+  height: 472px;
   min-height: 0;
 }
 

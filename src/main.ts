@@ -13,7 +13,7 @@ const PARTY_BATTLE_Y = 142;
 const PARTY_BATTLE_GAP = 34;
 const LEVEL_XP = [0, 20, 48, 88, 140, 210, 300];
 const UI_FONT = '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
-const TEXT_RESOLUTION = 3;
+const TEXT_RESOLUTION = 4;
 
 type Direction = "up" | "down" | "left" | "right";
 type SceneMode = "title" | "field" | "battle";
@@ -113,6 +113,7 @@ type BattleState = {
   cueText: string | null;
   cueUntil: number;
   levelUpSummary: LevelUpSummary[] | null;
+  levelUpPage: number;
   levelUpUntil: number;
   log: string[];
   won: boolean;
@@ -450,7 +451,7 @@ function dungeonMap(name: string, next: string | null, prev: string, encounter: 
 const maps: Record<string, GameMap> = {
   world: {
     name: "フィールド",
-    encounter: 0,
+    encounter: 0.08,
     tiles: [
       "XXXXXXXXXXXX",
       "XGGGGGGGGGGX",
@@ -541,7 +542,11 @@ const maps: Record<string, GameMap> = {
   dungeon3: { ...dungeonMap("山頂", null, "dungeon2", 0.2), boss: { x: 5, y: 9 } },
 };
 
-const enemyTemplates: Record<"forest" | "dungeon" | "boss", Omit<Enemy, "maxHp">[]> = {
+const enemyTemplates: Record<"world" | "forest" | "dungeon" | "boss", Omit<Enemy, "maxHp">[]> = {
+  world: [
+    { name: "ちびスライム", hp: 14, atk: 5, def: 1, xp: 5, gold: 3, color: 0x8ed6db, behavior: "slime", stealGold: 2 },
+    { name: "こヒゲこうもり", hp: 18, atk: 6, def: 1, xp: 6, gold: 4, color: 0x6d6a96, behavior: "bat", stealGold: 3 },
+  ],
   forest: [
     { name: "まゆげスライム", hp: 26, atk: 8, def: 2, xp: 12, gold: 8, color: 0x79c5d8, behavior: "slime", stealGold: 4, stealItem: "やくそう" },
     { name: "ヒゲこうもり", hp: 32, atk: 10, def: 3, xp: 14, gold: 10, color: 0x5d5b8c, behavior: "bat", stealGold: 6 },
@@ -940,7 +945,11 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.battle.won) {
       if (this.battle.levelUpSummary && this.time.now < this.battle.levelUpUntil) return;
       if (this.battle.levelUpSummary) {
-        this.battle.levelUpSummary = null;
+        if (this.battle.levelUpPage < this.battle.levelUpSummary.length - 1) {
+          this.battle.levelUpPage += 1;
+        } else {
+          this.battle.levelUpSummary = null;
+        }
         this.audio.playSe("confirm");
         return;
       }
@@ -1211,6 +1220,7 @@ class HigeQuestScene extends Phaser.Scene {
     const summaries = this.applyLevelUps(beforeLevelUps);
     if (this.battle) {
       this.battle.levelUpSummary = summaries;
+      this.battle.levelUpPage = 0;
       this.battle.levelUpUntil = summaries.length ? this.time.now + 1200 : 0;
     }
     this.maybeLearnEventSkill();
@@ -1227,7 +1237,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private startBattle(kind: "random" | "boss" = "random") {
-    const pool = kind === "boss" ? enemyTemplates.boss : this.mapId === "forest" ? enemyTemplates.forest : enemyTemplates.dungeon;
+    const pool = kind === "boss" ? enemyTemplates.boss : this.enemyPoolForMap();
     const template = Phaser.Utils.Array.GetRandom(pool);
     this.mode = "battle";
     this.battle = {
@@ -1238,6 +1248,7 @@ class HigeQuestScene extends Phaser.Scene {
       cueText: null,
       cueUntil: 0,
       levelUpSummary: null,
+      levelUpPage: 0,
       levelUpUntil: 0,
       log: [],
       won: false,
@@ -1253,6 +1264,12 @@ class HigeQuestScene extends Phaser.Scene {
     this.battleEffects = [];
     this.pushBattle(`${template.name}が あらわれた！`);
     this.announceBattleCue("戦闘開始");
+  }
+
+  private enemyPoolForMap() {
+    if (this.mapId === "world") return enemyTemplates.world;
+    if (this.mapId === "forest") return enemyTemplates.forest;
+    return enemyTemplates.dungeon;
   }
 
   private mainMenu(): MenuState {
@@ -2030,20 +2047,49 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private drawLevelUpSummary(summaries: LevelUpSummary[]) {
-    this.ffWindow(24, 82, 312, 196);
-    this.text(180, 104, "レベルアップ", 16, "#ffe58a", "center");
-    this.text(180, 124, "前 → 後 で上昇内容を確認", 11, "#d8c98f", "center");
-    summaries.slice(0, 2).forEach((summary, i) => {
-      const y = 150 + i * 74;
-      this.graphics.fillStyle(0xffffff, 0.08);
-      this.graphics.fillRect(36, y - 12, 288, 60);
-      this.text(42, y, `${summary.name} Lv${summary.lvBefore} → Lv${summary.lvAfter}`, 13, "#fff3cb");
-      this.text(42, y + 18, `HP ${summary.hpBefore} → ${summary.hpAfter}  MP ${summary.mpBefore} → ${summary.mpAfter}`, 11);
-      this.text(42, y + 34, `力 ${summary.strengthBefore} → ${summary.strengthAfter}  体 ${summary.staminaBefore} → ${summary.staminaAfter}`, 11);
-      this.text(170, y + 34, `速 ${summary.speedBefore} → ${summary.speedAfter}  魔 ${summary.magicBefore} → ${summary.magicAfter}  回 ${summary.evadeBefore} → ${summary.evadeAfter}`, 11);
-      if (summary.learned.length) this.text(42, y + 50, `習得 ${summary.learned.join(" / ")}`, 10, "#9df09a");
+    const page = Phaser.Math.Clamp(this.battle?.levelUpPage || 0, 0, summaries.length - 1);
+    const summary = summaries[page];
+    this.ffWindow(20, 74, 320, 214);
+    this.text(180, 98, "レベルアップ", 16, "#ffe58a", "center");
+    this.text(44, 124, `${summary.name}  ${summary.job}`, 13, "#fff3cb");
+    this.text(274, 124, `${page + 1}/${summaries.length}`, 12, "#d8c98f", "center");
+
+    this.graphics.fillStyle(0xffffff, 0.08);
+    this.graphics.fillRect(34, 138, 292, 116);
+    this.graphics.lineStyle(1, 0xe7e7ef, 0.28);
+    this.graphics.lineBetween(106, 140, 106, 252);
+    this.graphics.lineBetween(196, 140, 196, 252);
+    this.graphics.lineBetween(238, 140, 238, 252);
+    this.text(62, 153, "能力", 11, "#d8c98f", "center");
+    this.text(152, 153, "前", 11, "#d8c98f", "center");
+    this.text(217, 153, "→", 12, "#ffe58a", "center");
+    this.text(282, 153, "後", 11, "#d8c98f", "center");
+
+    const rows = [
+      ["Lv", summary.lvBefore, summary.lvAfter],
+      ["HP", summary.hpBefore, summary.hpAfter],
+      ["MP", summary.mpBefore, summary.mpAfter],
+      ["力", summary.strengthBefore, summary.strengthAfter],
+      ["体", summary.staminaBefore, summary.staminaAfter],
+      ["速", summary.speedBefore, summary.speedAfter],
+      ["魔", summary.magicBefore, summary.magicAfter],
+      ["回", summary.evadeBefore, summary.evadeAfter],
+    ] as const;
+    rows.forEach(([label, before, after], i) => {
+      const y = 174 + Math.floor(i / 2) * 19;
+      const x = i % 2 === 0 ? 44 : 178;
+      this.drawStatChange(x, y, label, before, after);
     });
-    this.text(180, 266, this.battle?.wonBoss ? "A:次へ" : "A:閉じる", 13, "#ffe58a", "center");
+    if (summary.learned.length) this.text(44, 264, `習得 ${summary.learned.join(" / ")}`, 11, "#9df09a");
+    this.text(180, 276, page < summaries.length - 1 ? "A:次の仲間" : this.battle?.wonBoss ? "A:次へ" : "A:閉じる", 13, "#ffe58a", "center");
+  }
+
+  private drawStatChange(x: number, y: number, label: string, before: number, after: number) {
+    const changed = before !== after;
+    this.text(x, y, label, 11, changed ? "#ffe58a" : "#d8c98f");
+    this.text(x + 46, y, String(before), 11, "#fff3cb", "center");
+    this.text(x + 78, y, "→", 11, "#d8c98f", "center");
+    this.text(x + 112, y, String(after), 11, changed ? "#9df09a" : "#fff3cb", "center");
   }
 
   private battleCommands(actor: PartyMember) {
@@ -2915,6 +2961,9 @@ class HigeQuestScene extends Phaser.Scene {
 }
 
 const startGame = () => {
+  syncAppScale();
+  window.addEventListener("resize", syncAppScale);
+  window.addEventListener("orientationchange", syncAppScale);
   new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game-root",
@@ -2933,5 +2982,10 @@ const startGame = () => {
     },
   });
 };
+
+function syncAppScale() {
+  const scale = Math.min(window.innerWidth / 360, window.innerHeight / 640, 1);
+  document.documentElement.style.setProperty("--app-scale", scale.toFixed(4));
+}
 
 startGame();
