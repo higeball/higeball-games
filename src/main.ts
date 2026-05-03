@@ -105,10 +105,12 @@ type BattleEffect = {
 };
 
 type MenuState = {
-  mode: "main" | "save" | "load" | "shop" | "equip" | "items";
+  mode: "main" | "save" | "load" | "shop" | "equip" | "equipGear" | "items";
   cursor: number;
   items: string[];
   shopType?: "item" | "weapon" | "armor";
+  memberIndex?: number;
+  gearKind?: "weapon" | "armor";
 };
 
 type ShopEntry = {
@@ -691,6 +693,10 @@ class HigeQuestScene extends Phaser.Scene {
       this.menu = null;
       return;
     }
+    if (this.menu?.mode === "equipGear") {
+      this.openEquipMenu();
+      return;
+    }
     if (this.menu && this.menu.mode !== "main") {
       this.menu = this.mainMenu();
       return;
@@ -706,7 +712,12 @@ class HigeQuestScene extends Phaser.Scene {
       return true;
     }
     if (this.menu.mode === "equip") {
-      this.autoEquipAll();
+      if (this.menu.cursor === 0) this.autoEquipAll();
+      else this.openEquipGearMenu(this.menu.cursor - 1);
+      return true;
+    }
+    if (this.menu.mode === "equipGear") {
+      this.equipSelectedGear();
       return true;
     }
     if (this.menu.mode === "items") {
@@ -1443,7 +1454,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private drawMenu() {
     if (!this.menu) return;
-    const wide = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load";
+    const wide = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "equipGear" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load";
     this.panel(wide ? 28 : 78, wide ? 112 : 154, wide ? 304 : 204, wide ? 236 : 156);
     const title =
       this.menu.mode === "save"
@@ -1454,6 +1465,8 @@ class HigeQuestScene extends Phaser.Scene {
             ? `店 ${this.gold}G`
             : this.menu.mode === "equip"
               ? "そうび"
+              : this.menu.mode === "equipGear"
+                ? `${this.party[this.menu.memberIndex || 0]?.name || ""}の装備`
               : this.menu.mode === "items"
                 ? "もちもの"
                 : "旅のメニュー";
@@ -1462,6 +1475,28 @@ class HigeQuestScene extends Phaser.Scene {
       const y = (wide ? 166 : 214) + i * (wide ? 24 : 28);
       this.text(wide ? 44 : 116, y, `${i === this.menu?.cursor ? ">" : " "}${item}`, this.menu?.mode === "save" || this.menu?.mode === "load" ? 12 : wide ? 14 : 18, i === this.menu?.cursor ? "#ffe58a" : "#fff3cb");
     });
+    if (this.menu.mode === "shop") this.drawShopHelp();
+    if (this.menu.mode === "equip") this.text(44, 326, "A:選ぶ / B:戻る", 12, "#d8c98f");
+    if (this.menu.mode === "equipGear") this.drawEquipHelp();
+  }
+
+  private drawShopHelp() {
+    if (!this.menu?.shopType) return;
+    const id = shopStock[this.menu.shopType][this.menu.cursor];
+    const entry = catalog[id];
+    if (!entry) return;
+    const owned = entry.kind === "item" ? this.items[entry.name] || 0 : this.inventory[entry.id] || 0;
+    const users = entry.users?.join("/") || "全員";
+    this.text(44, 286, `所持 ${owned}  装備 ${users}`, 12, "#d8c98f");
+    this.text(44, 310, this.gold >= entry.price ? "A:購入 / B:閉じる" : "お金が足りない", 12, this.gold >= entry.price ? "#d8c98f" : "#ffb0a0");
+  }
+
+  private drawEquipHelp() {
+    if (this.menu?.memberIndex === undefined) return;
+    const member = this.party[this.menu.memberIndex];
+    if (!member) return;
+    this.text(44, 286, `現在 武:${this.equipmentName(member.weapon)} 防:${this.equipmentName(member.armor)}`, 12, "#d8c98f");
+    this.text(44, 310, "A:装備 / B:戻る", 12, "#d8c98f");
   }
 
   private drawMessage(message: string) {
@@ -1578,15 +1613,45 @@ class HigeQuestScene extends Phaser.Scene {
       this.inventory[id] = (this.inventory[id] || 0) + 1;
     }
     this.message = [`${entry.name}を買った。`];
-    this.menu = null;
+    this.menu.items = shopStock[this.menu.shopType].map((stockId) => this.shopLine(catalog[stockId]));
   }
 
   private openEquipMenu() {
     this.menu = {
       mode: "equip",
       cursor: 0,
-      items: ["Aで最強装備", ...this.party.map((member) => `${member.name} 武:${this.equipmentName(member.weapon)} 防:${this.equipmentName(member.armor)}`)],
+      items: ["全員 最強装備", ...this.party.map((member) => `${member.name} 武:${this.equipmentName(member.weapon)} 防:${this.equipmentName(member.armor)}`)],
     };
+  }
+
+  private openEquipGearMenu(memberIndex: number) {
+    const member = this.party[memberIndex];
+    if (!member) return;
+    const weapons = this.availableEquipment(member, "weapon").map((entry) => `武 ${entry.name} 攻+${entry.atk || 0}`);
+    const armors = this.availableEquipment(member, "armor").map((entry) => `防 ${entry.name} 守+${entry.def || 0}`);
+    this.menu = {
+      mode: "equipGear",
+      cursor: 0,
+      memberIndex,
+      items: [...weapons, ...armors],
+    };
+    if (!this.menu.items.length) {
+      this.message = [`${member.name}が装備できる持ち物はない。`];
+      this.menu = null;
+    }
+  }
+
+  private equipSelectedGear() {
+    if (this.menu?.mode !== "equipGear" || this.menu.memberIndex === undefined) return;
+    const member = this.party[this.menu.memberIndex];
+    if (!member) return;
+    const choices = [...this.availableEquipment(member, "weapon"), ...this.availableEquipment(member, "armor")];
+    const entry = choices[this.menu.cursor];
+    if (!entry) return;
+    if (entry.kind === "weapon") member.weapon = entry.id;
+    if (entry.kind === "armor") member.armor = entry.id;
+    this.message = [`${member.name}は${entry.name}を装備した。`];
+    this.openEquipMenu();
   }
 
   private openItemsMenu() {
@@ -1612,11 +1677,15 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private bestEquipment(member: PartyMember, kind: "weapon" | "armor") {
+    return this.availableEquipment(member, kind)
+      .sort((a, b) => (kind === "weapon" ? (b.atk || 0) - (a.atk || 0) : (b.def || 0) - (a.def || 0)))[0];
+  }
+
+  private availableEquipment(member: PartyMember, kind: "weapon" | "armor") {
     return Object.entries(this.inventory)
       .filter(([, count]) => count > 0)
       .map(([id]) => catalog[id])
-      .filter((entry): entry is ShopEntry => Boolean(entry) && entry.kind === kind && this.canEquip(member, entry))
-      .sort((a, b) => (kind === "weapon" ? (b.atk || 0) - (a.atk || 0) : (b.def || 0) - (a.def || 0)))[0];
+      .filter((entry): entry is ShopEntry => Boolean(entry) && entry.kind === kind && this.canEquip(member, entry));
   }
 
   private canEquip(member: PartyMember, entry: ShopEntry) {
