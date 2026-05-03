@@ -57,6 +57,7 @@ type Npc = {
   shop?: boolean;
   shopType?: "item" | "weapon" | "armor";
   join?: string;
+  flag?: string;
 };
 
 type Chest = {
@@ -94,6 +95,7 @@ type BattleState = {
   enemyFlashUntil: number;
   partyFlashUntil: number[];
   shakeUntil: number;
+  defending: boolean[];
 };
 
 type BattleEffect = {
@@ -134,6 +136,7 @@ type SaveData = {
   xp: number;
   ending: boolean;
   chests: Record<string, boolean[]>;
+  flags?: Record<string, boolean>;
   savedAt?: string;
 };
 
@@ -283,8 +286,8 @@ const colors = {
 };
 
 const partyBase: PartyMember[] = [
-  { name: "yos", job: "勇者", lv: 1, maxHp: 50, hp: 50, maxMp: 14, mp: 14, atk: 12, def: 6, spd: 7, magic: "ホイミ", weapon: "stick", armor: "cloth" },
-  { name: "もじさん", job: "戦士", lv: 1, maxHp: 68, hp: 68, maxMp: 0, mp: 0, atk: 18, def: 8, spd: 4, weapon: "stick", armor: "cloth" },
+  { name: "yos", job: "ゲーマス", lv: 1, maxHp: 50, hp: 50, maxMp: 14, mp: 14, atk: 12, def: 6, spd: 7, magic: "ホイミ", weapon: "stick", armor: "cloth" },
+  { name: "もじさん", job: "百姓貴族", lv: 1, maxHp: 68, hp: 68, maxMp: 8, mp: 8, atk: 18, def: 8, spd: 4, magic: "オニオンソード", weapon: "onionSword", armor: "cloth" },
   { name: "ヤス", job: "賢者", lv: 1, maxHp: 46, hp: 46, maxMp: 28, mp: 28, atk: 8, def: 5, spd: 5, magic: "メラヒゲ", weapon: "stick", armor: "cloth" },
   { name: "貧", job: "盗賊", lv: 1, maxHp: 42, hp: 42, maxMp: 6, mp: 6, atk: 11, def: 4, spd: 11, steal: true, weapon: "stick", armor: "cloth" },
 ];
@@ -293,6 +296,7 @@ const catalog: Record<string, ShopEntry> = {
   herb: { id: "herb", name: "やくそう", kind: "item", price: 8 },
   water: { id: "water", name: "まほうの水", kind: "item", price: 18 },
   stick: { id: "stick", name: "木の棒", kind: "weapon", price: 0, atk: 1 },
+  onionSword: { id: "onionSword", name: "オニオンソード", kind: "weapon", price: 0, atk: 4, users: ["もじさん"] },
   copperSword: { id: "copperSword", name: "銅の剣", kind: "weapon", price: 45, atk: 5, users: ["yos", "もじさん", "貧"] },
   sageStaff: { id: "sageStaff", name: "賢者の杖", kind: "weapon", price: 52, atk: 3, users: ["yos", "ヤス"] },
   ironAxe: { id: "ironAxe", name: "鉄の斧", kind: "weapon", price: 78, atk: 8, users: ["もじさん"] },
@@ -343,7 +347,7 @@ function dungeonMap(name: string, next: string | null, prev: string, encounter: 
 
 const maps: Record<string, GameMap> = {
   village: {
-    name: "ヒゲ村",
+    name: "チバの村",
     encounter: 0,
     tiles: [
       "GGGGGGGGGGGG",
@@ -361,53 +365,52 @@ const maps: Record<string, GameMap> = {
       "GGGGGPPPGGGG",
       "GGGGGPPPGGGG",
     ],
-    exits: [{ x: 5, y: 13, to: "forest", tx: 5, ty: 1, text: "森へ向かった。" }],
+    exits: [{ x: 5, y: 13, to: "forest", tx: 5, ty: 1, text: "電車に乗ってヒョーゴの村へ向かった。" }],
     npcs: [
-      { x: 5, y: 3, name: "長老", lines: ["長老: よく来た、yos。森の奥のダンジョンに、魔王オニオンJKが住みついた。", "長老: あやつは妙に仕事が早い。村の困りごとまで先回りして増やしておる。", "長老: 森にいる3人を仲間にして、3階の最深部を目指しておくれ。"] },
-      { x: 2, y: 5, name: "宿屋", lines: ["宿屋: ひと晩休んでいくかい？", "宿屋: ふとんは薄いが、ヒゲ村の朝日はよく効くよ。", "HPとMPを全回復した。"], inn: true },
-      { x: 1, y: 4, name: "武器屋", lines: ["武器屋: 森へ行くなら、木の棒だけでは心細いぞ。"], shopType: "weapon" },
-      { x: 2, y: 4, name: "防具屋", lines: ["防具屋: 生きて帰る者ほど、よい防具を選ぶものだ。"], shopType: "armor" },
+      { x: 5, y: 3, name: "yos", lines: ["yos: 60歳でシステムエンジニアをリタイヤした。", "yos: 第二の人生か……まずは10年会っていない旧友を探してみよう。", "yos: 一番頼りになるのは、やっぱりもじさんだ。"] },
+      { x: 2, y: 5, name: "宿屋", lines: ["宿屋: ひと晩休んでいくかい？", "宿屋: 第二の人生にも休息は必要だよ。", "HPとMPを全回復した。"], inn: true },
+      { x: 1, y: 4, name: "武器屋", lines: ["武器屋: 旧友探しでも備えは大事だ。山へ行くならなおさらな。"], shopType: "weapon" },
+      { x: 2, y: 4, name: "防具屋", lines: ["防具屋: 年季の入った旅ほど、よい防具を選ぶものだ。"], shopType: "armor" },
       { x: 9, y: 5, name: "道具屋", lines: ["道具屋: やくそうとまほうの水を扱っているよ。"], shop: true, shopType: "item" },
       { x: 9, y: 1, name: "教会", lines: ["教会: 旅の記録を祈りに刻みましょう。", "教会: Bメニューから3スロットに記録できるぞ。"] },
-      { x: 7, y: 8, name: "立て札", lines: ["南: ヒゲ森", "森で仲間を集めたら、さらに南のダンジョンへ。"] },
-      { x: 7, y: 3, name: "村人", lines: ["村人: オニオンJKが来てから、会議だけが増えたんだ。", "村人: 早く平和な昼寝を取り戻してくれ。"] },
+      { x: 7, y: 8, name: "駅の案内", lines: ["南: ヒョーゴ方面の電車", "もじさんの手がかりを聞いてから向かおう。"] },
+      { x: 7, y: 3, name: "元同僚", lines: ["元同僚: もじさん？ ヨツビシで一緒だったよ。", "元同僚: 退職後はヒョーゴの村で農家をやっていると聞いたな。", "元同僚: 南の駅から電車で向かえるはずだ。"], flag: "heardMojisanLead" },
     ],
     chests: [],
   },
   forest: {
-    name: "ヒゲ森",
-    encounter: 0.1,
+    name: "ヒョーゴの村",
+    encounter: 0,
     tiles: [
-      "TTTTTTTTTTTT",
-      "TTGGGPGGGGTT",
-      "TTGFGPGGFGTT",
-      "TGGGGPPGGGGT",
-      "TGGTPPGTGTTT",
-      "TGGGGPPGGGGT",
-      "TTTGPPPPGTTT",
-      "TGGGGPPGGGGT",
-      "TGTTGPGTTGGT",
-      "TGGGGPPGGGGT",
-      "TTGGGPPGGGTT",
-      "TTTTGPPGTTTT",
-      "TTTTGPPGTTTT",
-      "TTTTTTTTTTTT",
+      "GGGGGGGGGGGG",
+      "GGGHHGGGGHHG",
+      "GGGHHGGGGHHG",
+      "GGGGPPPPGGGG",
+      "GSSGPPPPPIIG",
+      "GSSGPPPPPIIG",
+      "GGGGGPPPGGGG",
+      "GGFGGPPPGFGG",
+      "GGFGGPPPPGGG",
+      "GGGGGPPPGGGG",
+      "GGGGGPPPGGGG",
+      "GGGGGPPPGGGG",
+      "GGGGGPPPGGGG",
+      "GGGGGPPPGGGG",
     ],
     exits: [
-      { x: 5, y: 0, to: "village", tx: 5, ty: 12, text: "ヒゲ村へ戻った。" },
-      { x: 5, y: 12, to: "dungeon1", tx: 5, ty: 1, text: "ダンジョン1Fへ入った。" },
+      { x: 5, y: 0, to: "village", tx: 5, ty: 12, text: "電車でチバの村へ戻った。" },
+      { x: 5, y: 12, to: "dungeon1", tx: 5, ty: 1, text: "もじさんを探して山道へ入った。" },
     ],
     npcs: [
-      { x: 3, y: 3, name: "もじさん", lines: ["もじさん: おれは もじさん。腕力なら任せろ。", "もじさん: 魔王退治か。ちょうど筋肉が暇していた。", "もじさん: 前に立つ。後ろのことは任せたぞ。"], join: "もじさん" },
-      { x: 8, y: 5, name: "ヤス", lines: ["ヤス: ぼくはヤス。回復も攻撃魔法も少し使える。", "ヤス: 森の魔力がざわついている。オニオンJKは近い。", "ヤス: 無理はしない。でも勝つための無茶はする。"], join: "ヤス" },
-      { x: 3, y: 9, name: "貧", lines: ["貧: 貧だ。足の速さと盗みならまあまあだよ。", "貧: 顔色は悪いけど、手先は生きてる。", "貧: 魔王の財布も、隙があれば軽くしてやる。"], join: "貧" },
-      { x: 7, y: 10, name: "立て札", lines: ["南: 魔王のダンジョン", "北へ戻ればヒゲ村。宿屋で休める。"] },
+      { x: 3, y: 3, name: "農家", lines: ["農家: もじさんなら畑を充実させる新しい野菜を探しに山へ行ったよ。", "農家: でも、まだ帰ってこないんだ。山頂まで見に行けるかい？"], flag: "heardMojisanMountain" },
+      { x: 8, y: 5, name: "村人", lines: ["村人: もじさんは百姓貴族を名乗っているよ。", "村人: 野菜への気合いだけは誰にも負けない人だ。"] },
+      { x: 7, y: 10, name: "山の案内", lines: ["南: 山道", "装備を整え、少し腕をならしてから山頂へ。"] },
     ],
     chests: [{ x: 8, y: 10, item: "やくそう", opened: false }],
   },
-  dungeon1: dungeonMap("ダンジョン1F", "dungeon2", "forest", 0.16),
-  dungeon2: dungeonMap("ダンジョン2F", "dungeon3", "dungeon1", 0.18),
-  dungeon3: { ...dungeonMap("ダンジョン3F", null, "dungeon2", 0.2), boss: { x: 5, y: 9 } },
+  dungeon1: dungeonMap("山道 ふもと", "dungeon2", "forest", 0.16),
+  dungeon2: dungeonMap("山道 中腹", "dungeon3", "dungeon1", 0.18),
+  dungeon3: { ...dungeonMap("山頂", null, "dungeon2", 0.2), boss: { x: 5, y: 9 } },
 };
 
 const enemyTemplates = {
@@ -428,6 +431,7 @@ class HigeQuestScene extends Phaser.Scene {
   private player = { x: 5, y: 8, dir: "down" as Direction };
   private party: PartyMember[] = [copyMember(partyBase[0])];
   private joined: Record<string, boolean> = { yos: true };
+  private flags: Record<string, boolean> = {};
   private items: Record<string, number> = { やくそう: 3, まほうの水: 1 };
   private inventory: Record<string, number> = { stick: 1, cloth: 1 };
   private gold = 60;
@@ -583,8 +587,12 @@ class HigeQuestScene extends Phaser.Scene {
     const map = maps[this.mapId];
     const exit = map.exits.find((item) => item.x === nx && item.y === ny);
     if (exit) {
-      if (exit.to === "dungeon1" && this.party.length < 4) {
-        this.message = ["森にいる3人を仲間にしてから進もう。"];
+      if (exit.to === "forest" && !this.flags.heardMojisanLead) {
+        this.message = ["まずはチバの村で、もじさんの手がかりを聞こう。"];
+        return;
+      }
+      if (exit.to === "dungeon1" && !this.flags.heardMojisanMountain) {
+        this.message = ["村で、もじさんがどこへ行ったのか聞いてみよう。"];
         return;
       }
       this.mapId = exit.to;
@@ -641,6 +649,7 @@ class HigeQuestScene extends Phaser.Scene {
     const npc = this.npcAt(facing.x, facing.y);
     if (npc) {
       this.message = [...npc.lines];
+      if (npc.flag) this.flags[npc.flag] = true;
       if (npc.inn) this.fullHeal();
       if (npc.shopType) this.openShop(npc.shopType);
       if (npc.join && !this.joined[npc.join]) {
@@ -752,23 +761,23 @@ class HigeQuestScene extends Phaser.Scene {
       this.mode = "field";
       this.battle = null;
       if (this.ending) {
-        this.mapId = "village";
+        this.mapId = "forest";
         this.player = { x: 5, y: 8, dir: "down" };
         this.moveAnim = null;
+        this.flags.chapter1Complete = true;
         this.message = [
-          "オニオンJK: まさか、会議なしでここまで来るとは……。",
-          "もじさん: 筋肉に議事録はいらん。",
-          "ヤス: 森の魔力も静かになった。",
-          "貧: 財布は空だった。そこだけは魔王らしくないね。",
-          "ヒゲ村に平和が戻った。長老は小さく笑い、村人たちは昼寝を再開した。",
-          "HIGEBALL QUEST 完",
+          "オニオンJK: まさか、玉ねぎの力をここまで引き出すとは……。",
+          "もじさん: 畑を充実させる野菜を探していたら、妙なやつに絡まれてな。",
+          "yos: 10年ぶりでも、頼りになるところは変わらないな。",
+          "もじさん: よし、正式に仲間になる。次の旧友探しも手伝おう。",
+          "第1章 もじさん加入 完",
         ];
       }
       return;
     }
     const actor = this.currentActor();
     if (!actor) return;
-    const command = ["たたかう", "まほう", "どうぐ", "ぬすむ"][this.battle.command];
+    const command = this.battleCommands(actor)[this.battle.command];
     if (command === "たたかう") {
       const damage = this.damage({ atk: this.totalAtk(actor) }, this.battle.enemy);
       this.battle.enemy.hp = Math.max(0, this.battle.enemy.hp - damage);
@@ -777,9 +786,9 @@ class HigeQuestScene extends Phaser.Scene {
       this.addBattleEffect("slash", BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 4);
       this.floatText(BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 34, `-${damage}`, "#ffdf7a");
       this.pushBattle(`${actor.name}の攻撃。${damage}ダメージ。`);
-    } else if (command === "まほう") {
-      this.castMagic(actor);
-    } else if (command === "どうぐ") {
+    } else if (command === "じゅもん" || command === "ベジタブル") {
+      this.useSkill(actor, command);
+    } else if (command === "もちもの") {
       if ((this.items["やくそう"] || 0) > 0 && actor.hp < actor.maxHp) {
         this.items["やくそう"] -= 1;
         actor.hp = Math.min(actor.maxHp, actor.hp + 28);
@@ -797,20 +806,16 @@ class HigeQuestScene extends Phaser.Scene {
       } else {
         this.pushBattle("今使える道具がない。");
       }
-    } else if (command === "ぬすむ") {
-      if (!actor.steal) this.pushBattle(`${actor.name}はうまく盗めない。`);
-      else if (Math.random() < 0.55) {
-        const gold = 8 + Math.floor(Math.random() * 12);
-        this.gold += gold;
-        this.pushBattle(`${actor.name}は${gold}Gを盗んだ。`);
-      } else this.pushBattle(`${actor.name}は何も盗めなかった。`);
+    } else if (command === "ぼうぎょ") {
+      this.battle.defending[this.party.indexOf(actor)] = true;
+      this.pushBattle(`${actor.name}は身を守っている。`);
     }
     this.nextActor();
   }
 
-  private castMagic(actor: PartyMember) {
+  private useSkill(actor: PartyMember, command: string) {
     if (!this.battle) return;
-    if (actor.name === "yos" && actor.mp >= 4) {
+    if (command === "じゅもん" && actor.name === "yos" && actor.mp >= 4) {
       actor.mp -= 4;
       const target = this.party.reduce((low, member) => (member.hp / member.maxHp < low.hp / low.maxHp ? member : low), this.party[0]);
       const heal = 18 + actor.lv * 4;
@@ -821,18 +826,18 @@ class HigeQuestScene extends Phaser.Scene {
       this.pushBattle(`${actor.name}はホイミを唱えた。`);
       return;
     }
-    if (actor.name === "ヤス" && actor.mp >= 5) {
-      actor.mp -= 5;
-      const damage = 24 + Math.floor(Math.random() * 9);
+    if (command === "ベジタブル" && actor.name === "もじさん" && actor.mp >= 3) {
+      actor.mp -= 3;
+      const damage = Math.max(1, Math.floor(this.damage({ atk: this.totalAtk(actor) }, this.battle.enemy) * 1.5));
       this.battle.enemy.hp = Math.max(0, this.battle.enemy.hp - damage);
       this.flashEnemy();
-      this.audio.playSe("magic");
-      this.addBattleEffect("magic", BATTLE_ENEMY_X, BATTLE_ENEMY_Y);
-      this.floatText(BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 34, `-${damage}`, "#ff9fdb");
-      this.pushBattle(`${actor.name}のメラヒゲ！`);
+      this.audio.playSe("attack");
+      this.addBattleEffect("slash", BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 4);
+      this.floatText(BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 34, `-${damage}`, "#ffdf7a");
+      this.pushBattle(`${actor.name}のオニオンソード！`);
       return;
     }
-    this.pushBattle("MPが足りない、または呪文を使えない。");
+    this.pushBattle("MPが足りない、またはスキルを使えない。");
   }
 
   private nextActor() {
@@ -855,15 +860,18 @@ class HigeQuestScene extends Phaser.Scene {
     const targets = this.party.filter((member) => member.hp > 0);
     if (!targets.length) return;
     const target = Phaser.Utils.Array.GetRandom(targets);
-    const damage = this.damage(this.battle.enemy, { def: this.totalDef(target) });
+    const targetIndex = this.party.indexOf(target);
+    const guarded = this.battle.defending[targetIndex];
+    const damage = guarded ? Math.max(1, Math.floor(this.damage(this.battle.enemy, { def: this.totalDef(target) }) / 2)) : this.damage(this.battle.enemy, { def: this.totalDef(target) });
     target.hp = Math.max(0, target.hp - damage);
-    this.flashParty(this.party.indexOf(target));
+    this.battle.defending[targetIndex] = false;
+    this.flashParty(targetIndex);
     this.audio.playSe("attack");
-    this.addBattleEffect("hit", PARTY_BATTLE_X, PARTY_BATTLE_Y + this.party.indexOf(target) * PARTY_BATTLE_GAP);
-    this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + this.party.indexOf(target) * PARTY_BATTLE_GAP, `-${damage}`, "#ffdf7a");
+    this.addBattleEffect("hit", PARTY_BATTLE_X, PARTY_BATTLE_Y + targetIndex * PARTY_BATTLE_GAP);
+    this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + targetIndex * PARTY_BATTLE_GAP, `-${damage}`, "#ffdf7a");
     this.pushBattle(`${this.battle.enemy.name}の攻撃。${target.name}に${damage}ダメージ。`);
     if (!this.party.some((member) => member.hp > 0)) {
-      this.pushBattle("全滅した。ヒゲ村で目を覚ました。");
+      this.pushBattle("全滅した。チバの村で目を覚ました。");
       this.time.delayedCall(900, () => {
         this.mode = "field";
         this.battle = null;
@@ -900,6 +908,7 @@ class HigeQuestScene extends Phaser.Scene {
       enemyFlashUntil: 0,
       partyFlashUntil: [],
       shakeUntil: 0,
+      defending: [],
     };
     this.battleEffects = [];
     this.audio.playSe(kind === "boss" ? "magic" : "attack");
@@ -928,6 +937,7 @@ class HigeQuestScene extends Phaser.Scene {
       player: this.player,
       party: this.party,
       joined: this.joined,
+      flags: this.flags,
       items: this.items,
       inventory: this.inventory,
       gold: this.gold,
@@ -952,6 +962,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.player = data.player;
     this.party = data.party;
     this.joined = data.joined || { yos: true };
+    this.flags = data.flags || {};
     this.items = data.items || { やくそう: 3, まほうの水: 1 };
     this.inventory = data.inventory || { stick: this.party.length, cloth: this.party.length };
     this.gold = data.gold ?? 60;
@@ -980,6 +991,7 @@ class HigeQuestScene extends Phaser.Scene {
       player: data.player,
       party: data.party,
       joined: data.joined || { yos: true },
+      flags: data.flags || {},
       items: data.items || { やくそう: 3, まほうの水: 1 },
       inventory: data.inventory || { stick: data.party.length, cloth: data.party.length },
       gold: data.gold ?? 60,
@@ -1002,7 +1014,9 @@ class HigeQuestScene extends Phaser.Scene {
   private progressLabel(data: SaveData) {
     if (data.ending) return "クリア";
     if (data.mapId.startsWith("dungeon")) return "攻略中";
-    if (Object.keys(data.joined).length >= 4) return "仲間集合";
+    if (data.joined["もじさん"]) return "もじさん";
+    if (data.flags?.heardMojisanMountain) return "山へ";
+    if (data.flags?.heardMojisanLead) return "手がかり";
     return "旅立ち";
   }
 
@@ -1021,6 +1035,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.player = { x: 5, y: 8, dir: "down" };
     this.party = [copyMember(partyBase[0])];
     this.joined = { yos: true };
+    this.flags = {};
     this.items = { やくそう: 3, まほうの水: 1 };
     this.inventory = { stick: 1, cloth: 1 };
     this.gold = 60;
@@ -1031,7 +1046,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.ending = false;
     this.pendingBossBattle = false;
     this.resetChestState();
-    this.message = ["ヒゲ村に朝が来た。長老に話を聞こう。"];
+    this.message = ["60歳でリタイヤしたyosの第二の人生が始まる。旧友もじさんの手がかりを探そう。"];
   }
 
   private redraw() {
@@ -1383,7 +1398,8 @@ class HigeQuestScene extends Phaser.Scene {
     }
     const actor = this.currentActor();
     this.ffWindow(132, PANEL_Y + 64, 220, 100);
-    ["たたかう", "まほう", "どうぐ", "ぬすむ"].forEach((command, i) => {
+    const commands = actor ? this.battleCommands(actor) : [];
+    commands.forEach((command, i) => {
       if (i === this.battle?.command) {
         this.graphics.fillStyle(0xffffff, 0.15);
         this.graphics.fillRect(18, PANEL_Y + 80 + i * 20, 90, 17);
@@ -1403,6 +1419,10 @@ class HigeQuestScene extends Phaser.Scene {
       this.text(198, rowY, `HP ${member.hp}/${member.maxHp}`, 12, color);
       this.text(288, rowY, `MP ${member.mp}`, 12, color);
     });
+  }
+
+  private battleCommands(actor: PartyMember) {
+    return ["たたかう", actor.name === "もじさん" ? "ベジタブル" : "じゅもん", "ぼうぎょ", "もちもの"];
   }
 
   private drawEnemyStatus() {
@@ -1801,12 +1821,18 @@ class HigeQuestScene extends Phaser.Scene {
 
   private startBossIntro() {
     if (this.ending) return;
+    if (!this.joined["もじさん"]) {
+      const member = partyBase.find((item) => item.name === "もじさん");
+      if (member) this.party.push(this.memberAtCurrentLevel(member));
+      this.joined["もじさん"] = true;
+      this.inventory.onionSword = (this.inventory.onionSword || 0) + 1;
+    }
     this.pendingBossBattle = true;
     this.message = [
-      "オニオンJK: よく来たな、ヒゲ村の一行。",
-      "オニオンJK: 私は有能だ。村の問題をすべて管理し、すべて会議にした。",
-      "yos: それは平和じゃない。ただの予定表だ。",
-      "オニオンJK: ならば見せてもらおう。予定外の力というやつを。",
+      "もじさん: yos、久しぶりだな。山頂で会うとは思わなかったぞ。",
+      "オニオンJK: 新しい野菜を探す者よ、玉ねぎの審査を受けてもらう。",
+      "yos: 何の話か分からないが、まずは友を助ける。",
+      "もじさん: いくぞ。オニオンソードで道を開く。",
     ];
   }
 
