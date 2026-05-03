@@ -35,6 +35,7 @@ type PartyMember = {
   stamina: number;
   magicPower: number;
   evade: number;
+  skills: string[];
   magic?: string;
   steal?: boolean;
   weapon?: string;
@@ -54,6 +55,14 @@ type Enemy = {
   behavior?: "slime" | "bat" | "knight" | "mage" | "boss";
   stealGold?: number;
   stealItem?: string;
+};
+
+type EnemyAction = {
+  atk: number;
+  text: string;
+  heal?: number;
+  hits?: number;
+  mpDrain?: number;
 };
 
 type Npc = {
@@ -99,6 +108,8 @@ type BattleState = {
   actor: number;
   command: number;
   submenu: BattleSubmenu | null;
+  cueText: string | null;
+  cueUntil: number;
   log: string[];
   won: boolean;
   wonBoss: boolean;
@@ -311,10 +322,10 @@ const colors = {
 };
 
 const partyBase: PartyMember[] = [
-  { name: "yos", job: "ゲーマス", lv: 1, xp: 0, maxHp: 50, hp: 50, maxMp: 14, mp: 14, atk: 12, def: 6, spd: 7, strength: 12, stamina: 8, magicPower: 13, evade: 8, magic: "ホイミ", weapon: "stick", armor: "cloth" },
-  { name: "もじさん", job: "百姓貴族", lv: 5, xp: 140, maxHp: 116, hp: 116, maxMp: 24, mp: 24, atk: 30, def: 16, spd: 4, strength: 30, stamina: 20, magicPower: 8, evade: 5, magic: "オニオンソード", weapon: "onionSword", armor: "cloth" },
-  { name: "ヤス", job: "賢者", lv: 1, xp: 0, maxHp: 46, hp: 46, maxMp: 28, mp: 28, atk: 8, def: 5, spd: 5, strength: 8, stamina: 7, magicPower: 18, evade: 7, magic: "メラヒゲ", weapon: "stick", armor: "cloth" },
-  { name: "貧", job: "盗賊", lv: 1, xp: 0, maxHp: 42, hp: 42, maxMp: 6, mp: 6, atk: 11, def: 4, spd: 11, strength: 11, stamina: 6, magicPower: 6, evade: 14, steal: true, weapon: "stick", armor: "cloth" },
+  { name: "yos", job: "ゲーマス", lv: 1, xp: 0, maxHp: 50, hp: 50, maxMp: 14, mp: 14, atk: 12, def: 6, spd: 7, strength: 12, stamina: 8, magicPower: 13, evade: 8, skills: ["ホイミ"], magic: "ホイミ", weapon: "stick", armor: "cloth" },
+  { name: "もじさん", job: "百姓貴族", lv: 5, xp: 140, maxHp: 116, hp: 116, maxMp: 24, mp: 24, atk: 30, def: 16, spd: 4, strength: 30, stamina: 20, magicPower: 8, evade: 5, skills: ["オニオンソード", "オニオンラッシュ"], magic: "オニオンソード", weapon: "onionSword", armor: "cloth" },
+  { name: "ヤス", job: "賢者", lv: 1, xp: 0, maxHp: 46, hp: 46, maxMp: 28, mp: 28, atk: 8, def: 5, spd: 5, strength: 8, stamina: 7, magicPower: 18, evade: 7, skills: ["メラヒゲ"], magic: "メラヒゲ", weapon: "stick", armor: "cloth" },
+  { name: "貧", job: "盗賊", lv: 1, xp: 0, maxHp: 42, hp: 42, maxMp: 6, mp: 6, atk: 11, def: 4, spd: 11, strength: 11, stamina: 6, magicPower: 6, evade: 14, skills: [], steal: true, weapon: "stick", armor: "cloth" },
 ];
 
 const catalog: Record<string, ShopEntry> = {
@@ -338,7 +349,7 @@ const shopStock: Record<"item" | "weapon" | "armor", string[]> = {
 };
 
 function copyMember(member: PartyMember): PartyMember {
-  return { ...member };
+  return { ...member, skills: [...member.skills] };
 }
 
 function normalizeMember(member: Partial<PartyMember>): PartyMember {
@@ -356,6 +367,7 @@ function normalizeMember(member: Partial<PartyMember>): PartyMember {
     stamina: member.stamina ?? member.def ?? base.stamina,
     magicPower: member.magicPower ?? base.magicPower,
     evade: member.evade ?? Math.max(base.evade, member.spd ?? base.spd),
+    skills: [...(member.skills || base.skills || [])],
   };
 }
 
@@ -493,6 +505,28 @@ const enemyTemplates: Record<"forest" | "dungeon" | "boss", Omit<Enemy, "maxHp">
   ],
   boss: [{ name: "オニオンJK", hp: 480, atk: 44, def: 15, xp: 240, gold: 260, color: 0x7f5a52, boss: true, behavior: "boss", stealGold: 40, stealItem: "まほうの水" }],
 };
+
+type SkillDef = {
+  name: string;
+  family: "じゅもん" | "ベジタブル";
+  mp: number;
+  description: string;
+  minLv: number;
+  target: "heal" | "attack" | "allheal" | "trick";
+  power: number;
+};
+
+const skillCatalog: SkillDef[] = [
+  { name: "ホイミ", family: "じゅもん", mp: 4, description: "HPを小回復する", minLv: 1, target: "heal", power: 22 },
+  { name: "ベホイミ", family: "じゅもん", mp: 8, description: "HPを大きく回復する", minLv: 3, target: "heal", power: 44 },
+  { name: "メガホイミ", family: "じゅもん", mp: 12, description: "味方全体を回復する", minLv: 5, target: "allheal", power: 18 },
+  { name: "レトロホイミ", family: "じゅもん", mp: 10, description: "懐かしい気配で大きく回復する", minLv: 2, target: "heal", power: 38 },
+  { name: "メラヒゲ", family: "じゅもん", mp: 5, description: "炎のようなヒゲで焼きつける", minLv: 1, target: "attack", power: 24 },
+  { name: "オニオンソード", family: "ベジタブル", mp: 3, description: "1.5倍の切り込み", minLv: 1, target: "attack", power: 15 },
+  { name: "オニオンラッシュ", family: "ベジタブル", mp: 6, description: "2連撃で大ダメージ", minLv: 4, target: "attack", power: 28 },
+  { name: "オニオンブラスト", family: "ベジタブル", mp: 10, description: "玉ねぎの気合で大打撃", minLv: 6, target: "trick", power: 40 },
+  { name: "タネばくだん", family: "ベジタブル", mp: 8, description: "畑の力を爆ぜさせる", minLv: 4, target: "attack", power: 42 },
+];
 
 class HigeQuestScene extends Phaser.Scene {
   private mode: SceneMode = "title";
@@ -642,7 +676,7 @@ class HigeQuestScene extends Phaser.Scene {
       if (this.battle.waiting || this.battle.won) return;
       if (this.battle.submenu) {
         const actor = this.currentActor();
-        const skills = actor ? this.skillsFor(actor) : [];
+        const skills = actor ? this.skillsFor(actor, this.battle.submenu.kind) : [];
         if (!skills.length) return;
         const delta = dir === "up" || dir === "left" ? -1 : 1;
         this.battle.submenu.cursor = (this.battle.submenu.cursor + delta + skills.length) % skills.length;
@@ -731,7 +765,7 @@ class HigeQuestScene extends Phaser.Scene {
     const facing = this.facingTile();
     const npc = this.npcAt(facing.x, facing.y);
     if (npc) {
-      this.message = [...npc.lines];
+      this.message = this.resolveNpcLines(npc);
       if (npc.flag) this.flags[npc.flag] = true;
       if (npc.inn) this.fullHeal();
       if (npc.shopType) this.openShop(npc.shopType);
@@ -873,27 +907,35 @@ class HigeQuestScene extends Phaser.Scene {
     const actor = this.currentActor();
     if (!actor) return;
     if (this.battle.submenu) {
-      const skill = this.skillsFor(actor)[this.battle.submenu.cursor];
+      const skill = this.skillsFor(actor, this.battle.submenu.kind)[this.battle.submenu.cursor];
       if (!skill) return;
       if (actor.mp < skill.mp) {
         this.pushBattle(`${skill.name}を使うにはMPが足りない。`);
         this.audio.playSe("cancel");
         return;
       }
+      this.announceBattleCue(`${actor.name}の${skill.name}`);
       this.battle.submenu = null;
       this.battle.waiting = true;
       this.battle.actingIndex = this.party.indexOf(actor);
       this.battle.actingUntil = this.time.now + 260;
-      this.useSkill(actor, skill.name);
+      this.useSkill(actor, skill);
       this.time.delayedCall(420, () => this.nextActor());
       return;
     }
     const command = this.battleCommands(actor)[this.battle.command];
     if (command === "じゅもん" || command === "ベジタブル") {
+      const skills = this.skillsFor(actor, command);
+      if (!skills.length) {
+        this.pushBattle(`${actor.name}はまだ${command}を覚えていない。`);
+        this.audio.playSe("cancel");
+        return;
+      }
       this.battle.submenu = { kind: command, cursor: 0 };
       this.audio.playSe("move");
       return;
     }
+    this.announceBattleCue(`${actor.name}の番`);
     this.battle.waiting = true;
     this.battle.actingIndex = this.party.indexOf(actor);
     this.battle.actingUntil = this.time.now + 260;
@@ -930,31 +972,37 @@ class HigeQuestScene extends Phaser.Scene {
     this.time.delayedCall(420, () => this.nextActor());
   }
 
-  private useSkill(actor: PartyMember, skillName: string) {
+  private useSkill(actor: PartyMember, skill: SkillDef) {
     if (!this.battle) return;
-    if (skillName === "ホイミ" && actor.name === "yos" && actor.mp >= 4) {
-      actor.mp -= 4;
-      const target = this.party.reduce((low, member) => (member.hp / member.maxHp < low.hp / low.maxHp ? member : low), this.party[0]);
-      const heal = 18 + actor.lv * 4;
-      target.hp = Math.min(target.maxHp, target.hp + heal);
-      this.audio.playSe("heal");
-      this.addBattleEffect("heal", PARTY_BATTLE_X, PARTY_BATTLE_Y + this.party.indexOf(target) * PARTY_BATTLE_GAP);
-      this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + this.party.indexOf(target) * PARTY_BATTLE_GAP, `+${heal}`, "#9df09a");
-      this.pushBattle(`${actor.name}はホイミを唱えた。`);
+    actor.mp -= skill.mp;
+    if (skill.target === "heal" || skill.target === "allheal") {
+      const healTargets = skill.target === "allheal"
+        ? this.party.filter((member) => member.hp > 0)
+        : [this.party.reduce((low, member) => (member.hp / member.maxHp < low.hp / low.maxHp ? member : low), this.party[0])];
+      healTargets.forEach((target, index) => {
+        const heal = skill.power + Math.floor(actor.magicPower * 1.3) + (skill.target === "allheal" ? 4 : 0);
+        target.hp = Math.min(target.maxHp, target.hp + heal);
+        this.addBattleEffect("heal", PARTY_BATTLE_X, PARTY_BATTLE_Y + this.party.indexOf(target) * PARTY_BATTLE_GAP);
+        this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + this.party.indexOf(target) * PARTY_BATTLE_GAP, `+${heal}`, "#9df09a");
+        if (index === 0) this.audio.playSe("heal");
+      });
+      this.pushBattle(`${actor.name}は${skill.name}を唱えた。`);
       return;
     }
-    if (skillName === "オニオンソード" && actor.name === "もじさん" && actor.mp >= 3) {
-      actor.mp -= 3;
-      const damage = Math.max(1, Math.floor(this.damage({ atk: this.totalAtk(actor) }, this.battle.enemy) * 1.5));
+    const hits = skill.name === "オニオンラッシュ" ? 2 : skill.name === "オニオンブラスト" ? 3 : 1;
+    const mult = skill.name === "オニオンソード" ? 1.5 : skill.name === "オニオンラッシュ" ? 0.92 : skill.name === "オニオンブラスト" ? 0.82 : 1.0;
+    const perHit = Math.max(1, Math.floor(this.damage({ atk: this.totalAtk(actor) + Math.floor(actor.strength / 2) }, this.battle.enemy) * mult) + Math.floor(skill.power / hits));
+    let totalDamage = 0;
+    for (let i = 0; i < hits; i += 1) {
+      const damage = Math.min(perHit, this.battle.enemy.hp);
       this.battle.enemy.hp = Math.max(0, this.battle.enemy.hp - damage);
-      this.flashEnemy();
-      this.audio.playSe("attack");
-      this.addBattleEffect("slash", BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 4);
-      this.floatText(BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 34, `-${damage}`, "#ffdf7a");
-      this.pushBattle(`${actor.name}のオニオンソード！`);
-      return;
+      totalDamage += damage;
+      if (i === 0) this.flashEnemy();
     }
-    this.pushBattle("MPが足りない、またはスキルを使えない。");
+    this.audio.playSe("attack");
+    this.addBattleEffect("slash", BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 4);
+    this.floatText(BATTLE_ENEMY_X, BATTLE_ENEMY_Y + 34, `-${totalDamage}`, "#ffdf7a");
+    this.pushBattle(`${actor.name}の${skill.name}！${hits > 1 ? ` ${hits}連撃。` : ""}`);
   }
 
   private nextActor() {
@@ -972,7 +1020,9 @@ class HigeQuestScene extends Phaser.Scene {
     this.battle.actor = nextIndex;
     this.battle.command = 0;
     this.battle.submenu = null;
+    this.announceBattleCue(`${this.party[nextIndex].name}の番`);
     if (nextIndex <= currentIndex) {
+      this.announceBattleCue("敵の番");
       this.enemyTurn();
       this.time.delayedCall(460, () => {
         if (!this.battle || this.battle.won) return;
@@ -1013,13 +1063,19 @@ class HigeQuestScene extends Phaser.Scene {
       this.pushBattle(`${this.battle.enemy.name}${action.text}`);
       return;
     }
-    target.hp = Math.max(0, target.hp - damage);
+    const hits = action.hits || 1;
+    let totalDamage = 0;
+    for (let i = 0; i < hits && target.hp > 0; i += 1) {
+      target.hp = Math.max(0, target.hp - damage);
+      totalDamage += damage;
+    }
+    if (action.mpDrain) target.mp = Math.max(0, target.mp - action.mpDrain);
     this.battle.defending[targetIndex] = false;
     this.flashParty(targetIndex);
     this.audio.playSe("attack");
     this.addBattleEffect("hit", PARTY_BATTLE_X, PARTY_BATTLE_Y + targetIndex * PARTY_BATTLE_GAP);
-    this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + targetIndex * PARTY_BATTLE_GAP, `-${damage}`, "#ffdf7a");
-    this.pushBattle(`${this.battle.enemy.name}${action.text}${target.name}に${damage}ダメージ。${guarded ? " 防御が効いた。" : ""}`);
+    this.floatText(PARTY_BATTLE_X, PARTY_BATTLE_Y + 28 + targetIndex * PARTY_BATTLE_GAP, `-${totalDamage}`, "#ffdf7a");
+    this.pushBattle(`${this.battle.enemy.name}${action.text}${target.name}に${totalDamage}ダメージ。${guarded ? " 防御が効いた。" : ""}${action.mpDrain ? ` ${target.name}のMPが減った。` : ""}`);
     if (!this.party.some((member) => member.hp > 0)) {
       const lostToBoss = Boolean(this.battle.enemy.boss);
       this.pushBattle(lostToBoss ? "全滅した。もじさんは山頂へ戻っていった。" : "全滅した。チバの村で目を覚ました。");
@@ -1039,14 +1095,29 @@ class HigeQuestScene extends Phaser.Scene {
     if (!this.battle) return { atk: 1, text: "の攻撃。" };
     const enemy = this.battle.enemy;
     const roll = Math.random();
-    if (enemy.behavior === "slime" && roll < 0.3) return { atk: Math.max(1, enemy.atk - 3), text: "はぷるぷる体当たり。" };
-    if (enemy.behavior === "bat" && roll < 0.35) return { atk: enemy.atk + 3, text: "は急降下した。" };
-    if (enemy.behavior === "knight" && roll < 0.35) return { atk: enemy.atk + 5, text: "は力を込めて斬りかかった。" };
-    if (enemy.behavior === "mage" && roll < 0.35) return { atk: enemy.atk + 4, text: "は薄毛の呪文を唱えた。" };
+    const hpRate = enemy.hp / enemy.maxHp;
+    if (enemy.behavior === "slime") {
+      if (hpRate < 0.45 && roll < 0.35) return { atk: enemy.atk - 2, text: "はぷるぷる回復した。", heal: 10 };
+      if (roll < 0.35) return { atk: Math.max(1, enemy.atk - 3), text: "は体当たりした。" };
+      if (roll < 0.6) return { atk: Math.max(1, enemy.atk - 1), text: "は跳ね回った。", hits: 2 };
+    }
+    if (enemy.behavior === "bat") {
+      if (roll < 0.32) return { atk: enemy.atk + 2, text: "は急降下してMPを吸った。", mpDrain: 4 };
+      if (roll < 0.6) return { atk: enemy.atk + 1, text: "は羽ばたきで翻弄した。", hits: 2 };
+    }
+    if (enemy.behavior === "knight") {
+      if (roll < 0.28) return { atk: enemy.atk + 7, text: "は力を込めて二連斬り。", hits: 2 };
+      if (roll < 0.55) return { atk: enemy.atk + 5, text: "は守りを固めてから斬りかかった。" };
+    }
+    if (enemy.behavior === "mage") {
+      if (roll < 0.3) return { atk: enemy.atk + 3, text: "は薄毛の呪文でMPを削った。", mpDrain: 5 };
+      if (roll < 0.55) return { atk: enemy.atk + 4, text: "は呪文を重ねてきた。", hits: 2 };
+    }
     if (enemy.behavior === "boss") {
-      if (roll < 0.25) return { atk: enemy.atk + 10, text: "の玉ねぎ審査。" };
-      if (roll < 0.45) return { atk: enemy.atk + 5, text: "の涙目スライス。" };
-      if (roll < 0.6 && enemy.hp < enemy.maxHp * 0.55) return { atk: enemy.atk, text: "は玉ねぎの皮をまとった。", heal: 28 };
+      if (hpRate < 0.55 && roll < 0.3) return { atk: enemy.atk, text: "は玉ねぎの皮をまとった。", heal: 28 };
+      if (roll < 0.24) return { atk: enemy.atk + 10, text: "の玉ねぎ審査。", hits: 2 };
+      if (roll < 0.48) return { atk: enemy.atk + 5, text: "の涙目スライス。" };
+      if (roll < 0.68) return { atk: enemy.atk + 4, text: "は鋭く目を細めた。", mpDrain: 3 };
     }
     return { atk: enemy.atk, text: "の攻撃。" };
   }
@@ -1062,6 +1133,7 @@ class HigeQuestScene extends Phaser.Scene {
     });
     this.pushBattle(`${enemy.xp}EXPと${enemy.gold}Gを得た。`);
     this.applyLevelUps();
+    this.maybeLearnEventSkill();
     this.battle.won = true;
     this.battle.wonBoss = Boolean(enemy.boss);
     this.battle.waiting = false;
@@ -1079,6 +1151,8 @@ class HigeQuestScene extends Phaser.Scene {
       actor: 0,
       command: 0,
       submenu: null,
+      cueText: null,
+      cueUntil: 0,
       log: [],
       won: false,
       wonBoss: false,
@@ -1092,6 +1166,7 @@ class HigeQuestScene extends Phaser.Scene {
     };
     this.battleEffects = [];
     this.pushBattle(`${template.name}が あらわれた！`);
+    this.announceBattleCue("戦闘開始");
   }
 
   private mainMenu(): MenuState {
@@ -1278,6 +1353,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.graphics.fillRect(0, 0, WIDTH, HEIGHT);
     map.tiles.forEach((row, y) => [...row].forEach((cell, x) => this.drawTile(cell, ox + x * tile, oy + y * tile, tile)));
     this.drawMapAtmosphere(map, ox, oy, tile);
+    this.drawMapTint(map, ox, oy, tile);
     if (this.mapId === "world") {
       this.drawWorldRoutes(ox, oy, tile);
       map.exits.forEach((exit) => this.drawWorldIcon(exit, ox, oy, tile));
@@ -1340,6 +1416,20 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     this.drawMountainDetails(map, ox, oy, tile);
+  }
+
+  private drawMapTint(map: GameMap, ox: number, oy: number, tile: number) {
+    const width = map.tiles[0].length * tile;
+    const height = map.tiles.length * tile;
+    const tint = this.mapId === "world"
+      ? { color: 0x9de0ff, alpha: 0.04 }
+      : this.mapId === "village"
+        ? { color: 0xffcf8d, alpha: 0.08 }
+        : this.mapId === "forest"
+          ? { color: 0x7bd18b, alpha: 0.12 }
+          : { color: 0x0c1120, alpha: this.mapId === "dungeon3" ? 0.22 : 0.16 };
+    this.graphics.fillStyle(tint.color, tint.alpha);
+    this.graphics.fillRect(ox, oy, width, height);
   }
 
   private drawWorldAtmosphere(ox: number, oy: number, tile: number) {
@@ -1770,7 +1860,12 @@ class HigeQuestScene extends Phaser.Scene {
     if (!this.battle) return;
     this.ffWindow(8, PANEL_Y + 4, 344, 62);
     const logText = this.battle.log.at(-1) || "";
-    this.wrap(logText, 31).slice(0, 3).forEach((line, i) => this.text(20, PANEL_Y + 22 + i * 15, line, 12));
+    const cueActive = this.battle.cueText && this.time.now < this.battle.cueUntil;
+    if (cueActive && this.battle.cueText) {
+      this.text(180, PANEL_Y + 18, this.battle.cueText, 12, "#ffe58a", "center");
+    } else {
+      this.wrap(logText, 31).slice(0, 3).forEach((line, i) => this.text(20, PANEL_Y + 22 + i * 15, line, 12));
+    }
     this.ffWindow(8, PANEL_Y + 70, 118, 94);
     if (this.battle.won) {
       this.ffWindow(132, PANEL_Y + 70, 220, 94);
@@ -1809,16 +1904,17 @@ class HigeQuestScene extends Phaser.Scene {
     return ["たたかう", actor.name === "もじさん" ? "ベジタブル" : "じゅもん", "ぼうぎょ", "もちもの"];
   }
 
-  private skillsFor(actor: PartyMember): BattleSkill[] {
-    if (actor.name === "もじさん") return [{ name: "オニオンソード", mp: 3, description: "1.5倍攻撃" }];
-    if (actor.name === "yos") return [{ name: "ホイミ", mp: 4, description: "HP小回復" }];
-    return [];
+  private skillsFor(actor: PartyMember, family?: "じゅもん" | "ベジタブル"): SkillDef[] {
+    return actor.skills
+      .map((name) => skillCatalog.find((skill) => skill.name === name))
+      .filter((skill): skill is SkillDef => Boolean(skill))
+      .filter((skill) => actor.lv >= skill.minLv && (!family || skill.family === family));
   }
 
   private drawSkillSubwindow(actor: PartyMember) {
     if (!this.battle?.submenu) return;
     const submenu = this.battle.submenu;
-    const skills = this.skillsFor(actor);
+    const skills = this.skillsFor(actor, submenu.kind);
     this.ffWindow(116, PANEL_Y + 76, 138, 82);
     this.text(130, PANEL_Y + 94, `${actor.name} ${submenu.kind}`, 12, "#ffe58a");
     skills.forEach((skill, i) => {
@@ -1832,6 +1928,7 @@ class HigeQuestScene extends Phaser.Scene {
     });
     const skill = skills[submenu.cursor];
     if (skill) this.text(130, PANEL_Y + 146, `MP${skill.mp} ${skill.description}`, 11, actor.mp < skill.mp ? "#ffb0a0" : "#d8c98f");
+    else this.text(130, PANEL_Y + 146, "覚えている技がない。", 11, "#d8c98f");
   }
 
   private drawEnemyStatus() {
@@ -2225,9 +2322,89 @@ class HigeQuestScene extends Phaser.Scene {
       member.magicPower += member.name === "yos" || member.name === "ヤス" ? 2 : 1;
       member.spd += member.lv % 3 === 0 ? 1 : 0;
       member.evade += member.lv % 4 === 0 ? 1 : 0;
+      const learned = this.learnSkillsForLevel(member);
+      if (learned.length && this.battle) this.pushBattle(`${member.name}は${learned.join("、")}を覚えた！`);
       leveled = true;
     }
     return leveled;
+  }
+
+  private learnSkillsForLevel(member: PartyMember) {
+    const progression: Record<string, Record<number, string>> = {
+      yos: { 3: "ベホイミ", 5: "メガホイミ" },
+      "もじさん": { 4: "オニオンラッシュ", 6: "オニオンブラスト" },
+    };
+    const learned: string[] = [];
+    const schedule = progression[member.name] || {};
+    const skillName = schedule[member.lv];
+    if (skillName && this.learnSkill(member, skillName)) learned.push(skillName);
+    return learned;
+  }
+
+  private learnEventSkill(member: PartyMember) {
+    const eventPools: Record<string, string[]> = {
+      yos: ["レトロホイミ"],
+      "もじさん": ["タネばくだん"],
+    };
+    const pool = eventPools[member.name] || [];
+    const choices = pool.filter((name) => !member.skills.includes(name));
+    const skillName = choices.length ? Phaser.Utils.Array.GetRandom(choices) : "";
+    if (!skillName) return "";
+    return this.learnSkill(member, skillName) ? skillName : "";
+  }
+
+  private learnSkill(member: PartyMember, skillName: string) {
+    const skill = skillCatalog.find((item) => item.name === skillName);
+    if (!skill) return false;
+    if (member.skills.includes(skillName)) return false;
+    if (member.lv < skill.minLv) return false;
+    member.skills.push(skillName);
+    return true;
+  }
+
+  private maybeLearnEventSkill() {
+    if (!this.battle) return;
+    const learnCandidates = this.party.filter((member) => member.hp > 0 && member.skills.length < 8);
+    if (!learnCandidates.length) return;
+    if (Math.random() > 0.33) return;
+    const member = Phaser.Utils.Array.GetRandom(learnCandidates);
+    const learned = this.learnEventSkill(member);
+    if (learned) this.pushBattle(`${member.name}は${learned}をひらめいた！`);
+  }
+
+  private resolveNpcLines(npc: Npc) {
+    const base = [...npc.lines];
+    if (npc.name === "yos") {
+      if (this.joined["もじさん"]) return ["yos: もじさんがいると、旅の段取りが一気に整う。", "yos: 次はこの先の手がかりを拾っていこう。"];
+      return base;
+    }
+    if (npc.name === "元同僚") {
+      if (!this.flags.heardMojisanLead) return base;
+      return ["元同僚: そうそう、もじさんは退職後にヒョーゴの村へ行った。", "元同僚: 山へ向かったという噂もある。急ぐなら電車だ。"];
+    }
+    if (npc.name === "農家") {
+      if (this.joined["もじさん"]) return ["農家: もじさんが戻ったなら畑も一気に賑やかになる。", "農家: 山の上で見つけた野菜、今度見せてもらいたいね。"];
+      if (this.flags.heardMojisanMountain) return ["農家: もじさんは山へ行ったまま帰ってこない。", "農家: 装備を整えたら山頂まで見に行ってくれ。"];
+      return base;
+    }
+    if (npc.name === "山の案内") {
+      if (this.joined["もじさん"]) return ["山の案内: ふたりなら山頂まで行けるはずだ。", "山の案内: 風が強い、油断は禁物だよ。"];
+      return ["山の案内: まずは村で、もじさんの話を聞いておくといい。"];
+    }
+    if (npc.name === "教会") {
+      if (this.flags.chapter1Complete) return ["教会: 旧友との再会は、旅の節目でもあります。", "教会: 新しい記録をいつでも祈りましょう。"];
+      return base;
+    }
+    if (npc.name === "宿屋" && this.joined["もじさん"]) {
+      return ["宿屋: ふたり旅かい。にぎやかでいいね。", "宿屋: しっかり休んで、また次の町へ。", "HPとMPを全回復した。"];
+    }
+    return base;
+  }
+
+  private announceBattleCue(text: string, duration = 520) {
+    if (!this.battle) return;
+    this.battle.cueText = text;
+    this.battle.cueUntil = this.time.now + duration;
   }
 
   private xpToNext(member: PartyMember) {
