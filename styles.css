@@ -1,0 +1,144 @@
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: #12151b;
+  color: #f8f3dc;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+body {
+  display: grid;
+  place-items: center;
+}
+
+.phone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(100vw, 360px);
+  height: min(100vh, 640px);
+  background: #0b0d10;
+  overflow: hidden;
+}
+
+#game-root {
+  display: block;
+  width: 100%;
+  height: calc(100% - 168px);
+  min-height: 0;
+}
+
+#game-root canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: auto;
+}
+
+.controls {
+  position: relative;
+  flex: 0 0 168px;
+  height: 168px;
+  background: #171c24;
+  border-top: 2px solid rgba(243, 209, 123, 0.42);
+  pointer-events: none;
+}
+
+button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  color: #f8f3dc;
+  background: #28303b;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28);
+  font: 700 18px/1 system-ui, sans-serif;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+button:focus {
+  outline: none;
+}
+
+button:active,
+button.is-down {
+  transform: translateY(2px);
+  background: #485d63;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.32), 0 3px 10px rgba(0, 0, 0, 0.3);
+}
+
+.dpad {
+  position: absolute;
+  left: 18px;
+  bottom: 22px;
+  display: grid;
+  grid-template-columns: 54px 54px 54px;
+  grid-template-rows: 54px 54px 54px;
+  gap: 4px;
+}
+
+.dpad button {
+  width: 54px;
+  height: 54px;
+  border-radius: 8px;
+}
+
+.dpad .up {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.dpad .left {
+  grid-column: 1;
+  grid-row: 2;
+}
+
+.dpad .right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.dpad .down {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.actions {
+  position: absolute;
+  right: 20px;
+  bottom: 32px;
+  display: flex;
+  align-items: flex-end;
+  gap: 14px;
+}
+
+.actions button {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+#btn-a {
+  width: 74px;
+  height: 74px;
+  background: #5b374a;
+}
+
+#btn-b {
+  margin-bottom: 20px;
+  background: #2e4858;
+}
