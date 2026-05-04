@@ -2028,39 +2028,29 @@ class HigeQuestScene extends Phaser.Scene {
 
   private drawHud() {
     this.panel(LAYOUT.HUD.x, LAYOUT.HUD.y, LAYOUT.HUD.w, LAYOUT.HUD.h);
-    this.text(20, 23, maps[this.mapId].name, FONT.M, "#ffe58a");
-    this.text(20, 41, `${this.gold}G  薬:${this.items["やくそう"] || 0}  水:${this.items["まほうの水"] || 0}`, FONT.S);
-    const rows = this.party.slice(0, 3);
-    const rightX0 = 152;
-    const rightW = 200;
-    const rowH = 16;
-    const hpBarW = 56;
-    const hpBarH = 4;
+    this.text(20, 20, maps[this.mapId].name, FONT.M, "#ffe58a");
+    this.text(20, 40, `${this.gold}G  薬:${this.items["やくそう"] || 0}  水:${this.items["まほうの水"] || 0}`, FONT.XS);
+    const rows = this.party.slice(0, 4);
+    const cellW = 92;
+    const colX = [156, 252];
+    const rowY = [12, 32];
+    const barW = 60;
+    const barH = 3;
     rows.forEach((member, i) => {
-      const y = 12 + i * rowH;
+      const cx = colX[i % 2];
+      const cy = rowY[Math.floor(i / 2)];
       const color = member.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary;
-      const barX = rightX0 + rightW - hpBarW - 4;
-      const nameX = rightX0 + 4;
-      const nameWidth = this.measureText(member.name, FONT.S);
-      const lvText = `Lv${member.lv}`;
-      const hpPct = `${Math.round((member.hp / Math.max(1, member.maxHp)) * 100)}%`;
-      const lvWidth = this.measureText(lvText, FONT.XS);
-      const hpWidth = this.measureText(hpPct, FONT.XS);
-      const gapAfterName = 6;
-      const gapBetween = 4;
-      const gapBeforeBar = 6;
-      const lvX = nameX + nameWidth + gapAfterName;
-      const hpX = lvX + lvWidth + gapBetween;
-      const lvFits = hpX <= barX - gapBeforeBar - hpWidth;
-      const hpOnlyFits = lvX + hpWidth <= barX - gapBeforeBar;
-      this.text(nameX, y, member.name, FONT.S, color);
-      if (lvFits) {
-        this.text(lvX, y, lvText, FONT.XS, color);
-        this.text(hpX, y, hpPct, FONT.XS, color);
-      } else if (hpOnlyFits) {
-        this.text(lvX, y, hpPct, FONT.XS, color);
+      const nameText = member.name;
+      const lvText = ` Lv${member.lv}`;
+      const nameW = this.measureText(nameText, FONT.XS);
+      const lvW = this.measureText(lvText, FONT.XS);
+      if (nameW + lvW <= cellW - 4) {
+        this.text(cx, cy, nameText, FONT.XS, color);
+        this.text(cx + nameW, cy, lvText, FONT.XS, color);
+      } else {
+        this.text(cx, cy, nameText, FONT.XS, color);
       }
-      this.drawHpBar(barX, y - 1, hpBarW, hpBarH, member.hp, member.maxHp);
+      this.drawHpBar(cx, cy + 8, barW, barH, member.hp, member.maxHp);
     });
   }
 
