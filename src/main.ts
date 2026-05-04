@@ -3058,7 +3058,7 @@ const startGame = () => {
 };
 
 function syncAppScale() {
-  const MAX_SCALE = 1.5;
+  const MAX_SCALE = 1;
   const vw = window.visualViewport?.width ?? window.innerWidth;
   const vh = window.visualViewport?.height ?? window.innerHeight;
   const scale = Math.min(vw / 360, vh / 640, MAX_SCALE);
