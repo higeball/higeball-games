@@ -688,7 +688,6 @@ class HigeQuestScene extends Phaser.Scene {
       this.moveAnim
       || this.encounterEffect
       || this.bossCinematic
-      || this.message.length
       || this.battleEffects.length
       || (battle && (
         battle.enemyFlashUntil > this.time.now
@@ -743,9 +742,9 @@ class HigeQuestScene extends Phaser.Scene {
 
   private directionInput(dir: Direction) {
     this.audio.unlock();
-    this.markDirty();
     if (this.mode === "title" && !this.menu) {
       if (dir === "up" || dir === "down") {
+        this.markDirty();
         this.titleCursor = this.titleCursor === 0 ? 1 : 0;
         this.audio.playSe("move");
       }
@@ -754,11 +753,13 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.menu) {
       if (this.menu.mode === "status") {
         if (dir === "left" || dir === "right") {
+          this.markDirty();
           this.menu.tab = ((this.menu.tab ?? 0) ^ 1) as 0 | 1;
           this.audio.playSe("move");
           return;
         }
         if (dir === "up" || dir === "down") {
+          this.markDirty();
           const delta = dir === "down" ? 1 : -1;
           this.menu.cursor = (this.menu.cursor + delta + this.menu.items.length) % this.menu.items.length;
           this.audio.playSe("move");
@@ -766,6 +767,7 @@ class HigeQuestScene extends Phaser.Scene {
         return;
       }
       if (dir === "up" || dir === "down") {
+        this.markDirty();
         const delta = dir === "down" ? 1 : -1;
         this.menu.cursor = (this.menu.cursor + delta + this.menu.items.length) % this.menu.items.length;
         this.audio.playSe("move");
@@ -781,6 +783,7 @@ class HigeQuestScene extends Phaser.Scene {
         const pageSize = 3;
         const pageCount = Math.max(1, Math.ceil(skills.length / pageSize));
         if (dir === "left" || dir === "right") {
+          this.markDirty();
           this.battle.submenu.page = (this.battle.submenu.page + (dir === "left" ? -1 : 1) + pageCount) % pageCount;
           const pageSkills = skills.slice(this.battle.submenu.page * pageSize, this.battle.submenu.page * pageSize + pageSize);
           this.battle.submenu.cursor = Math.min(this.battle.submenu.cursor, Math.max(0, pageSkills.length - 1));
@@ -789,6 +792,7 @@ class HigeQuestScene extends Phaser.Scene {
         }
         const pageSkills = skills.slice(this.battle.submenu.page * pageSize, this.battle.submenu.page * pageSize + pageSize);
         const delta = dir === "up" ? -1 : 1;
+        this.markDirty();
         this.battle.submenu.cursor = (this.battle.submenu.cursor + delta + pageSkills.length) % pageSkills.length;
         this.audio.playSe("move");
         return;
@@ -796,6 +800,7 @@ class HigeQuestScene extends Phaser.Scene {
       let next = this.battle.command;
       if (dir === "left" || dir === "right") next = next ^ 1;
       else if (dir === "up" || dir === "down") next = next ^ 2;
+      if (next !== this.battle.command) this.markDirty();
       this.battle.command = next;
       this.audio.playSe("move");
       return;
