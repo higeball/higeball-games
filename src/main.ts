@@ -3025,6 +3025,8 @@ const startGame = () => {
   syncAppScale();
   window.addEventListener("resize", syncAppScale);
   window.addEventListener("orientationchange", syncAppScale);
+  window.visualViewport?.addEventListener("resize", syncAppScale);
+  window.visualViewport?.addEventListener("scroll", syncAppScale);
   new Phaser.Game({
     type: Phaser.AUTO,
     parent: "game-root",
@@ -3045,7 +3047,10 @@ const startGame = () => {
 };
 
 function syncAppScale() {
-  const scale = Math.min(window.innerWidth / 360, window.innerHeight / 640, 1);
+  const MAX_SCALE = 1.5;
+  const vw = window.visualViewport?.width ?? window.innerWidth;
+  const vh = window.visualViewport?.height ?? window.innerHeight;
+  const scale = Math.min(vw / 360, vh / 640, MAX_SCALE);
   document.documentElement.style.setProperty("--app-scale", scale.toFixed(4));
 }
 
