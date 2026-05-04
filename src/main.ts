@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 import { COLORS, DISPLAY, FONT, LAYOUT } from "./ui/layout";
 import { CANVAS } from "./ui/tokens";
-import { UiPrimitives } from "./ui/primitives";
+import { UiPrimitives, type KvRow, type ListItem, type PartyView } from "./ui/primitives";
 import * as screens from "./ui/screens";
 
 const WIDTH = CANVAS.w;
@@ -178,6 +178,7 @@ type MenuState = {
   cursor: number;
   items: string[];
   tab?: 0 | 1;
+  statusPage?: number;
   shopType?: "item" | "weapon" | "armor";
   memberIndex?: number;
   gearKind?: "weapon" | "armor";
@@ -1442,7 +1443,7 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.mode === "field") screens.drawField(this, this.ui, { gold: this.gold });
     if (this.encounterEffect) this.drawEncounterEffect();
     if (this.menu) this.drawMenu();
-    if (this.message.length) this.drawMessage(this.message[0]);
+    if (this.message.length) screens.drawMessage({ mode: this.mode }, this.ui, this.message[0], this.message.length > 1);
   }
 
   private drawTitle() {
@@ -2203,159 +2204,140 @@ class HigeQuestScene extends Phaser.Scene {
 
   private drawMenu() {
     if (!this.menu) return;
+    const party = this.partyViews();
+    if (this.menu.mode === "main") {
+      screens.drawMainMenu(this, this.ui, { gold: this.gold, party, cursor: this.menu.cursor, close: () => (this.menu = null) });
+      return;
+    }
     if (this.menu.mode === "status") {
-      this.drawStatusMenu();
+      const member = this.party[this.menu.cursor] || this.party[0];
+      screens.drawStatus(this, this.ui, {
+        gold: this.gold,
+        party,
+        selectedIndex: this.menu.cursor,
+        page: this.menu.statusPage ?? 0,
+        totalPages: 4,
+        rows: this.statusRows(member, this.menu.statusPage ?? 0),
+        back: () => {
+          this.menu = this.mainMenu();
+        },
+        title: `${member.name}  ${member.job}`,
+      });
       return;
     }
-    const box = this.menu.mode === "equip" || this.menu.mode === "equipGear" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load" ? LAYOUT.MENU.NARROW : LAYOUT.MENU.MAIN;
-    this.panel(box.x, box.y, box.w, box.h);
-    const title =
-      this.menu.mode === "save"
-        ? "セーブ先"
-        : this.menu.mode === "load"
-          ? "ロード元"
-          : this.menu.mode === "shop"
-            ? `店 ${this.gold}G`
-            : this.menu.mode === "equip"
-              ? "そうび"
-              : this.menu.mode === "equipGear"
-                ? `${this.party[this.menu.memberIndex || 0]?.name || ""}の装備`
-              : this.menu.mode === "items"
-                ? "もちもの"
-                : "旅のメニュー";
-    this.text(box.x + 16, box.y + 26, title, FONT.M, COLORS.text.accent);
-    this.menu.items.forEach((item, i) => {
-      const y = box.y + 58 + i * (this.menu?.mode === "shop" ? 20 : 22);
-      const selected = i === this.menu?.cursor;
-      if (selected) {
-        this.graphics.fillStyle(0xffffff, 0.12);
-        this.graphics.fillRect(box.x + 10, y - 10, box.w - 20, 18);
-      }
-      this.text(box.x + 16, y, `${selected ? ">" : " "}${item}`, this.menu?.mode === "save" || this.menu?.mode === "load" || this.menu?.mode === "shop" ? FONT.S : FONT.M, selected ? COLORS.text.accent : COLORS.text.primary);
+    if (this.menu.mode === "equip") {
+      const member = this.party[this.menu.cursor] || this.party[0];
+      screens.drawEquip(this, this.ui, {
+        gold: this.gold,
+        party,
+        selectedIndex: this.menu.cursor,
+        rows: this.equipRows(member),
+        back: () => {
+          this.menu = this.mainMenu();
+        },
+        title: `${member.name}  ${member.job}`,
+      });
+      return;
+    }
+    if (this.menu.mode === "items" || this.menu.mode === "equipGear" || this.menu.mode === "save" || this.menu.mode === "load") {
+      const title = this.menu.mode === "items" ? "もちもの" : this.menu.mode === "equipGear" ? "そうび" : this.menu.mode === "save" ? "セーブ先" : "ロード元";
+      const items = this.menu.mode === "items" ? this.itemRows() : this.menu.items.map((item) => ({ name: item, right: "", muted: false }));
+      screens.drawItem(this, this.ui, {
+        gold: this.gold,
+        party,
+        items,
+        cursor: this.menu.cursor,
+        page: 0,
+        totalPages: 1,
+        back: () => {
+          if (this.menu?.mode === "equipGear") this.openEquipMenu();
+          else if (this.menu?.mode === "save" || this.menu?.mode === "load") this.menu = this.mainMenu();
+          else this.menu = this.menu ? null : this.mainMenu();
+        },
+        title,
+      });
+      return;
+    }
+    if (this.menu.mode === "shop" && this.menu.shopType) {
+      screens.drawShop(this, this.ui, {
+        gold: this.gold,
+        shopType: this.menu.shopType,
+        items: this.shopRows(this.menu.shopType),
+        cursor: this.menu.cursor,
+        page: 0,
+        totalPages: 1,
+        back: () => (this.menu = null),
+        title: this.shopTitle(this.menu.shopType),
+        prompt: "どれにしますか?",
+      });
+    }
+  }
+
+  private partyViews(): PartyView[] {
+    return this.party.map((member) => ({ name: member.name, iconColor: 0xd09a5a, hp: member.hp, maxHp: member.maxHp, mp: member.mp, maxMp: member.maxMp, lv: member.lv, isAlive: member.hp > 0 }));
+  }
+
+  private statusRows(member: PartyMember, page: number): KvRow[] {
+    const rows: KvRow[][] = [
+      [
+        { label: "レベル", value: String(member.lv) },
+        { label: "最大HP", value: String(member.maxHp) },
+        { label: "最大MP", value: String(member.maxMp) },
+        { label: "ちから", value: String(this.totalAtk(member)) },
+        { label: "すばやさ", value: String(this.totalSpd(member)) },
+        { label: "みのまもり", value: String(this.totalDef(member)) },
+        { label: "かしこさ", value: String(this.totalMagic(member)) },
+        { label: "こうげき力", value: String(this.totalAtk(member)) },
+        { label: "しゅびりょく", value: String(this.totalDef(member)) },
+        { label: "EXP", value: String(member.xp) },
+      ],
+      [
+        { label: "武器", value: this.equipmentName(member.weapon) || "-" },
+        { label: "防具", value: this.equipmentName(member.armor) || "-" },
+        { label: "耐性", value: this.resistanceLabel(member) || "-" },
+        { label: "技", value: this.skillsFor(member).map((skill) => skill.name).join(" / ") || "-" },
+        { label: "回避", value: String(this.totalEvade(member)) },
+        { label: "命中", value: `${this.accuracy(member)}%` },
+      ],
+      [
+        { label: "武器効果", value: this.equipmentTraitsText(member.weapon, "武器") || "-" },
+        { label: "防具効果", value: this.equipmentTraitsText(member.armor, "防具") || "-" },
+      ],
+      [
+        { label: "所持金", value: `${this.gold}G` },
+      ],
+    ];
+    return rows[Math.max(0, Math.min(page, rows.length - 1))];
+  }
+
+  private equipRows(member: PartyMember): KvRow[] {
+    return [
+      { label: "ぶき", value: this.equipmentName(member.weapon) || "-" },
+      { label: "よろい", value: this.equipmentName(member.armor) || "-" },
+      { label: "かぶと", value: "-" },
+      { label: "そうしょくひん", value: "-" },
+    ];
+  }
+
+  private itemRows(): ListItem[] {
+    const consumables = Object.entries(this.items)
+      .filter(([, count]) => count > 0)
+      .map(([name, count]) => ({ name, right: `×${count}` }));
+    const gear = Object.entries(this.inventory)
+      .filter(([, count]) => count > 0)
+      .map(([id, count]) => ({ name: catalog[id]?.name || id, right: `×${count}` }));
+    return [...consumables, ...gear];
+  }
+
+  private shopRows(shopType: "item" | "weapon" | "armor"): ListItem[] {
+    return shopStock[shopType].map((id) => {
+      const entry = catalog[id];
+      return { name: entry?.name || id, right: `${entry?.price || 0}G`, muted: this.gold < (entry?.price || 0) };
     });
-    if (this.menu.mode === "shop") this.drawShopHelp();
-    if (this.menu.mode === "equip") this.text(44, 326, "A:選ぶ / B:戻る", FONT.S, COLORS.text.muted);
-    if (this.menu.mode === "equipGear") this.drawEquipHelp();
   }
 
-  private drawStatusMenu() {
-    if (!this.menu) return;
-    const member = this.party[this.menu.cursor] || this.party[0];
-    const tab = this.menu.tab ?? 0;
-    this.panel(LAYOUT.MENU.STATUS.x, LAYOUT.MENU.STATUS.y, LAYOUT.MENU.STATUS.w, LAYOUT.MENU.STATUS.h);
-    this.text(36, 112, "ステータス", FONT.L, COLORS.text.accent);
-    this.text(36, 136, "↑↓:キャラ ←→:タブ A/B:戻る", FONT.S, COLORS.text.muted);
-    this.party.forEach((entry, i) => {
-      const y = 166 + i * 24;
-      if (i === this.menu!.cursor) {
-        this.graphics.fillStyle(0xffffff, 0.12);
-        this.graphics.fillRect(30, y - 10, 140, 20);
-      }
-      const color = i === this.menu!.cursor ? COLORS.text.accent : COLORS.text.primary;
-      this.text(38, y, `${i === this.menu!.cursor ? ">" : " "} ${entry.name}`, FONT.S, entry.hp <= 0 ? COLORS.text.disabled : color);
-      this.text(120, y, `Lv ${entry.lv}`, FONT.S, entry.hp <= 0 ? COLORS.text.disabled : color);
-    });
-    this.text(182, 140, `${member.name} ${member.job}`, FONT.S, COLORS.text.accent);
-    if (tab === 0) {
-      this.text(182, 162, "[基本]", FONT.S, COLORS.text.accent);
-      this.text(224, 162, "装備", FONT.S, COLORS.text.muted);
-      this.text(182, 188, `Lv ${member.lv}  EXP ${member.xp}`, FONT.S, COLORS.text.primary);
-      this.text(182, 208, `HP ${member.hp}/${member.maxHp}  MP ${member.mp}/${member.maxMp}`, FONT.S, COLORS.text.primary);
-      this.text(182, 228, `力 ${this.totalAtk(member)}  体 ${this.totalDef(member)}`, FONT.S, COLORS.text.primary);
-      this.text(182, 248, `速 ${this.totalSpd(member)}  魔 ${this.totalMagic(member)}`, FONT.S, COLORS.text.primary);
-      this.text(182, 268, `回 ${this.totalEvade(member)}  命中 ${this.accuracy(member)}%`, FONT.S, COLORS.text.primary);
-      return;
-    }
-    this.text(182, 162, "基本", FONT.S, COLORS.text.muted);
-    this.text(224, 162, "[装備]", FONT.S, COLORS.text.accent);
-    const skills = this.skillsFor(member).map((skill) => skill.name);
-    this.text(182, 188, `武器 ${this.equipmentName(member.weapon)}`, FONT.S, COLORS.text.primary);
-    this.text(182, 208, `防具 ${this.equipmentName(member.armor)}`, FONT.S, COLORS.text.primary);
-    this.text(182, 228, `耐性 ${this.resistanceLabel(member)}`, FONT.S, COLORS.text.primary);
-    this.text(182, 248, `技 ${skills.join(" / ") || "-"}`, FONT.S, COLORS.text.primary);
-    this.text(182, 268, `EXPボーナス ${Math.round(this.totalExpBonus(member) * 100)}%`, FONT.S, COLORS.text.primary);
-  }
-
-  private drawShopHelp() {
-    if (!this.menu?.shopType) return;
-    const id = shopStock[this.menu.shopType][this.menu.cursor];
-    const entry = catalog[id];
-    if (!entry) return;
-    const owned = entry.kind === "item" ? this.items[entry.name] || 0 : this.inventory[entry.id] || 0;
-    const users = entry.users?.join("/") || "全員";
-    this.text(44, 286, `所持 ${owned}  装備 ${users}`, FONT.S, COLORS.text.muted);
-    this.text(44, 310, this.gold >= entry.price ? "A:購入 / B:閉じる" : "お金が足りない", FONT.S, this.gold >= entry.price ? COLORS.text.muted : COLORS.text.danger);
-  }
-
-  private drawEquipHelp() {
-    if (this.menu?.memberIndex === undefined) return;
-    const member = this.party[this.menu.memberIndex];
-    if (!member) return;
-    const fit = (label: string) => fitLines(label, 124, FONT.S)[0] || label;
-    const helpLine1 = `武:${fit(this.equipmentName(member.weapon))}`;
-    const helpLine2 = `防:${fit(this.equipmentName(member.armor))}`;
-    this.text(32, 280, helpLine1, FONT.S, COLORS.text.muted);
-    this.text(32, 298, helpLine2, FONT.S, COLORS.text.muted);
-    this.text(32, 320, this.equipmentTraitsText(member.weapon, "武器") || "武器の特性なし", FONT.XS, COLORS.text.muted);
-    this.text(32, 338, this.equipmentTraitsText(member.armor, "防具") || "防具の特性なし", FONT.XS, COLORS.text.muted);
-    this.text(32, 360, "A:装備 / B:戻る", FONT.S, COLORS.text.muted);
-  }
-
-  private drawMessage(message: string) {
-    const parsed = this.parseMessage(message);
-    if (this.mode === "field") {
-      this.graphics.fillStyle(COLORS.window.dimOverlay.color, COLORS.window.dimOverlay.alphaField);
-      this.graphics.fillRect(0, 0, WIDTH, PANEL_Y + 12);
-    }
-    this.panel(LAYOUT.MESSAGE.x, LAYOUT.MESSAGE.y, LAYOUT.MESSAGE.w, LAYOUT.MESSAGE.h);
-    const lines = this.messageLines(message);
-    const hasMore = lines.length > 4 || this.message.length > 1;
-    if (parsed.speaker) {
-      this.panel(LAYOUT.MESSAGE_PORTRAIT.x, LAYOUT.MESSAGE_PORTRAIT.y, LAYOUT.MESSAGE_PORTRAIT.w, LAYOUT.MESSAGE_PORTRAIT.h);
-      this.drawSpeakerPortrait(parsed.speaker, 50, PANEL_Y + 80);
-      this.graphics.fillStyle(0x10151d, 0.92);
-      this.graphics.fillRect(LAYOUT.MESSAGE_SPEAKER.x, LAYOUT.MESSAGE_SPEAKER.y, LAYOUT.MESSAGE_SPEAKER.w, LAYOUT.MESSAGE_SPEAKER.h);
-      this.graphics.lineStyle(1, colors.border, 0.75);
-      this.graphics.strokeRect(LAYOUT.MESSAGE_SPEAKER.x, LAYOUT.MESSAGE_SPEAKER.y, LAYOUT.MESSAGE_SPEAKER.w, LAYOUT.MESSAGE_SPEAKER.h);
-      this.text(90, PANEL_Y + 36, parsed.speaker, FONT.S, COLORS.text.accent);
-      fitLines(parsed.body, parsed.speaker ? 240 : 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(90, PANEL_Y + 62 + i * 22, line, FONT.M));
-    } else {
-      fitLines(parsed.body, 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(28, PANEL_Y + 44 + i * 24, line, FONT.M));
-    }
-    this.drawContinueCue(hasMore);
-    this.text(216, PANEL_Y + 138, hasMore ? "A:次へ / B:閉じる" : "A/B:閉じる", FONT.S, COLORS.text.accent);
-  }
-
-  private parseMessage(message: string) {
-    const match = message.match(/^([^:：]{1,10})[:：]\s*(.+)$/);
-    return match ? { speaker: match[1], body: match[2] } : { speaker: "", body: message };
-  }
-
-  private messageLines(message: string) {
-    const parsed = this.parseMessage(message);
-    return fitLines(parsed.body, parsed.speaker ? 240 : 308, FONT.M);
-  }
-
-  private drawSpeakerPortrait(speaker: string, x: number, y: number) {
-    if (speaker === "yos") {
-      this.drawPerson(x, y, 0xe9d9b0, true, 1.15, "down");
-      return;
-    }
-    if (speaker === "もじさん") {
-      this.drawPartySprite(x, y - 2, partyBase[1]);
-      return;
-    }
-    if (speaker === "オニオンJK") {
-      this.drawBoss(x, y - 4, 0.64);
-      return;
-    }
-    this.drawPerson(x, y, this.npcColor(speaker), false, 1.05);
-  }
-
-  private drawContinueCue(hasMore: boolean) {
-    const y = PANEL_Y + 136 + Math.sin(this.time.now * 0.008) * 2;
-    this.graphics.fillStyle(hasMore ? 0xffe58a : 0xd8c98f, 0.9);
-    this.graphics.fillTriangle(324, y, 316, y - 6, 332, y - 6);
+  private shopTitle(shopType: "item" | "weapon" | "armor") {
+    return shopType === "weapon" ? "武器屋" : shopType === "armor" ? "防具屋" : "道具屋";
   }
 
   private drawEncounterEffect() {
@@ -2921,15 +2903,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private advanceMessage() {
-    if (!this.message.length) return;
-    const parsed = this.parseMessage(this.message[0]);
-    const lines = this.messageLines(this.message[0]);
-    if (lines.length > 4) {
-      const rest = lines.slice(4).join("");
-      this.message[0] = parsed.speaker ? `${parsed.speaker}: ${rest}` : rest;
-      return;
-    }
-    this.message.shift();
+    if (this.message.length) this.message.shift();
   }
 
   private beginPendingBossBattle() {
