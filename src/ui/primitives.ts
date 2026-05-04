@@ -274,9 +274,9 @@ export class UiPrimitives {
 
   actionButtons(onA: () => void, onB: () => void): void {
     const ax = CANVAS.w - 14 - 30;
-    const ay = CANVAS.h - 80 - 30;
-    const bx = CANVAS.w - 14 - 25;
-    const by = CANVAS.h - 16 - 25 - 80;
+    const ay = CANVAS.h - 14 - 30;
+    const bx = CANVAS.w - 14 - 25 - 5;
+    const by = 596 - 30 - 16 - 25;
     this.drawCircleButton(ax, ay, 30, C.btnA.top, C.btnA.bottom, "A");
     this.drawCircleButton(bx, by, 25, C.btnB.top, C.btnB.bottom, "B");
     const aZone = this.actionZones[0] ?? this.scene.add.zone(ax, ay, 64, 64).setInteractive();
