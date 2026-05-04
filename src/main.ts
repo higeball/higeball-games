@@ -993,6 +993,33 @@ class HigeQuestScene extends Phaser.Scene {
     return true;
   }
 
+  private selectMainMenu(index: number) {
+    if (!this.menu) return;
+    this.menu.cursor = index;
+    this.markDirty();
+    this.menuA();
+  }
+
+  private selectPartyMenu(index: number) {
+    if (!this.menu) return;
+    this.menu.cursor = index;
+    this.markDirty();
+  }
+
+  private selectListMenu(index: number) {
+    if (!this.menu) return;
+    this.menu.cursor = index;
+    this.markDirty();
+    this.menuA();
+  }
+
+  private selectShopMenu(index: number) {
+    if (!this.menu) return;
+    this.menu.cursor = index;
+    this.markDirty();
+    this.buySelectedItem();
+  }
+
   private battleA() {
     if (!this.battle) return;
     this.markDirty();
@@ -1510,7 +1537,7 @@ class HigeQuestScene extends Phaser.Scene {
     } else if (this.message.length) {
       screens.drawMessage({ mode: this.mode }, this.ui, this.message[0], this.message.length > 1);
     }
-    if (this.mode !== "battle") {
+    if (this.mode === "field" || this.mode === "title") {
       screens.drawControls(this, this.ui, {});
     }
     this.ui.endFrame();
@@ -2111,7 +2138,13 @@ class HigeQuestScene extends Phaser.Scene {
     if (!this.menu) return;
     const party = this.partyViews();
     if (this.menu.mode === "main") {
-      screens.drawMainMenu(this, this.ui, { gold: this.gold, party, cursor: this.menu.cursor, close: () => (this.menu = null) });
+      screens.drawMainMenu(this, this.ui, {
+        gold: this.gold,
+        party,
+        cursor: this.menu.cursor,
+        close: () => (this.menu = null),
+        selectCell: (index: number) => this.selectMainMenu(index),
+      });
       return;
     }
     if (this.menu.mode === "status") {
@@ -2127,6 +2160,7 @@ class HigeQuestScene extends Phaser.Scene {
           this.menu = this.mainMenu();
         },
         title: `${member.name}  ${member.job}`,
+        selectParty: (index: number) => this.selectPartyMenu(index),
       });
       return;
     }
@@ -2141,6 +2175,7 @@ class HigeQuestScene extends Phaser.Scene {
           this.menu = this.mainMenu();
         },
         title: `${member.name}  ${member.job}`,
+        selectParty: (index: number) => this.selectPartyMenu(index),
       });
       return;
     }
@@ -2160,6 +2195,7 @@ class HigeQuestScene extends Phaser.Scene {
           else this.menu = this.menu ? null : this.mainMenu();
         },
         title,
+        selectItem: (index: number) => this.selectListMenu(index),
       });
       return;
     }
@@ -2174,6 +2210,7 @@ class HigeQuestScene extends Phaser.Scene {
         back: () => (this.menu = null),
         title: this.shopTitle(this.menu.shopType),
         prompt: "どれにしますか?",
+        selectItem: (index: number) => this.selectShopMenu(index),
       });
     }
   }

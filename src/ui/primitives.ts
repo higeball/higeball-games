@@ -111,7 +111,7 @@ export class UiPrimitives {
     return { x: 8, y: 100, w: 344, h: CANVAS.h - 100 };
   }
 
-  partyPanel(area: Rect, party: PartyView[], selectedIndex: number): void {
+  partyPanel(area: Rect, party: PartyView[], selectedIndex: number, onTap?: (i: number) => void): void {
     const inner = this.window(area);
     const rows = party.slice(0, 4);
     const rowH = 30;
@@ -126,6 +126,10 @@ export class UiPrimitives {
       this.text(inner, inner.x + 2, rowY + 10, member.name, { font: F.S, color, nowrap: true });
       this.text(inner, inner.x + inner.w - 2, rowY + 10, `Lv${member.lv}`, { font: F.XS, color, align: "right", nowrap: true });
       this.text(inner, inner.x + 2, rowY + 22, `HP ${member.hp}/${member.maxHp}`, { font: F.XS, color: member.isAlive ? C.textMuted : C.textDisabled, nowrap: true });
+      if (onTap) {
+        const zone = this.getTransientZone(inner.x, rowY - 2, inner.w, 28);
+        zone.on("pointerdown", () => onTap(i));
+      }
     });
   }
 

@@ -5,11 +5,11 @@ import type { KvRow, ListItem, PartyView, UiPrimitives } from "./primitives";
 type Rect = { x: number; y: number; w: number; h: number };
 
 type MessageState = { mode?: string };
-type MainMenuState = { gold: number; party: PartyView[]; cursor: number; close: () => void };
-type StatusState = { gold: number; party: PartyView[]; selectedIndex: number; page: number; totalPages: number; rows: KvRow[]; back: () => void; title: string };
-type EquipState = { gold: number; party: PartyView[]; selectedIndex: number; rows: KvRow[]; back: () => void; title: string };
-type ItemState = { gold: number; party: PartyView[]; items: ListItem[]; cursor: number; page: number; totalPages: number; back: () => void; title: string };
-type ShopState = { gold: number; shopType: string; items: ListItem[]; cursor: number; page: number; totalPages: number; back: () => void; title: string; prompt: string };
+type MainMenuState = { gold: number; party: PartyView[]; cursor: number; close: () => void; selectCell: (index: number) => void };
+type StatusState = { gold: number; party: PartyView[]; selectedIndex: number; page: number; totalPages: number; rows: KvRow[]; back: () => void; title: string; selectParty: (index: number) => void };
+type EquipState = { gold: number; party: PartyView[]; selectedIndex: number; rows: KvRow[]; back: () => void; title: string; selectParty: (index: number) => void };
+type ItemState = { gold: number; party: PartyView[]; items: ListItem[]; cursor: number; page: number; totalPages: number; back: () => void; title: string; selectItem: (index: number) => void };
+type ShopState = { gold: number; shopType: string; items: ListItem[]; cursor: number; page: number; totalPages: number; back: () => void; title: string; prompt: string; selectItem: (index: number) => void };
 type BattleActorView = { name: string; job: string; mp: number };
 type BattleSkillView = { name: string; mp: number };
 type BattleEnemyView = { name: string };
@@ -102,7 +102,7 @@ export function drawMainMenu(scene: Scene, ui: UiPrimitives, state: MainMenuStat
     { label: "じゅもん", iconColor: 0x6a8ad0 },
     { label: "つよさ", iconColor: 0xd05a5a },
     { label: "そうび", iconColor: 0xd8b860 },
-  ], state.cursor);
+  ], state.cursor, state.selectCell);
   ui.fabBack(state.close);
 }
 
@@ -110,7 +110,7 @@ export function drawStatus(scene: Scene, ui: UiPrimitives, state: StatusState): 
   ui.scrim(0.35);
   ui.goldPill(state.gold);
   const [leftArea, rightArea] = splitH({ x: 8, y: 100, w: 344, h: 480 }, 130, 8);
-  ui.partyPanel(leftArea, state.party, state.selectedIndex);
+  ui.partyPanel(leftArea, state.party, state.selectedIndex, state.selectParty);
   ui.text(rightArea, rightArea.x + rightArea.w / 2, rightArea.y + 12, `${state.title}`, { font: F.BODY, color: C.textAccent, align: "center" });
   ui.kvTable({ x: rightArea.x, y: rightArea.y + 28, w: rightArea.w, h: rightArea.h - 64 }, state.rows);
   ui.pager({ x: rightArea.x, y: rightArea.y + rightArea.h - 24, w: rightArea.w, h: 24 }, state.page, state.totalPages);
@@ -121,7 +121,7 @@ export function drawEquip(scene: Scene, ui: UiPrimitives, state: EquipState): vo
   ui.scrim(0.35);
   ui.goldPill(state.gold);
   const [leftArea, rightArea] = splitH({ x: 8, y: 100, w: 344, h: 480 }, 130, 8);
-  ui.partyPanel(leftArea, state.party, state.selectedIndex);
+  ui.partyPanel(leftArea, state.party, state.selectedIndex, state.selectParty);
   ui.text(rightArea, rightArea.x + rightArea.w / 2, rightArea.y + 12, state.title, { font: F.BODY, color: C.textAccent, align: "center" });
   ui.kvTable({ x: rightArea.x, y: rightArea.y + 28, w: rightArea.w, h: rightArea.h - 40 }, state.rows);
   ui.fabBack(state.back);
@@ -131,10 +131,10 @@ export function drawItem(scene: Scene, ui: UiPrimitives, state: ItemState): void
   ui.scrim(0.35);
   ui.goldPill(state.gold);
   const [leftArea, rightArea] = splitH({ x: 8, y: 100, w: 344, h: 480 }, 130, 8);
-  ui.partyPanel(leftArea, state.party, -1);
+  ui.partyPanel(leftArea, state.party, -1, undefined);
   ui.text(rightArea, rightArea.x + rightArea.w / 2, rightArea.y + 12, state.title, { font: F.BODY, color: C.textAccent, align: "center" });
   const page = pageSlice(state.items, state.cursor, 5);
-  ui.list({ x: rightArea.x, y: rightArea.y + 28, w: rightArea.w, h: rightArea.h - 56 }, page.slice, state.cursor - page.start);
+  ui.list({ x: rightArea.x, y: rightArea.y + 28, w: rightArea.w, h: rightArea.h - 56 }, page.slice, state.cursor - page.start, (index) => state.selectItem(page.start + index));
   ui.pager({ x: rightArea.x, y: rightArea.y + rightArea.h - 24, w: rightArea.w, h: 24 }, page.page, page.totalPages);
   ui.fabBack(state.back);
 }
@@ -147,7 +147,7 @@ export function drawShop(scene: Scene, ui: UiPrimitives, state: ShopState): void
   ui.text(inner, inner.x + 56, inner.y + 18, state.title, { font: F.S, color: C.textAccent, align: "center" });
   ui.text(inner, inner.x + 6, inner.y + 52, state.prompt, { font: F.BODY, color: C.textPrimary });
   const page = pageSlice(state.items, state.cursor, 5);
-  ui.list({ x: rightArea.x, y: rightArea.y, w: rightArea.w, h: rightArea.h - 34 }, page.slice.map((item) => ({ ...item, muted: item.muted || false })), state.cursor - page.start);
+  ui.list({ x: rightArea.x, y: rightArea.y, w: rightArea.w, h: rightArea.h - 34 }, page.slice.map((item) => ({ ...item, muted: item.muted || false })), state.cursor - page.start, (index) => state.selectItem(page.start + index));
   ui.pager({ x: rightArea.x, y: rightArea.y + rightArea.h - 24, w: rightArea.w, h: 24 }, page.page, page.totalPages);
   ui.fabBack(state.back);
 }
