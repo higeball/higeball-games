@@ -21,7 +21,7 @@ export type ListItem = { name: string; right?: string; muted?: boolean };
 export type KvRow = { label: string; value: string; accent?: boolean };
 
 const UI_FONT = '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
-const TEXT_RESOLUTION = 4;
+const TEXT_RESOLUTION = 2;
 
 type TextOpts = {
   font?: number;
@@ -33,7 +33,8 @@ type TextOpts = {
 
 export class UiPrimitives {
   private clipStack: Rect[] = [];
-  private transient: Phaser.GameObjects.GameObject[] = [];
+  private textPool: Phaser.GameObjects.Text[] = [];
+  private textIndex = 0;
   private goldLabel: Phaser.GameObjects.Text | null = null;
   private vpadZones: Phaser.GameObjects.Zone[] = [];
   private actionZones: Phaser.GameObjects.Zone[] = [];
@@ -79,15 +80,7 @@ export class UiPrimitives {
       this.text(inner, inner.x, contentY, text, { font: F.BODY, color: C.textPrimary, nowrap: false, maxLines: 4 });
     }
     if (hasMore) {
-      const marker = this.scene.add
-        .text(inner.x + inner.w - 6, inner.y + inner.h - 4, "▼", {
-          fontFamily: UI_FONT,
-          fontSize: `${F.S}px`,
-          color: C.textAccent,
-          resolution: TEXT_RESOLUTION,
-        })
-        .setOrigin(1, 1);
-      this.transient.push(marker);
+      this.text(inner, inner.x + inner.w - 6, inner.y + inner.h - 4, "▼", { font: F.S, color: C.textAccent, align: "right" });
     }
   }
 
@@ -236,14 +229,7 @@ export class UiPrimitives {
     this.g.fillCircle(x + size / 2, y + size / 2, size / 2);
     this.g.lineStyle(STROKE.edge, C.windowEdge, 1);
     this.g.strokeCircle(x + size / 2, y + size / 2, size / 2);
-    const label = this.scene.add.text(x + size / 2, y + size / 2, "←", {
-      fontFamily: UI_FONT,
-      fontSize: `${F.M}px`,
-      color: C.textPrimary,
-      fontStyle: "bold",
-      resolution: TEXT_RESOLUTION,
-    }).setOrigin(0.5);
-    this.transient.push(label);
+    this.text({ x, y, w: size, h: size }, x + size / 2, y + size / 2, "←", { font: F.M, color: C.textPrimary, align: "center" });
     this.scene.add.zone(x, y, size, size).setInteractive().on("pointerdown", onTap);
   }
 
@@ -309,16 +295,23 @@ export class UiPrimitives {
     const nowrap = opts?.nowrap ?? true;
     const maxLines = opts?.maxLines ?? 1;
     const clip = this.currentClip(area);
-    const t = this.scene.add.text(Math.round(x), Math.round(y), value, {
-      fontFamily: UI_FONT,
-      fontSize: `${font}px`,
-      color,
-      fontStyle: "bold",
-      resolution: TEXT_RESOLUTION,
-    });
-    this.transient.push(t);
-    t.setPadding(2, 2, 2, 2);
+    let t = this.textPool[this.textIndex];
+    if (!t) {
+      t = this.scene.add.text(0, 0, "", {
+        fontFamily: UI_FONT,
+        fontSize: `${F.S}px`,
+        color: C.textPrimary,
+        fontStyle: "bold",
+        resolution: TEXT_RESOLUTION,
+      });
+      t.setPadding(2, 2, 2, 2);
+      this.textPool[this.textIndex] = t;
+    }
+    t.setVisible(true);
+    t.setStyle({ fontSize: `${font}px`, color });
     t.setOrigin(align === "center" ? 0.5 : align === "right" ? 1 : 0, 0.5);
+    t.setText(value);
+    t.setPosition(Math.round(x), Math.round(y));
     const availableW = Math.max(0, clip.x + clip.w - x - 2);
     const availableH = Math.max(0, clip.y + clip.h - y + font);
     const maxW = availableW > 0 ? availableW : area.w;
@@ -337,13 +330,23 @@ export class UiPrimitives {
     if (t.height > availableH && nowrap) {
       t.setVisible(true);
     }
+    this.textIndex += 1;
     return;
   }
 
-  clearFrame(): void {
+  beginFrame(): void {
     if (this.goldLabel) this.goldLabel.setVisible(false);
-    this.transient.forEach((obj) => obj.destroy());
-    this.transient = [];
+    this.textIndex = 0;
+  }
+
+  endFrame(): void {
+    for (let i = this.textIndex; i < this.textPool.length; i += 1) {
+      this.textPool[i].setVisible(false);
+    }
+  }
+
+  clearFrame(): void {
+    this.beginFrame();
   }
 
   withClip<T>(area: Rect, fn: () => T): T {
