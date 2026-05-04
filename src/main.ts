@@ -780,8 +780,10 @@ class HigeQuestScene extends Phaser.Scene {
         this.audio.playSe("move");
         return;
       }
-      const delta = dir === "up" || dir === "left" ? -1 : 1;
-      this.battle.command = (this.battle.command + delta + 4) % 4;
+      let next = this.battle.command;
+      if (dir === "left" || dir === "right") next = next ^ 1;
+      else if (dir === "up" || dir === "down") next = next ^ 2;
+      this.battle.command = next;
       this.audio.playSe("move");
       return;
     }
