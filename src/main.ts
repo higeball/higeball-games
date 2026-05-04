@@ -1537,7 +1537,8 @@ class HigeQuestScene extends Phaser.Scene {
     } else if (this.message.length) {
       screens.drawMessage({ mode: this.mode }, this.ui, this.message[0], this.message.length > 1);
     }
-    if (this.mode === "field" || this.mode === "title") {
+    const showControls = (this.mode === "field" || this.mode === "title") && this.message.length === 0;
+    if (showControls) {
       screens.drawControls(this, this.ui, {});
     }
     this.ui.endFrame();

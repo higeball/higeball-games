@@ -69,14 +69,11 @@ export class UiPrimitives {
 
   dialog(speaker: string | null, body: string, hasMore: boolean): void {
     const lines = this.wrapLines(body, 336, F.BODY, 4);
-    const height = Math.min(180, Math.max(130, P.dialog * 2 + lines.length * 22 + (hasMore ? 18 : 0)));
+    const height = Math.min(220, Math.max(130, P.dialog * 2 + lines.length * 22 + (hasMore ? 18 : 0)));
     const area = { x: 12, y: CANVAS.h - 12 - height, w: CANVAS.w - 24, h: height };
     const inner = this.window(area);
     const text = speaker ? `${speaker}「${body}」` : body;
-    const speakerPrefix = speaker ? `${speaker}「` : "";
-    const speakerOffset = speaker ? speakerPrefix.length : 0;
     const contentY = inner.y + (speaker ? 8 : 0);
-    const displayLines = this.wrapLines(text, inner.w, F.BODY, 4);
     if (speaker) {
       this.text(inner, inner.x, contentY, text, { font: F.BODY, color: C.textPrimary, nowrap: false, maxLines: 4 });
     } else {
@@ -405,7 +402,7 @@ export class UiPrimitives {
     return { x: x1, y: y1, w: Math.max(0, x2 - x1), h: Math.max(0, y2 - y1) };
   }
 
-  private getTransientZone(x: number, y: number, w: number, h: number): Phaser.GameObjects.Zone {
+  public getTransientZone(x: number, y: number, w: number, h: number): Phaser.GameObjects.Zone {
     let zone = this.zonePool[this.zoneIndex];
     if (!zone) {
       zone = this.scene.add.zone(0, 0, 1, 1);

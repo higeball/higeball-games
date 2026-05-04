@@ -1,5 +1,5 @@
 import type { Scene } from "phaser";
-import { C, F } from "./tokens";
+import { C, CANVAS, F } from "./tokens";
 import type { KvRow, ListItem, PartyView, UiPrimitives } from "./primitives";
 
 type Rect = { x: number; y: number; w: number; h: number };
@@ -90,6 +90,8 @@ export function drawMessage(scene: MessageState, ui: UiPrimitives, message: stri
   const parsed = parseMessage(message);
   if (scene["mode"] === "field") ui.scrim(0.35);
   ui.dialog(null, parsed.speaker ? `${parsed.speaker}「${parsed.body}」` : parsed.body, hasMore);
+  const advanceZone = ui.getTransientZone(0, 0, CANVAS.w, CANVAS.h);
+  advanceZone.on("pointerdown", () => (scene as any).actionA?.());
 }
 
 export function drawMainMenu(scene: Scene, ui: UiPrimitives, state: MainMenuState): void {
