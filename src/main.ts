@@ -660,6 +660,8 @@ class HigeQuestScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.keyA)) this.actionA();
     if (Phaser.Input.Keyboard.JustDown(this.keyB)) this.actionB();
     this.handleKeyboardDirection();
+    const held = this.ui.getHeldDirection();
+    if (held) this.directionInput(held);
     this.audio.playBgm(this.currentBgmTrack());
     this.redraw();
   }

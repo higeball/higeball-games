@@ -37,6 +37,7 @@ export class UiPrimitives {
   private textIndex = 0;
   private goldLabel: Phaser.GameObjects.Text | null = null;
   private vpadZones: Phaser.GameObjects.Zone[] = [];
+  private vpadHeld: Direction | null = null;
   private actionZones: Phaser.GameObjects.Zone[] = [];
   private actionLabels: { a: Phaser.GameObjects.Text | null; b: Phaser.GameObjects.Text | null } = {
     a: null,
@@ -245,17 +246,31 @@ export class UiPrimitives {
     this.drawTri(cx, cy + 34, "down");
     this.drawTri(cx - 34, cy, "left");
     this.drawTri(cx + 34, cy, "right");
-    const hit = (dx: number, dy: number, dir: Direction, index: number) => {
-      const zone = this.vpadZones[index] ?? this.scene.add.zone(cx + dx, cy + dy, 44, 44).setInteractive();
-      zone.setPosition(cx + dx, cy + dy);
+    const dirs: { dx: number; dy: number; dir: Direction }[] = [
+      { dx: 0, dy: -40, dir: "up" },
+      { dx: 0, dy: 40, dir: "down" },
+      { dx: -40, dy: 0, dir: "left" },
+      { dx: 40, dy: 0, dir: "right" },
+    ];
+    dirs.forEach((d, i) => {
+      const zone = this.vpadZones[i] ?? this.scene.add.zone(cx + d.dx, cy + d.dy, 44, 44).setInteractive();
+      this.vpadZones[i] = zone;
+      zone.setPosition(cx + d.dx, cy + d.dy);
       zone.removeAllListeners();
-      zone.on("pointerdown", () => onDir(dir));
-      this.vpadZones[index] = zone;
-    };
-    hit(0, -40, "up", 0);
-    hit(0, 40, "down", 1);
-    hit(-40, 0, "left", 2);
-    hit(40, 0, "right", 3);
+      zone.on("pointerdown", () => {
+        this.vpadHeld = d.dir;
+        onDir(d.dir);
+      });
+      zone.on("pointerup", () => {
+        if (this.vpadHeld === d.dir) this.vpadHeld = null;
+      });
+      zone.on("pointerout", () => {
+        if (this.vpadHeld === d.dir) this.vpadHeld = null;
+      });
+      zone.on("pointerupoutside", () => {
+        if (this.vpadHeld === d.dir) this.vpadHeld = null;
+      });
+    });
   }
 
   actionButtons(onA: () => void, onB: () => void): void {
@@ -347,6 +362,10 @@ export class UiPrimitives {
 
   clearFrame(): void {
     this.beginFrame();
+  }
+
+  getHeldDirection(): Direction | null {
+    return this.vpadHeld;
   }
 
   withClip<T>(area: Rect, fn: () => T): T {
