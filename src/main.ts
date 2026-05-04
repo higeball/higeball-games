@@ -2083,10 +2083,10 @@ class HigeQuestScene extends Phaser.Scene {
     this.ffWindow(LAYOUT.BATTLE.CMD.x, LAYOUT.BATTLE.CMD.y, LAYOUT.BATTLE.CMD.w, LAYOUT.BATTLE.CMD.h);
     const commands = actor ? this.battleCommands(actor) : [];
     const cells = [
-      { x: 160, y: PANEL_Y + 84, w: 88, h: 18 },
-      { x: 252, y: PANEL_Y + 84, w: 88, h: 18 },
-      { x: 160, y: PANEL_Y + 104, w: 88, h: 18 },
-      { x: 252, y: PANEL_Y + 104, w: 88, h: 18 },
+      { x: 160, y: PANEL_Y + 96, w: 88, h: 18 },
+      { x: 252, y: PANEL_Y + 96, w: 88, h: 18 },
+      { x: 160, y: PANEL_Y + 118, w: 88, h: 18 },
+      { x: 252, y: PANEL_Y + 118, w: 88, h: 18 },
     ];
     commands.forEach((command, i) => {
       const cell = cells[i];
@@ -2098,18 +2098,18 @@ class HigeQuestScene extends Phaser.Scene {
       this.text(cell.x, cell.y + 7, `${selected ? ">" : " "}${command}`, FONT.M, selected ? COLORS.text.accent : COLORS.text.primary);
     });
     if (this.battle.waiting) this.text(206, PANEL_Y + 157, "行動中", FONT.S, COLORS.text.muted, "center");
-    if (!this.battle.submenu) this.text(160, PANEL_Y + 72, actor ? `${actor.name}  ${actor.job}` : "", FONT.S, COLORS.text.accent);
+    if (!this.battle.submenu) this.text(160, PANEL_Y + 80, actor ? `${actor.name}  ${actor.job}` : "", FONT.S, COLORS.text.accent);
     this.party.forEach((member, i) => {
       const rowY = PANEL_Y + 70 + i * 22;
       const active = actor?.name === member.name && !this.battle?.won;
       if (this.battle?.submenu) return;
       if (active) {
         this.graphics.fillStyle(0xffffff, 0.12);
-        this.graphics.fillRect(8, rowY - 8, 132, 20);
+        this.graphics.fillRect(14, rowY - 8, 124, 20);
       }
       const color = member.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary;
-      this.text(12, rowY, member.name, FONT.S, color);
-      this.text(12, rowY + 10, `H${member.hp}/${member.maxHp} M${member.mp}`, FONT.XS, color);
+      this.text(18, rowY, member.name, FONT.S, color);
+      this.text(18, rowY + 11, `H${member.hp}/${member.maxHp} M${member.mp}`, FONT.XS, color);
     });
     if (this.battle.submenu && actor) this.drawSkillSubwindow(actor);
   }
@@ -2181,6 +2181,9 @@ class HigeQuestScene extends Phaser.Scene {
     submenu.cursor = Phaser.Math.Clamp(submenu.cursor, 0, Math.min(pageSize, skills.length - submenu.page * pageSize) - 1);
     const start = submenu.page * pageSize;
     const pageSkills = skills.slice(start, start + pageSize);
+    this.graphics.fillStyle(0x000000, 1);
+    this.graphics.fillRect(LAYOUT.BATTLE.MSG.x, LAYOUT.BATTLE.MSG.y, LAYOUT.BATTLE.MSG.w, LAYOUT.BATTLE.MSG.h);
+    this.graphics.fillRect(LAYOUT.BATTLE.STATUS.x, LAYOUT.BATTLE.STATUS.y, LAYOUT.BATTLE.STATUS.w, LAYOUT.BATTLE.STATUS.h);
     this.subWindow(LAYOUT.BATTLE.SUBMENU.x, LAYOUT.BATTLE.SUBMENU.y, LAYOUT.BATTLE.SUBMENU.w, LAYOUT.BATTLE.SUBMENU.h, {
       x: LAYOUT.BATTLE.CMD.x,
       y: LAYOUT.BATTLE.CMD.y,
