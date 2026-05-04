@@ -641,6 +641,7 @@ class HigeQuestScene extends Phaser.Scene {
   private dirty = true;
   private stepReady = true;
   private inputLock = false;
+  private moveFrameCounter = 0;
   private moveAnim: { fromX: number; fromY: number; toX: number; toY: number; startedAt: number; duration: number } | null = null;
 
   create() {
@@ -679,13 +680,18 @@ class HigeQuestScene extends Phaser.Scene {
 
   private tickGame() {
     this.audio.playBgm(this.currentBgmTrack());
+    if (this.moveAnim) {
+      this.moveFrameCounter += 1;
+      if (this.moveFrameCounter % 2 === 0) this.markDirty();
+    } else {
+      this.moveFrameCounter = 0;
+    }
   }
 
   private hasActiveAnimation() {
     const battle = this.battle;
     return Boolean(
-      this.moveAnim
-      || this.encounterEffect
+      this.encounterEffect
       || this.bossCinematic
       || this.battleEffects.length
       || (battle && (
@@ -842,6 +848,7 @@ class HigeQuestScene extends Phaser.Scene {
       return;
     }
     if (this.isSolid(this.tileAt(map, nx, ny)) || this.npcAt(nx, ny) || this.chestAt(nx, ny)) return;
+    this.moveFrameCounter = 0;
     this.moveAnim = { fromX: this.player.x, fromY: this.player.y, toX: nx, toY: ny, startedAt: this.time.now, duration: 132 };
     this.player.x = nx;
     this.player.y = ny;
@@ -851,6 +858,8 @@ class HigeQuestScene extends Phaser.Scene {
     this.time.delayedCall(132, () => {
       this.stepReady = true;
       this.moveAnim = null;
+      this.moveFrameCounter = 0;
+      this.markDirty();
       if (shouldEncounter) this.startEncounter("random");
     });
     this.audio.playSe("move");
@@ -1047,6 +1056,7 @@ class HigeQuestScene extends Phaser.Scene {
         this.mapId = "forest";
         this.player = { x: 5, y: 8, dir: "down" };
         this.moveAnim = null;
+        this.moveFrameCounter = 0;
         this.flags.chapter1Complete = true;
         this.battle = null;
         this.message = [
