@@ -32,6 +32,10 @@ function pageSlice<T>(items: T[], cursor: number, pageSize: number) {
 
 export function drawField(scene: any, ui: UiPrimitives, state: { gold: number }): void {
   ui.goldPill(state.gold);
+}
+
+export function drawControls(scene: any, ui: UiPrimitives, state: {}): void {
+  void state;
   ui.vpad((dir) => scene.directionInput(dir));
   ui.actionButtons(() => scene.actionA(), () => scene.actionB());
 }

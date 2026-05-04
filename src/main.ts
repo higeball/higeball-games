@@ -1439,11 +1439,13 @@ class HigeQuestScene extends Phaser.Scene {
     this.labels.forEach((label) => label.destroy());
     this.labels = [];
     this.graphics.clear();
+    this.ui.clearFrame();
     this.mode === "title" ? this.drawTitle() : this.mode === "battle" ? this.drawBattle() : this.drawField();
     if (this.mode === "field") screens.drawField(this, this.ui, { gold: this.gold });
     if (this.encounterEffect) this.drawEncounterEffect();
     if (this.menu) this.drawMenu();
     if (this.message.length) screens.drawMessage({ mode: this.mode }, this.ui, this.message[0], this.message.length > 1);
+    screens.drawControls(this, this.ui, {});
   }
 
   private drawTitle() {

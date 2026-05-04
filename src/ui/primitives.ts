@@ -33,6 +33,7 @@ type TextOpts = {
 
 export class UiPrimitives {
   private clipStack: Rect[] = [];
+  private transient: Phaser.GameObjects.GameObject[] = [];
   private goldLabel: Phaser.GameObjects.Text | null = null;
   private vpadZones: Phaser.GameObjects.Zone[] = [];
   private actionZones: Phaser.GameObjects.Zone[] = [];
@@ -78,7 +79,7 @@ export class UiPrimitives {
       this.text(inner, inner.x, contentY, text, { font: F.BODY, color: C.textPrimary, nowrap: false, maxLines: 4 });
     }
     if (hasMore) {
-      this.scene.add
+      const marker = this.scene.add
         .text(inner.x + inner.w - 6, inner.y + inner.h - 4, "▼", {
           fontFamily: UI_FONT,
           fontSize: `${F.S}px`,
@@ -86,6 +87,7 @@ export class UiPrimitives {
           resolution: TEXT_RESOLUTION,
         })
         .setOrigin(1, 1);
+      this.transient.push(marker);
     }
   }
 
@@ -223,13 +225,25 @@ export class UiPrimitives {
     }
     this.goldLabel.setText(text);
     this.goldLabel.setPosition(x + width / 2, y + 14);
+    this.goldLabel.setVisible(true);
   }
 
   fabBack(onTap: () => void): void {
     const size = 44;
     const x = CANVAS.w - 12 - size;
     const y = CANVAS.h - 12 - size;
-    this.drawCircleButton(x + size / 2, y + size / 2, size / 2, C.windowTop, C.windowBottom, "←");
+    this.g.fillGradientStyle(C.windowTop, C.windowTop, C.windowBottom, C.windowBottom, 1);
+    this.g.fillCircle(x + size / 2, y + size / 2, size / 2);
+    this.g.lineStyle(STROKE.edge, C.windowEdge, 1);
+    this.g.strokeCircle(x + size / 2, y + size / 2, size / 2);
+    const label = this.scene.add.text(x + size / 2, y + size / 2, "←", {
+      fontFamily: UI_FONT,
+      fontSize: `${F.M}px`,
+      color: C.textPrimary,
+      fontStyle: "bold",
+      resolution: TEXT_RESOLUTION,
+    }).setOrigin(0.5);
+    this.transient.push(label);
     this.scene.add.zone(x, y, size, size).setInteractive().on("pointerdown", onTap);
   }
 
@@ -302,6 +316,7 @@ export class UiPrimitives {
       fontStyle: "bold",
       resolution: TEXT_RESOLUTION,
     });
+    this.transient.push(t);
     t.setPadding(2, 2, 2, 2);
     t.setOrigin(align === "center" ? 0.5 : align === "right" ? 1 : 0, 0.5);
     const availableW = Math.max(0, clip.x + clip.w - x - 2);
@@ -323,6 +338,12 @@ export class UiPrimitives {
       t.setVisible(true);
     }
     return;
+  }
+
+  clearFrame(): void {
+    if (this.goldLabel) this.goldLabel.setVisible(false);
+    this.transient.forEach((obj) => obj.destroy());
+    this.transient = [];
   }
 
   withClip<T>(area: Rect, fn: () => T): T {
