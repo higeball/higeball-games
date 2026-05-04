@@ -11,7 +11,7 @@ export const LAYOUT = {
 
   MESSAGE: { x: 12, y: 316, w: 336, h: 146 },
   MESSAGE_PORTRAIT: { x: 24, y: 338, w: 52, h: 76 },
-  MESSAGE_SPEAKER: { x: 82, y: 326, w: 124, h: 24 },
+  MESSAGE_SPEAKER: { x: 82, y: 322, w: 124, h: 30 },
 
   BATTLE: {
     MSG: { x: 8, y: 310, w: 344, h: 58 },

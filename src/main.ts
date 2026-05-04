@@ -2263,7 +2263,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.drawStatusMenu();
       return;
     }
-    const box = this.menu.mode === "shop" || this.menu.mode === "equip" || this.menu.mode === "equipGear" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load" ? LAYOUT.MENU.NARROW : LAYOUT.MENU.MAIN;
+    const box = this.menu.mode === "equip" || this.menu.mode === "equipGear" || this.menu.mode === "items" || this.menu.mode === "save" || this.menu.mode === "load" ? LAYOUT.MENU.NARROW : LAYOUT.MENU.MAIN;
     this.panel(box.x, box.y, box.w, box.h);
     const title =
       this.menu.mode === "save"
@@ -2281,13 +2281,13 @@ class HigeQuestScene extends Phaser.Scene {
                 : "旅のメニュー";
     this.text(box.x + 16, box.y + 26, title, FONT.M, COLORS.text.accent);
     this.menu.items.forEach((item, i) => {
-      const y = box.y + 58 + i * 22;
+      const y = box.y + 58 + i * (this.menu?.mode === "shop" ? 20 : 22);
       const selected = i === this.menu?.cursor;
       if (selected) {
         this.graphics.fillStyle(0xffffff, 0.12);
         this.graphics.fillRect(box.x + 10, y - 10, box.w - 20, 18);
       }
-      this.text(box.x + 16, y, `${selected ? ">" : " "}${item}`, this.menu?.mode === "save" || this.menu?.mode === "load" ? FONT.S : FONT.M, selected ? COLORS.text.accent : COLORS.text.primary);
+      this.text(box.x + 16, y, `${selected ? ">" : " "}${item}`, this.menu?.mode === "save" || this.menu?.mode === "load" || this.menu?.mode === "shop" ? FONT.S : FONT.M, selected ? COLORS.text.accent : COLORS.text.primary);
     });
     if (this.menu.mode === "shop") this.drawShopHelp();
     if (this.menu.mode === "equip") this.text(44, 326, "A:選ぶ / B:戻る", FONT.S, COLORS.text.muted);
@@ -2373,7 +2373,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.graphics.fillRect(LAYOUT.MESSAGE_SPEAKER.x, LAYOUT.MESSAGE_SPEAKER.y, LAYOUT.MESSAGE_SPEAKER.w, LAYOUT.MESSAGE_SPEAKER.h);
       this.graphics.lineStyle(1, colors.border, 0.75);
       this.graphics.strokeRect(LAYOUT.MESSAGE_SPEAKER.x, LAYOUT.MESSAGE_SPEAKER.y, LAYOUT.MESSAGE_SPEAKER.w, LAYOUT.MESSAGE_SPEAKER.h);
-      this.text(90, PANEL_Y + 38, parsed.speaker, FONT.S, COLORS.text.accent);
+      this.text(90, PANEL_Y + 36, parsed.speaker, FONT.S, COLORS.text.accent);
       fitLines(parsed.body, parsed.speaker ? 240 : 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(90, PANEL_Y + 62 + i * 22, line, FONT.M));
     } else {
       fitLines(parsed.body, 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(28, PANEL_Y + 44 + i * 24, line, FONT.M));
@@ -2534,8 +2534,8 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private shopLine(entry: ShopEntry) {
-    const stat = entry.atk ? ` 攻+${entry.atk}` : entry.def ? ` 守+${entry.def}` : "";
-    return `${entry.name}${stat} ${entry.price}G`;
+    const stat = entry.atk ? `攻+${entry.atk}` : entry.def ? `守+${entry.def}` : "";
+    return stat ? `${entry.name} (${stat} ${entry.price}G)` : `${entry.name} (${entry.price}G)`;
   }
 
   private buySelectedItem() {
