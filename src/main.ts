@@ -2031,13 +2031,36 @@ class HigeQuestScene extends Phaser.Scene {
     this.text(20, 23, maps[this.mapId].name, FONT.M, "#ffe58a");
     this.text(20, 41, `${this.gold}G  薬:${this.items["やくそう"] || 0}  水:${this.items["まほうの水"] || 0}`, FONT.S);
     const rows = this.party.slice(0, 3);
+    const rightX0 = 152;
+    const rightW = 200;
+    const rowH = 16;
+    const hpBarW = 56;
+    const hpBarH = 4;
     rows.forEach((member, i) => {
-      const y = 19 + i * 16;
+      const y = 12 + i * rowH;
       const color = member.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary;
-      this.text(154, y, member.name, FONT.S, color);
-      this.text(210, y, `Lv ${member.lv}`, FONT.XS, color);
-      this.text(246, y, `${member.hp}/${member.maxHp}`, FONT.XS, member.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary);
-      this.drawHpBar(282, y - 1, 58, 5, member.hp, member.maxHp);
+      const barX = rightX0 + rightW - hpBarW - 4;
+      const nameX = rightX0 + 4;
+      const nameWidth = this.measureText(member.name, FONT.S);
+      const lvText = `Lv${member.lv}`;
+      const hpPct = `${Math.round((member.hp / Math.max(1, member.maxHp)) * 100)}%`;
+      const lvWidth = this.measureText(lvText, FONT.XS);
+      const hpWidth = this.measureText(hpPct, FONT.XS);
+      const gapAfterName = 6;
+      const gapBetween = 4;
+      const gapBeforeBar = 6;
+      const lvX = nameX + nameWidth + gapAfterName;
+      const hpX = lvX + lvWidth + gapBetween;
+      const lvFits = hpX <= barX - gapBeforeBar - hpWidth;
+      const hpOnlyFits = lvX + hpWidth <= barX - gapBeforeBar;
+      this.text(nameX, y, member.name, FONT.S, color);
+      if (lvFits) {
+        this.text(lvX, y, lvText, FONT.XS, color);
+        this.text(hpX, y, hpPct, FONT.XS, color);
+      } else if (hpOnlyFits) {
+        this.text(lvX, y, hpPct, FONT.XS, color);
+      }
+      this.drawHpBar(barX, y - 1, hpBarW, hpBarH, member.hp, member.maxHp);
     });
   }
 
@@ -2049,7 +2072,7 @@ class HigeQuestScene extends Phaser.Scene {
     if (cueActive && this.battle.cueText) {
       this.text(180, PANEL_Y + 18, this.battle.cueText, FONT.S, COLORS.text.accent, "center");
     } else {
-      fitLines(logText, 320, FONT.S).slice(0, 3).forEach((line, i) => this.text(20, PANEL_Y + 20 + i * 15, line, FONT.S));
+      fitLines(logText, 320, FONT.S).slice(0, 3).forEach((line, i) => this.text(20, PANEL_Y + 20 + i * 18, line, FONT.S));
     }
     this.ffWindow(LAYOUT.BATTLE.STATUS.x, LAYOUT.BATTLE.STATUS.y, LAYOUT.BATTLE.STATUS.w, LAYOUT.BATTLE.STATUS.h);
     if (this.battle.won) {
@@ -2087,17 +2110,16 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.battle.waiting) this.text(206, PANEL_Y + 157, "行動中", FONT.S, COLORS.text.muted, "center");
     if (!this.battle.submenu) this.text(160, PANEL_Y + 72, actor ? `${actor.name}  ${actor.job}` : "", FONT.S, COLORS.text.accent);
     this.party.forEach((member, i) => {
-      const rowY = PANEL_Y + 74 + i * 16;
+      const rowY = PANEL_Y + 70 + i * 22;
       const active = actor?.name === member.name && !this.battle?.won;
       if (this.battle?.submenu) return;
       if (active) {
         this.graphics.fillStyle(0xffffff, 0.12);
-        this.graphics.fillRect(8, rowY - 8, 132, 14);
+        this.graphics.fillRect(8, rowY - 8, 132, 20);
       }
       const color = member.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary;
       this.text(12, rowY, member.name, FONT.S, color);
-      this.text(52, rowY, `HP ${member.hp}/${member.maxHp}`, FONT.XS, color);
-      this.text(108, rowY, `MP ${member.mp}`, FONT.XS, color);
+      this.text(12, rowY + 10, `H${member.hp}/${member.maxHp} M${member.mp}`, FONT.XS, color);
     });
     if (this.battle.submenu && actor) this.drawSkillSubwindow(actor);
   }
@@ -2287,10 +2309,14 @@ class HigeQuestScene extends Phaser.Scene {
     this.text(36, 112, "ステータス", FONT.L, COLORS.text.accent);
     this.text(36, 136, "↑↓:キャラ ←→:タブ A/B:戻る", FONT.S, COLORS.text.muted);
     this.party.forEach((entry, i) => {
-      const y = 166 + i * 26;
-      if (i === this.menu!.cursor) this.graphics.fillStyle(0xffffff, 0.12), this.graphics.fillRect(30, y - 10, 118, 18);
-      this.text(38, y, `${i === this.menu!.cursor ? ">" : " "} ${entry.name} Lv${entry.lv}`, FONT.S, i === this.menu!.cursor ? COLORS.text.accent : COLORS.text.primary);
-      this.text(132, y, `HP ${entry.hp}/${entry.maxHp} MP ${entry.mp}/${entry.maxMp}`, FONT.S, entry.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary);
+      const y = 166 + i * 24;
+      if (i === this.menu!.cursor) {
+        this.graphics.fillStyle(0xffffff, 0.12);
+        this.graphics.fillRect(30, y - 10, 140, 20);
+      }
+      const color = i === this.menu!.cursor ? COLORS.text.accent : COLORS.text.primary;
+      this.text(38, y, `${i === this.menu!.cursor ? ">" : " "} ${entry.name}`, FONT.S, entry.hp <= 0 ? COLORS.text.disabled : color);
+      this.text(120, y, `Lv ${entry.lv}`, FONT.S, entry.hp <= 0 ? COLORS.text.disabled : color);
     });
     this.text(182, 140, `${member.name} ${member.job}`, FONT.S, COLORS.text.accent);
     if (tab === 0) {
@@ -2328,10 +2354,14 @@ class HigeQuestScene extends Phaser.Scene {
     if (this.menu?.memberIndex === undefined) return;
     const member = this.party[this.menu.memberIndex];
     if (!member) return;
-    this.text(44, 286, `現在 武:${this.equipmentName(member.weapon)} 防:${this.equipmentName(member.armor)}`, FONT.S, COLORS.text.muted);
-    this.text(44, 308, this.equipmentTraitsText(member.weapon, "武器") || "武器の特性なし", FONT.XS, COLORS.text.muted);
-    this.text(44, 328, this.equipmentTraitsText(member.armor, "防具") || "防具の特性なし", FONT.XS, COLORS.text.muted);
-    this.text(44, 350, "A:装備 / B:戻る", FONT.S, COLORS.text.muted);
+    const fit = (label: string) => fitLines(label, 124, FONT.S)[0] || label;
+    const helpLine1 = `武:${fit(this.equipmentName(member.weapon))}`;
+    const helpLine2 = `防:${fit(this.equipmentName(member.armor))}`;
+    this.text(32, 280, helpLine1, FONT.S, COLORS.text.muted);
+    this.text(32, 298, helpLine2, FONT.S, COLORS.text.muted);
+    this.text(32, 320, this.equipmentTraitsText(member.weapon, "武器") || "武器の特性なし", FONT.XS, COLORS.text.muted);
+    this.text(32, 338, this.equipmentTraitsText(member.armor, "防具") || "防具の特性なし", FONT.XS, COLORS.text.muted);
+    this.text(32, 360, "A:装備 / B:戻る", FONT.S, COLORS.text.muted);
   }
 
   private drawMessage(message: string) {
@@ -2351,9 +2381,9 @@ class HigeQuestScene extends Phaser.Scene {
       this.graphics.lineStyle(1, colors.border, 0.75);
       this.graphics.strokeRect(LAYOUT.MESSAGE_SPEAKER.x, LAYOUT.MESSAGE_SPEAKER.y, LAYOUT.MESSAGE_SPEAKER.w, LAYOUT.MESSAGE_SPEAKER.h);
       this.text(90, PANEL_Y + 38, parsed.speaker, FONT.S, COLORS.text.accent);
-      fitLines(parsed.body, parsed.speaker ? 240 : 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(90, PANEL_Y + 62 + i * 20, line, FONT.M));
+      fitLines(parsed.body, parsed.speaker ? 240 : 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(90, PANEL_Y + 62 + i * 22, line, FONT.M));
     } else {
-      fitLines(parsed.body, 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(28, PANEL_Y + 44 + i * 22, line, FONT.M));
+      fitLines(parsed.body, 308, FONT.M).slice(0, 4).forEach((line, i) => this.text(28, PANEL_Y + 44 + i * 24, line, FONT.M));
     }
     this.drawContinueCue(hasMore);
     this.text(216, PANEL_Y + 138, hasMore ? "A:次へ / B:閉じる" : "A/B:閉じる", FONT.S, COLORS.text.accent);
@@ -2452,6 +2482,14 @@ class HigeQuestScene extends Phaser.Scene {
     label.setPadding(4, 2, 4, 2);
     label.setOrigin(align === "center" ? 0.5 : 0, 0.5);
     this.labels.push(label);
+  }
+
+  private measureText(value: string, fontPx: number) {
+    let width = 0;
+    for (const ch of value) {
+      width += /[　-鿿＀-￯]/.test(ch) ? fontPx : fontPx * 0.55;
+    }
+    return Math.ceil(width);
   }
 
   private floatText(x: number, y: number, value: string, color: string) {
