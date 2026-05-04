@@ -10,6 +10,12 @@ type StatusState = { gold: number; party: PartyView[]; selectedIndex: number; pa
 type EquipState = { gold: number; party: PartyView[]; selectedIndex: number; rows: KvRow[]; back: () => void; title: string };
 type ItemState = { gold: number; party: PartyView[]; items: ListItem[]; cursor: number; page: number; totalPages: number; back: () => void; title: string };
 type ShopState = { gold: number; shopType: string; items: ListItem[]; cursor: number; page: number; totalPages: number; back: () => void; title: string; prompt: string };
+type BattleActorView = { name: string; job: string; mp: number };
+type BattleSkillView = { name: string; mp: number };
+type BattleEnemyView = { name: string };
+type BattleCommandState = { party: PartyView[]; enemies: BattleEnemyView[]; actor: BattleActorView | null; command: number; cancel: () => void };
+type BattleSubmenuState = { party: PartyView[]; enemy: BattleEnemyView; actor: BattleActorView; kind: string; pageSkills: BattleSkillView[]; cursor: number; page: number; totalPages: number; close: () => void };
+type LevelUpState = { party: PartyView[]; message: string; hasMore: boolean };
 
 function splitH(area: Rect, leftW: number, gap: number): [Rect, Rect] {
   return [
@@ -38,6 +44,46 @@ export function drawControls(scene: any, ui: UiPrimitives, state: {}): void {
   void state;
   ui.vpad((dir) => scene.directionInput(dir));
   ui.actionButtons(() => scene.actionA(), () => scene.actionB());
+}
+
+export function drawBattleCommand(scene: any, ui: UiPrimitives, state: BattleCommandState): void {
+  ui.statusRow(state.party, true);
+  const helper = scene as any;
+  if (typeof helper.drawEnemyStatus === "function") helper.drawEnemyStatus();
+  const [leftArea, rightArea] = splitH({ x: 8, y: 290, w: 344, h: 290 }, 110, 8);
+  const inner = ui.window(leftArea);
+  ui.text(inner, inner.x + inner.w / 2, inner.y + 16, state.actor?.name || "", { font: F.S, color: C.textAccent, align: "center" });
+  ui.text(inner, inner.x + inner.w / 2, inner.y + 36, state.actor?.job || "", { font: F.XS, color: C.textMuted, align: "center" });
+  ui.menuGrid(rightArea, [
+    { label: "こうげき", iconColor: 0xd05a5a },
+    { label: "じゅもん", iconColor: 0x6a8ad0 },
+    { label: "どうぐ", iconColor: 0xd8a040 },
+    { label: "ぼうぎょ", iconColor: 0xd8b860 },
+  ], state.command);
+  ui.fabBack(state.cancel);
+  void state.enemies;
+}
+
+export function drawBattleSubmenu(scene: any, ui: UiPrimitives, state: BattleSubmenuState): void {
+  ui.scrim(0.35);
+  ui.statusRow(state.party, true);
+  const helper = scene as any;
+  if (typeof helper.drawEnemyStatus === "function") helper.drawEnemyStatus();
+  const [leftArea, rightArea] = splitH({ x: 8, y: 290, w: 344, h: 290 }, 110, 8);
+  const inner = ui.window(leftArea);
+  ui.text(inner, inner.x + inner.w / 2, inner.y + 14, state.actor.name, { font: F.S, color: C.textAccent, align: "center" });
+  ui.text(inner, inner.x + inner.w / 2, inner.y + 32, state.kind, { font: F.XS, color: C.textMuted, align: "center" });
+  const pageItems = state.pageSkills.map((skill) => ({ name: skill.name, right: `消費MP ${skill.mp}`, muted: state.actor.mp < skill.mp }));
+  ui.list({ x: rightArea.x, y: rightArea.y, w: rightArea.w, h: rightArea.h - 34 }, pageItems, state.cursor);
+  ui.pager({ x: rightArea.x, y: rightArea.y + rightArea.h - 24, w: rightArea.w, h: 24 }, state.page, state.totalPages);
+  ui.fabBack(state.close);
+  void state.enemy;
+}
+
+export function drawLevelUp(scene: any, ui: UiPrimitives, state: LevelUpState): void {
+  void scene;
+  ui.statusRow(state.party);
+  ui.dialog(null, state.message, state.hasMore);
 }
 
 export function drawMessage(scene: MessageState, ui: UiPrimitives, message: string, hasMore: boolean): void {
