@@ -13,8 +13,8 @@ type ShopState = { gold: number; shopType: string; items: ListItem[]; cursor: nu
 type BattleActorView = { name: string; job: string; mp: number };
 type BattleSkillView = { name: string; mp: number };
 type BattleEnemyView = { name: string };
-type BattleCommandState = { party: PartyView[]; enemies: BattleEnemyView[]; actor: BattleActorView | null; command: number; cancel: () => void };
-type BattleSubmenuState = { party: PartyView[]; enemy: BattleEnemyView; actor: BattleActorView; kind: string; pageSkills: BattleSkillView[]; cursor: number; page: number; totalPages: number; close: () => void };
+type BattleCommandState = { party: PartyView[]; enemies: BattleEnemyView[]; actor: BattleActorView | null; command: number; cancel: () => void; selectCommand: (index: number) => void };
+type BattleSubmenuState = { party: PartyView[]; enemy: BattleEnemyView; actor: BattleActorView; kind: string; pageSkills: BattleSkillView[]; cursor: number; page: number; totalPages: number; close: () => void; selectSkill: (index: number) => void };
 type LevelUpState = { party: PartyView[]; message: string; hasMore: boolean };
 
 function splitH(area: Rect, leftW: number, gap: number): [Rect, Rect] {
@@ -59,7 +59,7 @@ export function drawBattleCommand(scene: any, ui: UiPrimitives, state: BattleCom
     { label: "じゅもん", iconColor: 0x6a8ad0 },
     { label: "どうぐ", iconColor: 0xd8a040 },
     { label: "ぼうぎょ", iconColor: 0xd8b860 },
-  ], state.command);
+  ], state.command, state.selectCommand);
   ui.fabBack(state.cancel);
   void state.enemies;
 }
@@ -74,7 +74,7 @@ export function drawBattleSubmenu(scene: any, ui: UiPrimitives, state: BattleSub
   ui.text(inner, inner.x + inner.w / 2, inner.y + 14, state.actor.name, { font: F.S, color: C.textAccent, align: "center" });
   ui.text(inner, inner.x + inner.w / 2, inner.y + 32, state.kind, { font: F.XS, color: C.textMuted, align: "center" });
   const pageItems = state.pageSkills.map((skill) => ({ name: skill.name, right: `消費MP ${skill.mp}`, muted: state.actor.mp < skill.mp }));
-  ui.list({ x: rightArea.x, y: rightArea.y, w: rightArea.w, h: rightArea.h - 34 }, pageItems, state.cursor);
+  ui.list({ x: rightArea.x, y: rightArea.y, w: rightArea.w, h: rightArea.h - 34 }, pageItems, state.cursor, state.selectSkill);
   ui.pager({ x: rightArea.x, y: rightArea.y + rightArea.h - 24, w: rightArea.w, h: 24 }, state.page, state.totalPages);
   ui.fabBack(state.close);
   void state.enemy;

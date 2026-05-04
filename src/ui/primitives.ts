@@ -35,6 +35,8 @@ export class UiPrimitives {
   private clipStack: Rect[] = [];
   private textPool: Phaser.GameObjects.Text[] = [];
   private textIndex = 0;
+  private zonePool: Phaser.GameObjects.Zone[] = [];
+  private zoneIndex = 0;
   private goldLabel: Phaser.GameObjects.Text | null = null;
   private vpadZones: Phaser.GameObjects.Zone[] = [];
   private vpadHeld: Direction | null = null;
@@ -141,7 +143,7 @@ export class UiPrimitives {
     });
   }
 
-  list(area: Rect, items: ListItem[], selectedIndex: number): void {
+  list(area: Rect, items: ListItem[], selectedIndex: number, onTap?: (i: number) => void): void {
     const inner = this.window(area);
     const rowH = 30;
     items.slice(0, Math.floor(inner.h / rowH)).forEach((item, i) => {
@@ -158,10 +160,14 @@ export class UiPrimitives {
       if (item.right) {
         this.text(inner, inner.x + inner.w - 2, y + 12, item.right, { font: F.S, color, align: "right", nowrap: true });
       }
+      if (onTap) {
+        const zone = this.getTransientZone(inner.x, y, inner.w, rowH - 2);
+        zone.on("pointerdown", () => onTap(i));
+      }
     });
   }
 
-  menuGrid(area: Rect, cells: CellSpec[], selectedIndex: number): void {
+  menuGrid(area: Rect, cells: CellSpec[], selectedIndex: number, onTap?: (i: number) => void): void {
     const inner = this.window(area);
     const gap = SP.s;
     const cellW = Math.floor((inner.w - gap) / 2);
@@ -189,6 +195,10 @@ export class UiPrimitives {
         align: "center",
         nowrap: true,
       });
+      if (onTap) {
+        const zone = this.getTransientZone(x, y, cellW, cellH);
+        zone.on("pointerdown", () => onTap(i));
+      }
     });
   }
 
@@ -231,7 +241,7 @@ export class UiPrimitives {
     this.g.lineStyle(STROKE.edge, C.windowEdge, 1);
     this.g.strokeCircle(x + size / 2, y + size / 2, size / 2);
     this.text({ x, y, w: size, h: size }, x + size / 2, y + size / 2, "←", { font: F.M, color: C.textPrimary, align: "center" });
-    this.scene.add.zone(x, y, size, size).setInteractive().on("pointerdown", onTap);
+    this.getTransientZone(x, y, size, size).on("pointerdown", onTap);
   }
 
   vpad(onDir: (d: Direction) => void): void {
@@ -352,11 +362,15 @@ export class UiPrimitives {
   beginFrame(): void {
     if (this.goldLabel) this.goldLabel.setVisible(false);
     this.textIndex = 0;
+    this.zoneIndex = 0;
   }
 
   endFrame(): void {
     for (let i = this.textIndex; i < this.textPool.length; i += 1) {
       this.textPool[i].setVisible(false);
+    }
+    for (let i = this.zoneIndex; i < this.zonePool.length; i += 1) {
+      this.zonePool[i].setVisible(false).removeInteractive();
     }
   }
 
@@ -385,6 +399,21 @@ export class UiPrimitives {
     const x2 = Math.min(area.x + area.w, clip.x + clip.w);
     const y2 = Math.min(area.y + area.h, clip.y + clip.h);
     return { x: x1, y: y1, w: Math.max(0, x2 - x1), h: Math.max(0, y2 - y1) };
+  }
+
+  private getTransientZone(x: number, y: number, w: number, h: number): Phaser.GameObjects.Zone {
+    let zone = this.zonePool[this.zoneIndex];
+    if (!zone) {
+      zone = this.scene.add.zone(0, 0, 1, 1);
+      this.zonePool[this.zoneIndex] = zone;
+    }
+    zone.setPosition(x, y);
+    zone.setSize(w, h);
+    zone.setVisible(true);
+    zone.setInteractive();
+    zone.removeAllListeners();
+    this.zoneIndex += 1;
+    return zone;
   }
 
   private wrapLines(value: string, maxW: number, font: number, maxLines: number): string[] {

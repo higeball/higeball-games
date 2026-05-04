@@ -1099,6 +1099,18 @@ class HigeQuestScene extends Phaser.Scene {
     this.time.delayedCall(420, () => this.nextActor());
   }
 
+  private selectBattleCommand(index: number) {
+    if (!this.battle) return;
+    this.battle.command = index;
+    this.battleA();
+  }
+
+  private selectBattleSkill(index: number) {
+    if (!this.battle?.submenu) return;
+    this.battle.submenu.cursor = index;
+    this.battleA();
+  }
+
   private useSkill(actor: PartyMember, skill: SkillDef) {
     if (!this.battle) return;
     this.markDirty();
@@ -1498,7 +1510,9 @@ class HigeQuestScene extends Phaser.Scene {
     } else if (this.message.length) {
       screens.drawMessage({ mode: this.mode }, this.ui, this.message[0], this.message.length > 1);
     }
-    screens.drawControls(this, this.ui, {});
+    if (this.mode !== "battle") {
+      screens.drawControls(this, this.ui, {});
+    }
     this.ui.endFrame();
   }
 
@@ -1812,6 +1826,7 @@ class HigeQuestScene extends Phaser.Scene {
         close: () => {
           this.battle!.submenu = null;
         },
+        selectSkill: (index: number) => this.selectBattleSkill(index),
       });
       return;
     }
@@ -1821,6 +1836,7 @@ class HigeQuestScene extends Phaser.Scene {
       actor: actor ? { name: actor.name, job: actor.job, mp: actor.mp } : null,
       command: this.battle.command,
       cancel: () => this.actionB(),
+      selectCommand: (index: number) => this.selectBattleCommand(index),
     });
   }
 
