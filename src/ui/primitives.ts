@@ -31,9 +31,17 @@ type TextOpts = {
   maxLines?: number;
 };
 
+type PoolEntry = {
+  text: Phaser.GameObjects.Text;
+  lastFont: number;
+  lastColor: string;
+  lastWrap: number;
+  lastValue: string;
+};
+
 export class UiPrimitives {
   private clipStack: Rect[] = [];
-  private textPool: Phaser.GameObjects.Text[] = [];
+  private textPool: PoolEntry[] = [];
   private textIndex = 0;
   private zonePool: Phaser.GameObjects.Zone[] = [];
   private zoneIndex = 0;
@@ -322,10 +330,10 @@ export class UiPrimitives {
     const nowrap = opts?.nowrap ?? true;
     const maxLines = opts?.maxLines ?? 1;
     const clip = this.currentClip(area);
-    const maxW = Math.max(8, area.x + area.w - x - 2);
-    let t = this.textPool[this.textIndex];
-    if (!t) {
-      t = this.scene.add.text(0, 0, "", {
+    const maxW = nowrap ? 0 : Math.max(8, area.x + area.w - x - 2);
+    let entry = this.textPool[this.textIndex];
+    if (!entry) {
+      const t = this.scene.add.text(0, 0, "", {
         fontFamily: UI_FONT,
         fontSize: `${F.S}px`,
         color: C.textPrimary,
@@ -333,35 +341,43 @@ export class UiPrimitives {
         resolution: TEXT_RESOLUTION,
       });
       t.setPadding(2, 2, 2, 2);
-      this.textPool[this.textIndex] = t;
+      entry = { text: t, lastFont: -1, lastColor: "", lastWrap: -1, lastValue: "" };
+      this.textPool[this.textIndex] = entry;
     }
-    if (opts?.nowrap === false) {
+    const { text: t } = entry;
+    t.setVisible(true);
+
+    if (font !== entry.lastFont || color !== entry.lastColor || maxW !== entry.lastWrap) {
       t.setStyle({
         fontSize: `${font}px`,
         color,
-        wordWrap: { width: maxW, useAdvancedWrap: true },
+        wordWrap: maxW > 0 ? { width: maxW, useAdvancedWrap: true } : { width: 0 },
       });
-    } else {
-      t.setStyle({ fontSize: `${font}px`, color, wordWrap: { width: 0 } });
+      entry.lastFont = font;
+      entry.lastColor = color;
+      entry.lastWrap = maxW;
     }
-    t.setVisible(true);
     t.setOrigin(align === "center" ? 0.5 : align === "right" ? 1 : 0, 0.5);
-    t.setText(value);
     t.setPosition(Math.round(x), Math.round(y));
     const availableW = Math.max(0, clip.x + clip.w - x - 2);
     const availableH = Math.max(0, clip.y + clip.h - y + font);
     const clipW = availableW > 0 ? availableW : maxW;
+    let rendered = value;
     if (nowrap) {
       let s = value;
       while (s.length > 1 && this.measureWidth(`${s}…`, font) > clipW) {
         s = s.slice(0, -1);
       }
       if (s !== value) {
-        t.setText(`${s}…`);
+        rendered = `${s}…`;
       }
     } else {
       const lines = this.wrapLines(value, clipW, font, maxLines);
-      t.setText(lines.join("\n"));
+      rendered = lines.join("\n");
+    }
+    if (rendered !== entry.lastValue) {
+      t.setText(rendered);
+      entry.lastValue = rendered;
     }
     if (t.height > availableH && nowrap) {
       t.setVisible(true);
@@ -378,7 +394,7 @@ export class UiPrimitives {
 
   endFrame(): void {
     for (let i = this.textIndex; i < this.textPool.length; i += 1) {
-      this.textPool[i].setVisible(false);
+      this.textPool[i].text.setVisible(false);
     }
     for (let i = this.zoneIndex; i < this.zonePool.length; i += 1) {
       this.zonePool[i].setVisible(false).removeInteractive();
