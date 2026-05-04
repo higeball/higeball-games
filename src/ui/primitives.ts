@@ -21,7 +21,7 @@ export type ListItem = { name: string; right?: string; muted?: boolean };
 export type KvRow = { label: string; value: string; accent?: boolean };
 
 const UI_FONT = '"Hiragino Sans", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif';
-const TEXT_RESOLUTION = 2;
+const TEXT_RESOLUTION = 3;
 
 type TextOpts = {
   font?: number;
