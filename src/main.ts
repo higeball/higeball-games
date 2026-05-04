@@ -634,7 +634,6 @@ class HigeQuestScene extends Phaser.Scene {
   private sessionStartedAt = Date.now();
   private graphics!: Phaser.GameObjects.Graphics;
   private ui!: UiPrimitives;
-  private labels: Phaser.GameObjects.Text[] = [];
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keyA!: Phaser.Input.Keyboard.Key;
   private keyB!: Phaser.Input.Keyboard.Key;
@@ -1529,8 +1528,6 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private redraw() {
-    this.labels.forEach((label) => label.destroy());
-    this.labels = [];
     this.graphics.clear();
     this.ui.beginFrame();
     this.mode === "title" ? this.drawTitle() : this.mode === "battle" ? this.drawBattle() : this.drawField();
@@ -2340,15 +2337,18 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private text(x: number, y: number, value: string, size = 14, color = "#fff3cb", align: "left" | "center" = "left") {
-    const label = this.add.text(Math.round(x), Math.round(y), value, {
-      fontFamily: UI_FONT,
-      fontSize: `${size}px`,
-      color,
-      resolution: TEXT_RESOLUTION,
-    });
-    label.setPadding(4, 2, 4, 2);
-    label.setOrigin(align === "center" ? 0.5 : 0, 0.5);
-    this.labels.push(label);
+    this.ui.text(
+      { x: 0, y: 0, w: WIDTH, h: HEIGHT },
+      x,
+      y,
+      value,
+      {
+        font: size,
+        color,
+        align,
+        nowrap: true,
+      },
+    );
   }
 
   private measureText(value: string, fontPx: number) {
