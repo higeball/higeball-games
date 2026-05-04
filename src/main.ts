@@ -2118,21 +2118,26 @@ class HigeQuestScene extends Phaser.Scene {
     const page = Phaser.Math.Clamp(this.battle?.levelUpPage || 0, 0, summaries.length - 1);
     const summary = summaries[page];
     this.ffWindow(LAYOUT.MENU.WIDE.x, LAYOUT.MENU.WIDE.y, LAYOUT.MENU.WIDE.w, LAYOUT.MENU.WIDE.h);
-    this.text(180, 98, "レベルアップ", FONT.L, COLORS.text.accent, "center");
-    this.text(44, 124, `${summary.name}  ${summary.job}`, FONT.M, COLORS.text.primary);
-    this.text(274, 124, `${page + 1}/${summaries.length}`, FONT.S, COLORS.text.muted, "center");
+    this.text(180, 92, "レベルアップ", FONT.L, COLORS.text.accent, "center");
+    this.text(180, 116, `${summary.name} ${summary.job}`, FONT.M, COLORS.text.primary, "center");
+    this.text(308, 92, `${page + 1}/${summaries.length}`, FONT.S, COLORS.text.muted, "center");
 
-    this.graphics.fillStyle(0xffffff, 0.08);
-    this.graphics.fillRect(34, 138, 292, 116);
+    const tableX = 40;
+    const tableY = 138;
+    const tableW = 280;
+    const tableH = 124;
+    this.graphics.fillStyle(0xffffff, 0.06);
+    this.graphics.fillRect(tableX, tableY, tableW, tableH);
+    const colLabel = tableX + 6;
+    const colBefore = tableX + 134;
+    const colArrow = tableX + 178;
+    const colAfter = tableX + 222;
+    this.text(colLabel, tableY + 10, "能力", FONT.XS, COLORS.text.muted);
+    this.text(colBefore, tableY + 10, "前", FONT.XS, COLORS.text.muted, "center");
+    this.text(colArrow, tableY + 10, "→", FONT.XS, COLORS.text.muted, "center");
+    this.text(colAfter, tableY + 10, "後", FONT.XS, COLORS.text.muted, "center");
     this.graphics.lineStyle(1, 0xe7e7ef, 0.28);
-    this.graphics.lineBetween(106, 140, 106, 252);
-    this.graphics.lineBetween(196, 140, 196, 252);
-    this.graphics.lineBetween(238, 140, 238, 252);
-    this.text(62, 153, "能力", FONT.XS, COLORS.text.muted, "center");
-    this.text(152, 153, "前", FONT.XS, COLORS.text.muted, "center");
-    this.text(217, 153, "→", FONT.S, COLORS.text.accent, "center");
-    this.text(282, 153, "後", FONT.XS, COLORS.text.muted, "center");
-
+    this.graphics.lineBetween(tableX + 4, tableY + 22, tableX + tableW - 4, tableY + 22);
     const rows = [
       ["Lv", summary.lvBefore, summary.lvAfter],
       ["HP", summary.hpBefore, summary.hpAfter],
@@ -2144,20 +2149,16 @@ class HigeQuestScene extends Phaser.Scene {
       ["回", summary.evadeBefore, summary.evadeAfter],
     ] as const;
     rows.forEach(([label, before, after], i) => {
-      const y = 174 + Math.floor(i / 2) * 19;
-      const x = i % 2 === 0 ? 44 : 178;
-      this.drawStatChange(x, y, label, before, after);
+      const y = tableY + 32 + i * 12;
+      const changed = before !== after;
+      this.text(colLabel, y, String(label), FONT.XS, changed ? COLORS.text.accent : COLORS.text.primary);
+      this.text(colBefore, y, String(before), FONT.XS, COLORS.text.primary, "center");
+      this.text(colArrow, y, "→", FONT.XS, COLORS.text.muted, "center");
+      this.text(colAfter, y, String(after), FONT.XS, changed ? COLORS.text.mpAccent : COLORS.text.primary, "center");
     });
-    if (summary.learned.length) this.text(44, 264, `習得 ${summary.learned.join(" / ")}`, FONT.XS, COLORS.text.mpAccent);
-    this.text(180, 276, page < summaries.length - 1 ? "A:次の仲間" : this.battle?.wonBoss ? "A:次へ" : "A:閉じる", FONT.M, COLORS.text.accent, "center");
-  }
-
-  private drawStatChange(x: number, y: number, label: string, before: number, after: number) {
-    const changed = before !== after;
-    this.text(x, y, label, FONT.XS, changed ? COLORS.text.accent : COLORS.text.muted);
-    this.text(x + 46, y, String(before), FONT.XS, COLORS.text.primary, "center");
-    this.text(x + 78, y, "→", FONT.XS, COLORS.text.muted, "center");
-    this.text(x + 112, y, String(after), FONT.XS, changed ? COLORS.text.mpAccent : COLORS.text.primary, "center");
+    if (summary.learned.length) this.text(40, tableY + tableH + 6, `習得 ${summary.learned.join(" / ")}`, FONT.XS, COLORS.text.mpAccent);
+    const footer = page < summaries.length - 1 ? "A:次の仲間" : this.battle?.wonBoss ? "A:次へ" : "A:閉じる";
+    this.text(180, LAYOUT.MENU.WIDE.y + LAYOUT.MENU.WIDE.h - 14, footer, FONT.S, COLORS.text.accent, "center");
   }
 
   private battleCommands(actor: PartyMember) {
