@@ -68,7 +68,8 @@ export class UiPrimitives {
   }
 
   dialog(speaker: string | null, body: string, hasMore: boolean): void {
-    const lines = this.wrapLines(body, 336, F.BODY, 4);
+    const contentW = CANVAS.w - 24 - P.dialog * 2;
+    const lines = this.wrapLines(body, contentW, F.BODY, 4);
     const height = Math.min(220, Math.max(130, P.dialog * 2 + lines.length * 22 + (hasMore ? 18 : 0)));
     const area = { x: 12, y: CANVAS.h - 12 - height, w: CANVAS.w - 24, h: height };
     const inner = this.window(area);
@@ -321,6 +322,7 @@ export class UiPrimitives {
     const nowrap = opts?.nowrap ?? true;
     const maxLines = opts?.maxLines ?? 1;
     const clip = this.currentClip(area);
+    const maxW = Math.max(8, area.x + area.w - x - 2);
     let t = this.textPool[this.textIndex];
     if (!t) {
       t = this.scene.add.text(0, 0, "", {
@@ -333,24 +335,32 @@ export class UiPrimitives {
       t.setPadding(2, 2, 2, 2);
       this.textPool[this.textIndex] = t;
     }
+    if (opts?.nowrap === false) {
+      t.setStyle({
+        fontSize: `${font}px`,
+        color,
+        wordWrap: { width: maxW, useAdvancedWrap: true },
+      });
+    } else {
+      t.setStyle({ fontSize: `${font}px`, color, wordWrap: { width: 0 } });
+    }
     t.setVisible(true);
-    t.setStyle({ fontSize: `${font}px`, color });
     t.setOrigin(align === "center" ? 0.5 : align === "right" ? 1 : 0, 0.5);
     t.setText(value);
     t.setPosition(Math.round(x), Math.round(y));
     const availableW = Math.max(0, clip.x + clip.w - x - 2);
     const availableH = Math.max(0, clip.y + clip.h - y + font);
-    const maxW = availableW > 0 ? availableW : area.w;
+    const clipW = availableW > 0 ? availableW : maxW;
     if (nowrap) {
       let s = value;
-      while (s.length > 1 && this.measureWidth(`${s}…`, font) > maxW) {
+      while (s.length > 1 && this.measureWidth(`${s}…`, font) > clipW) {
         s = s.slice(0, -1);
       }
       if (s !== value) {
         t.setText(`${s}…`);
       }
     } else {
-      const lines = this.wrapLines(value, maxW, font, maxLines);
+      const lines = this.wrapLines(value, clipW, font, maxLines);
       t.setText(lines.join("\n"));
     }
     if (t.height > availableH && nowrap) {
