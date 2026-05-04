@@ -639,6 +639,7 @@ class HigeQuestScene extends Phaser.Scene {
   private keyA!: Phaser.Input.Keyboard.Key;
   private keyB!: Phaser.Input.Keyboard.Key;
   private held = new Set<Direction>();
+  private dirty = true;
   private stepReady = true;
   private inputLock = false;
   private moveAnim: { fromX: number; fromY: number; toX: number; toY: number; startedAt: number; duration: number } | null = null;
@@ -657,13 +658,44 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   update() {
+    if (this.hasActiveAnimation()) this.dirty = true;
+    this.tickInputs();
+    this.tickGame();
+    if (!this.dirty) return;
+    this.dirty = false;
+    this.redraw();
+  }
+
+  public markDirty(): void {
+    this.dirty = true;
+  }
+
+  private tickInputs() {
     if (Phaser.Input.Keyboard.JustDown(this.keyA)) this.actionA();
     if (Phaser.Input.Keyboard.JustDown(this.keyB)) this.actionB();
     this.handleKeyboardDirection();
     const held = this.ui.getHeldDirection();
     if (held) this.directionInput(held);
+  }
+
+  private tickGame() {
     this.audio.playBgm(this.currentBgmTrack());
-    this.redraw();
+  }
+
+  private hasActiveAnimation() {
+    const battle = this.battle;
+    return Boolean(
+      this.moveAnim
+      || this.encounterEffect
+      || this.bossCinematic
+      || this.message.length
+      || this.battleEffects.length
+      || (battle && (
+        battle.enemyFlashUntil > this.time.now
+        || battle.shakeUntil > this.time.now
+        || battle.partyFlashUntil.some((until) => until > this.time.now)
+      )),
+    );
   }
 
   private disableBrowserGestures() {
@@ -711,6 +743,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private directionInput(dir: Direction) {
     this.audio.unlock();
+    this.markDirty();
     if (this.mode === "title" && !this.menu) {
       if (dir === "up" || dir === "down") {
         this.titleCursor = this.titleCursor === 0 ? 1 : 0;
@@ -772,6 +805,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private tryMove(dir: Direction) {
     if (this.mode !== "field" || this.menu || this.message.length || !this.stepReady || this.inputLock) return;
+    this.markDirty();
     this.player.dir = dir;
     const dx = dir === "left" ? -1 : dir === "right" ? 1 : 0;
     const dy = dir === "up" ? -1 : dir === "down" ? 1 : 0;
@@ -792,6 +826,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.player.x = exit.tx;
       this.player.y = exit.ty;
       this.message = [exit.text];
+      this.markDirty();
       this.audio.playSe("stairs");
       this.moveAnim = null;
       this.inputLock = true;
@@ -819,6 +854,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private actionA() {
     this.audio.unlock();
+    this.markDirty();
     this.audio.playSe("confirm");
     if (this.encounterEffect) return;
     if (this.mode === "title") {
@@ -876,6 +912,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private actionB() {
     this.audio.unlock();
+    this.markDirty();
     this.audio.playSe("cancel");
     if (this.encounterEffect) return;
     if (this.mode === "title") {
@@ -958,6 +995,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private battleA() {
     if (!this.battle) return;
+    this.markDirty();
     if (this.battle.waiting) return;
     if (this.battle.won) {
       if (this.battle.levelUpSummary) {
@@ -1063,6 +1101,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private useSkill(actor: PartyMember, skill: SkillDef) {
     if (!this.battle) return;
+    this.markDirty();
     actor.mp -= skill.mp;
     if (skill.target === "heal" || skill.target === "allheal") {
       const healTargets = skill.target === "allheal"
@@ -1097,6 +1136,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private nextActor() {
     if (!this.battle) return;
+    this.markDirty();
     if (this.battle.enemy.hp <= 0) {
       this.winBattle();
       return;
@@ -1137,6 +1177,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private enemyTurn() {
     if (!this.battle) return;
+    this.markDirty();
     const targets = this.party.filter((member) => member.hp > 0);
     if (!targets.length) return;
     const target = Phaser.Utils.Array.GetRandom(targets);
@@ -1225,6 +1266,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private winBattle() {
     if (!this.battle) return;
+    this.markDirty();
     const enemy = this.battle.enemy;
     const beforeLevelUps = this.party.map(copyMember);
     this.pushBattle(`${enemy.name}を倒した！`);
@@ -1256,6 +1298,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private startBattle(kind: "random" | "boss" = "random") {
+    this.markDirty();
     const pool = kind === "boss" ? enemyTemplates.boss : this.enemyPoolForMap();
     const template = Phaser.Utils.Array.GetRandom(pool);
     this.mode = "battle";
@@ -1308,6 +1351,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private saveGame(slot: number) {
+    this.markDirty();
     const data: SaveData = {
       schemaVersion: 2,
       mapId: this.mapId,
@@ -1331,6 +1375,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private loadGame(slot: number) {
+    this.markDirty();
     this.menu = null;
     const data = this.readSaveSlot(slot);
     if (!data) {
@@ -1416,6 +1461,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private startNewGame() {
+    this.markDirty();
     this.mode = "field";
     this.mapId = "world";
     this.player = { x: 3, y: 11, dir: "up" };
@@ -2353,6 +2399,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private openShop(shopType: "item" | "weapon" | "armor") {
+    this.markDirty();
     this.menu = {
       mode: "shop",
       cursor: 0,
@@ -2368,6 +2415,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private buySelectedItem() {
     if (!this.menu?.shopType) return;
+    this.markDirty();
     const id = shopStock[this.menu.shopType][this.menu.cursor];
     const entry = catalog[id];
     if (!entry) return;
@@ -2387,6 +2435,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private openEquipMenu() {
+    this.markDirty();
     this.menu = {
       mode: "equip",
       cursor: 0,
@@ -2398,6 +2447,7 @@ class HigeQuestScene extends Phaser.Scene {
   private openEquipGearMenu(memberIndex: number) {
     const member = this.party[memberIndex];
     if (!member) return;
+    this.markDirty();
     const weapons = this.availableEquipment(member, "weapon").map((entry) => `武 ${entry.name} 攻+${entry.atk || 0}`);
     const armors = this.availableEquipment(member, "armor").map((entry) => `防 ${entry.name} 守+${entry.def || 0}`);
     this.menu = {
@@ -2426,6 +2476,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private openItemsMenu() {
+    this.markDirty();
     const gear = Object.entries(this.inventory)
       .filter(([, count]) => count > 0)
       .map(([id, count]) => `${catalog[id]?.name || id} x${count}`);
@@ -2437,6 +2488,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private openStatusMenu() {
+    this.markDirty();
     this.menu = {
       mode: "status",
       cursor: 0,
@@ -2447,6 +2499,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private autoEquipAll() {
+    this.markDirty();
     this.party.forEach((member) => {
       const bestWeapon = this.bestEquipment(member, "weapon");
       const bestArmor = this.bestEquipment(member, "armor");
@@ -2744,11 +2797,13 @@ class HigeQuestScene extends Phaser.Scene {
 
   private pushBattle(text: string) {
     if (!this.battle) return;
+    this.markDirty();
     this.battle.log.push(text);
     if (this.battle.log.length > 4) this.battle.log.shift();
   }
 
   private fullHeal() {
+    this.markDirty();
     this.party.forEach((member) => {
       member.hp = member.maxHp;
       member.mp = member.maxMp;
@@ -2756,6 +2811,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private removeMojisanAfterBossLoss() {
+    this.markDirty();
     this.party = this.party.filter((member) => member.name !== "もじさん");
     this.joined["もじさん"] = false;
     if (this.inventory.onionSword) {
@@ -2799,16 +2855,19 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private advanceMessage() {
+    this.markDirty();
     if (this.message.length) this.message.shift();
   }
 
   private beginPendingBossBattle() {
+    this.markDirty();
     this.pendingBossBattle = false;
     this.startEncounter("boss");
   }
 
   private startEncounter(kind: "random" | "boss") {
     if (this.mode !== "field") return;
+    this.markDirty();
     this.encounterEffect = { startedAt: this.time.now, kind };
     this.inputLock = true;
     this.audio.playSe(kind === "boss" ? "boss" : "attack");
@@ -2820,6 +2879,7 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private startBossIntro() {
+    this.markDirty();
     if (this.ending) return;
     if (!this.joined["もじさん"]) {
       const member = partyBase.find((item) => item.name === "もじさん");
