@@ -174,6 +174,7 @@ type MenuState = {
   mode: "main" | "save" | "load" | "shop" | "equip" | "equipGear" | "items" | "status";
   cursor: number;
   items: string[];
+  tab?: 0 | 1;
   shopType?: "item" | "weapon" | "armor";
   memberIndex?: number;
   gearKind?: "weapon" | "armor";
@@ -745,6 +746,11 @@ class HigeQuestScene extends Phaser.Scene {
     }
     if (this.menu) {
       if (this.menu.mode === "status") {
+        if (dir === "left" || dir === "right") {
+          this.menu.tab = ((this.menu.tab ?? 0) ^ 1) as 0 | 1;
+          this.audio.playSe("move");
+          return;
+        }
         if (dir === "up" || dir === "down") {
           const delta = dir === "down" ? 1 : -1;
           this.menu.cursor = (this.menu.cursor + delta + this.menu.items.length) % this.menu.items.length;
@@ -2276,9 +2282,10 @@ class HigeQuestScene extends Phaser.Scene {
   private drawStatusMenu() {
     if (!this.menu) return;
     const member = this.party[this.menu.cursor] || this.party[0];
+    const tab = this.menu.tab ?? 0;
     this.panel(LAYOUT.MENU.STATUS.x, LAYOUT.MENU.STATUS.y, LAYOUT.MENU.STATUS.w, LAYOUT.MENU.STATUS.h);
     this.text(36, 112, "ステータス", FONT.L, COLORS.text.accent);
-    this.text(36, 136, "↑↓:切替  A/B:戻る", FONT.XS, COLORS.text.muted);
+    this.text(36, 136, "↑↓:キャラ ←→:タブ A/B:戻る", FONT.S, COLORS.text.muted);
     this.party.forEach((entry, i) => {
       const y = 166 + i * 26;
       if (i === this.menu!.cursor) this.graphics.fillStyle(0xffffff, 0.12), this.graphics.fillRect(30, y - 10, 118, 18);
@@ -2286,21 +2293,24 @@ class HigeQuestScene extends Phaser.Scene {
       this.text(132, y, `HP ${entry.hp}/${entry.maxHp} MP ${entry.mp}/${entry.maxMp}`, FONT.S, entry.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary);
     });
     this.text(182, 140, `${member.name} ${member.job}`, FONT.S, COLORS.text.accent);
-    this.text(182, 162, `Lv ${member.lv}  EXP ${member.xp}`, FONT.S);
-    this.text(182, 184, `HP ${member.hp}/${member.maxHp}`, FONT.S);
-    this.text(182, 204, `MP ${member.mp}/${member.maxMp}`, FONT.S);
-    this.text(182, 228, `力 ${this.totalAtk(member)}`, FONT.S);
-    this.text(182, 248, `体 ${this.totalDef(member)}`, FONT.S);
-    this.text(182, 268, `速 ${this.totalSpd(member)}`, FONT.S);
-    this.text(182, 288, `魔 ${this.totalMagic(member)}`, FONT.S);
-    this.text(182, 308, `回 ${this.totalEvade(member)}`, FONT.S);
-    this.text(182, 328, `命中 ${this.accuracy(member)}%`, FONT.XS, COLORS.text.muted);
-    this.text(182, 346, `耐性 ${this.resistanceLabel(member)}`, FONT.XS, COLORS.text.muted);
-    this.text(182, 364, `武 ${this.equipmentName(member.weapon)}`, FONT.XS, COLORS.text.muted);
-    this.text(182, 382, `防 ${this.equipmentName(member.armor)}`, FONT.XS, COLORS.text.muted);
-    const skills = member.skills.filter((name) => this.skillsFor(member).some((skill) => skill.name === name));
-    this.text(182, 398, `技 ${skills.join(" / ") || "-"}`, FONT.XS, COLORS.text.muted);
-    this.text(182, 412, `EXPボーナス ${Math.round(this.totalExpBonus(member) * 100)}%`, FONT.XS, COLORS.text.muted);
+    if (tab === 0) {
+      this.text(182, 162, "[基本]", FONT.S, COLORS.text.accent);
+      this.text(224, 162, "装備", FONT.S, COLORS.text.muted);
+      this.text(182, 188, `Lv ${member.lv}  EXP ${member.xp}`, FONT.S, COLORS.text.primary);
+      this.text(182, 208, `HP ${member.hp}/${member.maxHp}  MP ${member.mp}/${member.maxMp}`, FONT.S, COLORS.text.primary);
+      this.text(182, 228, `力 ${this.totalAtk(member)}  体 ${this.totalDef(member)}`, FONT.S, COLORS.text.primary);
+      this.text(182, 248, `速 ${this.totalSpd(member)}  魔 ${this.totalMagic(member)}`, FONT.S, COLORS.text.primary);
+      this.text(182, 268, `回 ${this.totalEvade(member)}  命中 ${this.accuracy(member)}%`, FONT.S, COLORS.text.primary);
+      return;
+    }
+    this.text(182, 162, "基本", FONT.S, COLORS.text.muted);
+    this.text(224, 162, "[装備]", FONT.S, COLORS.text.accent);
+    const skills = this.skillsFor(member).map((skill) => skill.name);
+    this.text(182, 188, `武器 ${this.equipmentName(member.weapon)}`, FONT.S, COLORS.text.primary);
+    this.text(182, 208, `防具 ${this.equipmentName(member.armor)}`, FONT.S, COLORS.text.primary);
+    this.text(182, 228, `耐性 ${this.resistanceLabel(member)}`, FONT.S, COLORS.text.primary);
+    this.text(182, 248, `技 ${skills.join(" / ") || "-"}`, FONT.S, COLORS.text.primary);
+    this.text(182, 268, `EXPボーナス ${Math.round(this.totalExpBonus(member) * 100)}%`, FONT.S, COLORS.text.primary);
   }
 
   private drawShopHelp() {
@@ -2571,6 +2581,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.menu = {
       mode: "status",
       cursor: 0,
+      tab: 0,
       items: this.party.map((member) => member.name),
     };
     this.audio.playSe("equip");
