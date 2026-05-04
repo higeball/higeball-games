@@ -54,6 +54,6 @@ export const COLORS = {
   },
 } as const;
 
-export const FONT = { XS: 11, S: 12, M: 14, L: 16, XL: 18 } as const;
+export const FONT = { XS: 12, S: 14, M: 16, L: 18, XL: 22 } as const;
 
 export const DISPLAY = { D1: 22, D2: 26, D3: 30, D4: 34 } as const;
