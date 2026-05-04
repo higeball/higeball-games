@@ -25,130 +25,19 @@ body {
 }
 
 .phone {
-  position: relative;
-  display: flex;
-  flex-direction: column;
   width: 360px;
   height: 640px;
-  background: #0b0d10;
-  overflow: hidden;
   transform: scale(var(--app-scale, 1));
   transform-origin: center;
 }
 
 #game-root {
   display: block;
-  width: 100%;
-  height: 472px;
-  min-height: 0;
+  width: 360px;
+  height: 640px;
 }
 
 #game-root canvas {
   display: block;
   image-rendering: auto;
-}
-
-.controls {
-  position: relative;
-  flex: 0 0 168px;
-  height: 168px;
-  background: #171c24;
-  border-top: 2px solid rgba(243, 209, 123, 0.42);
-  pointer-events: none;
-}
-
-button {
-  appearance: none;
-  -webkit-appearance: none;
-  border: 2px solid rgba(255, 255, 255, 0.22);
-  color: #f8f3dc;
-  background: #28303b;
-  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.28), 0 6px 16px rgba(0, 0, 0, 0.28);
-  font: 700 22px/1 system-ui, sans-serif;
-  pointer-events: auto;
-  touch-action: none;
-  user-select: none;
-  position: relative;
-  transition: transform 60ms ease-out;
-}
-
-button:focus {
-  outline: none;
-}
-
-button:active,
-button.is-down {
-  transform: translateY(2px);
-  background: #485d63;
-  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.32), 0 3px 10px rgba(0, 0, 0, 0.3);
-}
-
-button::before {
-  content: "";
-  position: absolute;
-  inset: -6px;
-}
-
-.dpad {
-  position: absolute;
-  left: 14px;
-  bottom: 22px;
-  display: grid;
-  grid-template-columns: 54px 54px 54px;
-  grid-template-rows: 54px 54px 54px;
-  gap: 4px;
-}
-
-.dpad button {
-  width: 54px;
-  height: 54px;
-  border-radius: 8px;
-}
-
-.dpad .up {
-  grid-column: 2;
-  grid-row: 1;
-}
-
-.dpad .left {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.dpad .right {
-  grid-column: 3;
-  grid-row: 2;
-}
-
-.dpad .down {
-  grid-column: 2;
-  grid-row: 3;
-}
-
-.actions {
-  position: absolute;
-  inset: 0;
-}
-
-.actions button {
-  position: absolute;
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-}
-
-#btn-a {
-  right: 18px;
-  bottom: 18px;
-  width: 76px;
-  height: 76px;
-  background: #5b374a;
-}
-
-#btn-b {
-  right: 32px;
-  bottom: 110px;
-  width: 60px;
-  height: 60px;
-  background: #2e4858;
 }

@@ -33,6 +33,13 @@ type TextOpts = {
 
 export class UiPrimitives {
   private clipStack: Rect[] = [];
+  private goldLabel: Phaser.GameObjects.Text | null = null;
+  private vpadZones: Phaser.GameObjects.Zone[] = [];
+  private actionZones: Phaser.GameObjects.Zone[] = [];
+  private actionLabels: { a: Phaser.GameObjects.Text | null; b: Phaser.GameObjects.Text | null } = {
+    a: null,
+    b: null,
+  };
 
   constructor(private scene: Phaser.Scene, private g: Phaser.GameObjects.Graphics) {}
 
@@ -205,13 +212,17 @@ export class UiPrimitives {
     this.g.fillRoundedRect(x, y, width, 28, R.pill);
     this.g.lineStyle(STROKE.edge, C.windowEdge, 1);
     this.g.strokeRoundedRect(x + 0.5, y + 0.5, width - 1, 27, R.pill);
-    this.scene.add.text(x + width / 2, y + 14, text, {
-      fontFamily: UI_FONT,
-      fontSize: `${F.BODY}px`,
-      color: C.textAccent,
-      fontStyle: "bold",
-      resolution: TEXT_RESOLUTION,
-    }).setOrigin(0.5);
+    if (!this.goldLabel) {
+      this.goldLabel = this.scene.add.text(x + width / 2, y + 14, text, {
+        fontFamily: UI_FONT,
+        fontSize: `${F.BODY}px`,
+        color: C.textAccent,
+        fontStyle: "bold",
+        resolution: TEXT_RESOLUTION,
+      }).setOrigin(0.5);
+    }
+    this.goldLabel.setText(text);
+    this.goldLabel.setPosition(x + width / 2, y + 14);
   }
 
   fabBack(onTap: () => void): void {
@@ -234,13 +245,17 @@ export class UiPrimitives {
     this.drawTri(cx, cy + 34, "down");
     this.drawTri(cx - 34, cy, "left");
     this.drawTri(cx + 34, cy, "right");
-    const hit = (dx: number, dy: number, dir: Direction) => {
-      this.scene.add.zone(cx + dx, cy + dy, 44, 44).setInteractive().on("pointerdown", () => onDir(dir));
+    const hit = (dx: number, dy: number, dir: Direction, index: number) => {
+      const zone = this.vpadZones[index] ?? this.scene.add.zone(cx + dx, cy + dy, 44, 44).setInteractive();
+      zone.setPosition(cx + dx, cy + dy);
+      zone.removeAllListeners();
+      zone.on("pointerdown", () => onDir(dir));
+      this.vpadZones[index] = zone;
     };
-    hit(0, -40, "up");
-    hit(0, 40, "down");
-    hit(-40, 0, "left");
-    hit(40, 0, "right");
+    hit(0, -40, "up", 0);
+    hit(0, 40, "down", 1);
+    hit(-40, 0, "left", 2);
+    hit(40, 0, "right", 3);
   }
 
   actionButtons(onA: () => void, onB: () => void): void {
@@ -250,8 +265,16 @@ export class UiPrimitives {
     const by = CANVAS.h - 16 - 25 - 80;
     this.drawCircleButton(ax, ay, 30, C.btnA.top, C.btnA.bottom, "A");
     this.drawCircleButton(bx, by, 25, C.btnB.top, C.btnB.bottom, "B");
-    this.scene.add.zone(ax, ay, 64, 64).setInteractive().on("pointerdown", onA);
-    this.scene.add.zone(bx, by, 54, 54).setInteractive().on("pointerdown", onB);
+    const aZone = this.actionZones[0] ?? this.scene.add.zone(ax, ay, 64, 64).setInteractive();
+    aZone.setPosition(ax, ay);
+    aZone.removeAllListeners();
+    aZone.on("pointerdown", onA);
+    this.actionZones[0] = aZone;
+    const bZone = this.actionZones[1] ?? this.scene.add.zone(bx, by, 54, 54).setInteractive();
+    bZone.setPosition(bx, by);
+    bZone.removeAllListeners();
+    bZone.on("pointerdown", onB);
+    this.actionZones[1] = bZone;
   }
 
   hpBar(x: number, y: number, w: number, h: number, value: number, max: number): void {
@@ -369,13 +392,18 @@ export class UiPrimitives {
     this.g.fillCircle(cx, cy, r);
     this.g.lineStyle(STROKE.edge, C.windowEdge, 1);
     this.g.strokeCircle(cx, cy, r);
-    this.scene.add.text(cx, cy, label, {
+    const key = label === "A" ? "a" : "b";
+    const size = label === "A" ? F.M : F.M;
+    const text = this.actionLabels[key] ?? this.scene.add.text(cx, cy, label, {
       fontFamily: UI_FONT,
-      fontSize: `${F.M}px`,
+      fontSize: `${size}px`,
       color: C.textPrimary,
       fontStyle: "bold",
       resolution: TEXT_RESOLUTION,
     }).setOrigin(0.5);
+    text.setText(label);
+    text.setPosition(cx, cy);
+    this.actionLabels[key] = text;
   }
 
   private drawTri(cx: number, cy: number, dir: Direction): void {

@@ -1,12 +1,15 @@
 import Phaser from "phaser";
 import { COLORS, DISPLAY, FONT, LAYOUT } from "./ui/layout";
+import { CANVAS } from "./ui/tokens";
+import { UiPrimitives } from "./ui/primitives";
+import * as screens from "./ui/screens";
 
-const WIDTH = LAYOUT.CANVAS.w;
-const HEIGHT = LAYOUT.CANVAS.h;
+const WIDTH = CANVAS.w;
+const HEIGHT = CANVAS.h;
 const TILE = 32;
 const FIELD_TILE = 28;
-const FIELD_TOP = LAYOUT.FIELD_TOP;
-const PANEL_Y = LAYOUT.PANEL_Y;
+const FIELD_TOP = 0;
+const PANEL_Y = 480;
 const BATTLE_ENEMY_X = LAYOUT.BATTLE.ENEMY_X;
 const BATTLE_ENEMY_Y = LAYOUT.BATTLE.ENEMY_Y;
 const PARTY_BATTLE_X = LAYOUT.BATTLE.PARTY_X;
@@ -629,6 +632,7 @@ class HigeQuestScene extends Phaser.Scene {
   private bossCinematic: { kind: "intro" | "outro"; startedAt: number; until: number } | null = null;
   private sessionStartedAt = Date.now();
   private graphics!: Phaser.GameObjects.Graphics;
+  private ui!: UiPrimitives;
   private labels: Phaser.GameObjects.Text[] = [];
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keyA!: Phaser.Input.Keyboard.Key;
@@ -640,13 +644,13 @@ class HigeQuestScene extends Phaser.Scene {
 
   create() {
     this.graphics = this.add.graphics();
+    this.ui = new UiPrimitives(this, this.graphics);
     this.cursors = this.input.keyboard!.createCursorKeys();
     this.keyA = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.Z);
     this.keyB = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.X);
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER).on("down", () => this.actionA());
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE).on("down", () => this.actionA());
     this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on("down", () => this.actionB());
-    this.bindVirtualControls();
     this.bindSwipe();
     this.disableBrowserGestures();
   }
@@ -657,39 +661,6 @@ class HigeQuestScene extends Phaser.Scene {
     this.handleKeyboardDirection();
     this.audio.playBgm(this.currentBgmTrack());
     this.redraw();
-  }
-
-  private bindVirtualControls() {
-    document.querySelectorAll<HTMLButtonElement>("[data-dir]").forEach((button) => {
-      const dir = button.dataset.dir as Direction;
-      button.tabIndex = -1;
-      button.addEventListener("pointerdown", (event) => {
-        event.preventDefault();
-        button.blur();
-        button.classList.add("is-down");
-        this.held.add(dir);
-        this.directionInput(dir);
-      });
-      button.addEventListener("pointerup", (event) => {
-        event.preventDefault();
-        button.classList.remove("is-down");
-        this.held.delete(dir);
-      });
-      button.addEventListener("pointercancel", () => {
-        button.classList.remove("is-down");
-        this.held.delete(dir);
-      });
-    });
-    document.getElementById("btn-a")?.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      (event.currentTarget as HTMLButtonElement).blur();
-      this.actionA();
-    });
-    document.getElementById("btn-b")?.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      (event.currentTarget as HTMLButtonElement).blur();
-      this.actionB();
-    });
   }
 
   private disableBrowserGestures() {
@@ -1468,7 +1439,7 @@ class HigeQuestScene extends Phaser.Scene {
     this.labels = [];
     this.graphics.clear();
     this.mode === "title" ? this.drawTitle() : this.mode === "battle" ? this.drawBattle() : this.drawField();
-    if (this.mode === "field") this.drawHud();
+    if (this.mode === "field") screens.drawField(this, this.ui, { gold: this.gold });
     if (this.encounterEffect) this.drawEncounterEffect();
     if (this.menu) this.drawMenu();
     if (this.message.length) this.drawMessage(this.message[0]);
@@ -2024,34 +1995,6 @@ class HigeQuestScene extends Phaser.Scene {
     this.graphics.fillCircle(x, y, 7);
     this.graphics.fillStyle(0x202735);
     this.graphics.fillCircle(x, y, 4);
-  }
-
-  private drawHud() {
-    this.panel(LAYOUT.HUD.x, LAYOUT.HUD.y, LAYOUT.HUD.w, LAYOUT.HUD.h);
-    this.text(20, 20, maps[this.mapId].name, FONT.M, "#ffe58a");
-    this.text(20, 40, `${this.gold}G  薬:${this.items["やくそう"] || 0}  水:${this.items["まほうの水"] || 0}`, FONT.XS);
-    const rows = this.party.slice(0, 4);
-    const cellW = 92;
-    const colX = [156, 252];
-    const rowY = [12, 32];
-    const barW = 60;
-    const barH = 3;
-    rows.forEach((member, i) => {
-      const cx = colX[i % 2];
-      const cy = rowY[Math.floor(i / 2)];
-      const color = member.hp <= 0 ? COLORS.text.disabled : COLORS.text.primary;
-      const nameText = member.name;
-      const lvText = ` Lv${member.lv}`;
-      const nameW = this.measureText(nameText, FONT.XS);
-      const lvW = this.measureText(lvText, FONT.XS);
-      if (nameW + lvW <= cellW - 4) {
-        this.text(cx, cy, nameText, FONT.XS, color);
-        this.text(cx + nameW, cy, lvText, FONT.XS, color);
-      } else {
-        this.text(cx, cy, nameText, FONT.XS, color);
-      }
-      this.drawHpBar(cx, cy + 8, barW, barH, member.hp, member.maxHp);
-    });
   }
 
   private drawBattlePanel() {

@@ -3,7 +3,11 @@ import type { UiPrimitives } from "./primitives";
 
 export type ScreenState = any;
 
-export function drawField(_scene: Scene, _ui: UiPrimitives, _state: ScreenState): void {}
+export function drawField(scene: any, ui: UiPrimitives, state: { gold: number }): void {
+  ui.goldPill(state.gold);
+  ui.vpad((dir) => scene.directionInput(dir));
+  ui.actionButtons(() => scene.actionA(), () => scene.actionB());
+}
 
 export function drawMessage(_scene: Scene, _ui: UiPrimitives, _message: string, _hasMore: boolean): void {}
 
