@@ -173,6 +173,15 @@ type BattleEffect = {
   duration: number;
 };
 
+type BattleFloatText = {
+  text: Phaser.GameObjects.Text;
+  active: boolean;
+  startedAt: number;
+  duration: number;
+  fromY: number;
+  toY: number;
+};
+
 type MenuState = {
   mode: "main" | "save" | "load" | "shop" | "equip" | "equipGear" | "items" | "status";
   cursor: number;
@@ -626,6 +635,7 @@ class HigeQuestScene extends Phaser.Scene {
   private titleCursor = 0;
   private battle: BattleState | null = null;
   private battleEffects: BattleEffect[] = [];
+  private battleFloatTexts: BattleFloatText[] = [];
   private encounterEffect: { startedAt: number; kind: "random" | "boss" } | null = null;
   private audio = new AudioSystem();
   private ending = false;
@@ -633,6 +643,10 @@ class HigeQuestScene extends Phaser.Scene {
   private bossCinematic: { kind: "intro" | "outro"; startedAt: number; until: number } | null = null;
   private sessionStartedAt = Date.now();
   private graphics!: Phaser.GameObjects.Graphics;
+  private fieldBackdrop: Phaser.GameObjects.Image | null = null;
+  private fieldBackdropKey = "";
+  private battleBackdrop: Phaser.GameObjects.Image | null = null;
+  private battleBackdropKey = "";
   private ui!: UiPrimitives;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
   private keyA!: Phaser.Input.Keyboard.Key;
@@ -680,6 +694,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private tickGame() {
     this.audio.playBgm(this.currentBgmTrack());
+    this.tickBattleFloatTexts();
     if (this.moveAnim) {
       this.moveFrameCounter += 1;
       if (this.moveFrameCounter % 2 === 0) this.markDirty();
@@ -694,6 +709,7 @@ class HigeQuestScene extends Phaser.Scene {
       this.encounterEffect
       || this.bossCinematic
       || this.battleEffects.length
+      || this.battleFloatTexts.some((entry) => entry.active)
       || (battle && (
         battle.enemyFlashUntil > this.time.now
         || battle.shakeUntil > this.time.now
@@ -1352,6 +1368,7 @@ class HigeQuestScene extends Phaser.Scene {
 
   private startBattle(kind: "random" | "boss" = "random") {
     this.markDirty();
+    this.resetBattleFloatTexts();
     const pool = kind === "boss" ? enemyTemplates.boss : this.enemyPoolForMap();
     const template = Phaser.Utils.Array.GetRandom(pool);
     this.mode = "battle";
@@ -1540,7 +1557,14 @@ class HigeQuestScene extends Phaser.Scene {
   private redraw() {
     this.graphics.clear();
     this.ui.beginFrame();
-    this.mode === "title" ? this.drawTitle() : this.mode === "battle" ? this.drawBattle() : this.drawField();
+    if (this.mode === "field") {
+      this.drawField();
+    } else {
+      this.fieldBackdrop?.setVisible(false);
+      this.battleBackdrop?.setVisible(false);
+      this.setBattleFloatTextsVisible(false);
+      this.mode === "title" ? this.drawTitle() : this.drawBattle();
+    }
     if (this.mode === "field") screens.drawField(this, this.ui, { gold: this.gold });
     if (this.encounterEffect) this.drawEncounterEffect();
     if (this.menu) this.drawMenu();
@@ -1588,11 +1612,12 @@ class HigeQuestScene extends Phaser.Scene {
     const tile = FIELD_TILE;
     const ox = Math.floor((WIDTH - map.tiles[0].length * tile) / 2);
     const oy = FIELD_TOP;
-    this.graphics.fillStyle(0x10151d);
-    this.graphics.fillRect(0, 0, WIDTH, HEIGHT);
-    map.tiles.forEach((row, y) => [...row].forEach((cell, x) => this.drawTile(cell, ox + x * tile, oy + y * tile, tile)));
-    this.drawMapAtmosphere(map, ox, oy, tile);
-    this.drawMapTint(map, ox, oy, tile);
+    this.ensureFieldBackdrop(map, ox, oy, tile);
+    if (this.fieldBackdrop) {
+      this.fieldBackdrop.setVisible(true);
+      this.fieldBackdrop.setPosition(0, 0);
+      this.fieldBackdrop.setDepth(-10);
+    }
     if (this.mapId === "world") {
       this.drawWorldRoutes(ox, oy, tile);
       map.exits.forEach((exit) => this.drawWorldIcon(exit, ox, oy, tile));
@@ -1625,6 +1650,32 @@ class HigeQuestScene extends Phaser.Scene {
     this.drawBossCinematic(map, ox, oy, tile);
   }
 
+  private ensureFieldBackdrop(map: GameMap, ox: number, oy: number, tile: number) {
+    const key = `field-backdrop-${this.mapId}`;
+    if (this.fieldBackdropKey === key) return;
+    this.fieldBackdropKey = key;
+    if (this.textures.exists(key)) this.textures.remove(key);
+    const g = this.add.graphics();
+    g.fillStyle(0x10151d);
+    g.fillRect(0, 0, WIDTH, HEIGHT);
+    map.tiles.forEach((row, y) => {
+      for (let x = 0; x < row.length; x += 1) {
+        this.drawTileTo(g, row[x], ox + x * tile, oy + y * tile, tile);
+      }
+    });
+    this.drawMapAtmosphere(map, ox, oy, tile, g);
+    this.drawMapTint(map, ox, oy, tile, g);
+    g.generateTexture(key, WIDTH, HEIGHT);
+    g.destroy();
+    if (!this.fieldBackdrop) {
+      this.fieldBackdrop = this.add.image(0, 0, key).setOrigin(0);
+      this.fieldBackdrop.setDepth(-10);
+    } else {
+      this.fieldBackdrop.setTexture(key);
+    }
+    this.fieldBackdrop.setVisible(true);
+  }
+
   private drawFieldFollowers(leader: { x: number; y: number }, ox: number, oy: number, tile: number) {
     if (this.pendingBossBattle) return;
     const followers = this.party.slice(1, 3);
@@ -1640,25 +1691,25 @@ class HigeQuestScene extends Phaser.Scene {
     });
   }
 
-  private drawMapAtmosphere(map: GameMap, ox: number, oy: number, tile: number) {
+  private drawMapAtmosphere(map: GameMap, ox: number, oy: number, tile: number, g: Phaser.GameObjects.Graphics = this.graphics) {
     if (this.mapId === "world") {
-      this.drawWorldAtmosphere(ox, oy, tile);
+      this.drawWorldAtmosphere(ox, oy, tile, g);
       return;
     }
     if (this.mapId === "village") {
-      this.drawRailPlatform(ox, oy, tile);
-      this.drawGuidancePulse(ox + 7 * tile + tile / 2, oy + 3 * tile + tile / 2, 0xffe58a);
+      this.drawRailPlatform(ox, oy, tile, g);
+      this.drawGuidancePulse(ox + 7 * tile + tile / 2, oy + 3 * tile + tile / 2, 0xffe58a, g);
       return;
     }
     if (this.mapId === "forest") {
-      this.drawFarmRows(ox, oy, tile);
-      this.drawGuidancePulse(ox + 3 * tile + tile / 2, oy + 3 * tile + tile / 2, 0x9df09a);
+      this.drawFarmRows(ox, oy, tile, g);
+      this.drawGuidancePulse(ox + 3 * tile + tile / 2, oy + 3 * tile + tile / 2, 0x9df09a, g);
       return;
     }
-    this.drawMountainDetails(map, ox, oy, tile);
+    this.drawMountainDetails(map, ox, oy, tile, g);
   }
 
-  private drawMapTint(map: GameMap, ox: number, oy: number, tile: number) {
+  private drawMapTint(map: GameMap, ox: number, oy: number, tile: number, g: Phaser.GameObjects.Graphics = this.graphics) {
     const width = map.tiles[0].length * tile;
     const height = map.tiles.length * tile;
     const tint = this.mapId === "world"
@@ -1668,20 +1719,20 @@ class HigeQuestScene extends Phaser.Scene {
         : this.mapId === "forest"
           ? { color: 0x7bd18b, alpha: 0.12 }
           : { color: 0x0c1120, alpha: this.mapId === "dungeon3" ? 0.22 : 0.16 };
-    this.graphics.fillStyle(tint.color, tint.alpha);
-    this.graphics.fillRect(ox, oy, width, height);
+    g.fillStyle(tint.color, tint.alpha);
+    g.fillRect(ox, oy, width, height);
   }
 
-  private drawWorldAtmosphere(ox: number, oy: number, tile: number) {
-    this.graphics.fillStyle(0x8ab86a, 0.12);
-    this.graphics.fillRect(ox + 1.2 * tile, oy + 1.1 * tile, 3.5 * tile, 2.1 * tile);
-    this.graphics.fillRect(ox + 6.2 * tile, oy + 2.1 * tile, 3.4 * tile, 2.2 * tile);
-    this.graphics.fillStyle(0x5d8fdf, 0.14);
-    this.graphics.fillRect(ox + 8.5 * tile, oy + 7.3 * tile, 2.8 * tile, 3.2 * tile);
-    this.graphics.fillStyle(0xe7e7ef, 0.34);
-    this.graphics.fillEllipse(ox + 2.5 * tile, oy + 2.2 * tile, 46, 14);
-    this.graphics.fillEllipse(ox + 8.8 * tile, oy + 1.8 * tile, 42, 12);
-    this.graphics.fillEllipse(ox + 5.4 * tile, oy + 4.1 * tile, 36, 10);
+  private drawWorldAtmosphere(ox: number, oy: number, tile: number, g: Phaser.GameObjects.Graphics = this.graphics) {
+    g.fillStyle(0x8ab86a, 0.12);
+    g.fillRect(ox + 1.2 * tile, oy + 1.1 * tile, 3.5 * tile, 2.1 * tile);
+    g.fillRect(ox + 6.2 * tile, oy + 2.1 * tile, 3.4 * tile, 2.2 * tile);
+    g.fillStyle(0x5d8fdf, 0.14);
+    g.fillRect(ox + 8.5 * tile, oy + 7.3 * tile, 2.8 * tile, 3.2 * tile);
+    g.fillStyle(0xe7e7ef, 0.34);
+    g.fillEllipse(ox + 2.5 * tile, oy + 2.2 * tile, 46, 14);
+    g.fillEllipse(ox + 8.8 * tile, oy + 1.8 * tile, 42, 12);
+    g.fillEllipse(ox + 5.4 * tile, oy + 4.1 * tile, 36, 10);
   }
 
   private drawWorldRoutes(ox: number, oy: number, tile: number) {
@@ -1733,18 +1784,18 @@ class HigeQuestScene extends Phaser.Scene {
     this.graphics.fillRect(x - 4, y - 10, 8, 8);
   }
 
-  private drawRailPlatform(ox: number, oy: number, tile: number) {
+  private drawRailPlatform(ox: number, oy: number, tile: number, g: Phaser.GameObjects.Graphics = this.graphics) {
     const y = oy + 12.35 * tile;
-    this.graphics.fillStyle(0x4b4f55, 0.95);
-    this.graphics.fillRect(ox + 3.9 * tile, y, 3.35 * tile, 5);
-    this.graphics.fillRect(ox + 3.9 * tile, y + 14, 3.35 * tile, 5);
-    this.graphics.lineStyle(2, 0xe7e7ef, 0.7);
-    for (let x = ox + 4.1 * tile; x < ox + 7 * tile; x += 18) this.graphics.lineBetween(x, y - 1, x + 8, y + 20);
-    this.graphics.fillStyle(0xf3d17b, 0.72);
-    this.graphics.fillRect(ox + 4.2 * tile, oy + 11.25 * tile, 2.65 * tile, 4);
+    g.fillStyle(0x4b4f55, 0.95);
+    g.fillRect(ox + 3.9 * tile, y, 3.35 * tile, 5);
+    g.fillRect(ox + 3.9 * tile, y + 14, 3.35 * tile, 5);
+    g.lineStyle(2, 0xe7e7ef, 0.7);
+    for (let x = ox + 4.1 * tile; x < ox + 7 * tile; x += 18) g.lineBetween(x, y - 1, x + 8, y + 20);
+    g.fillStyle(0xf3d17b, 0.72);
+    g.fillRect(ox + 4.2 * tile, oy + 11.25 * tile, 2.65 * tile, 4);
   }
 
-  private drawFarmRows(ox: number, oy: number, tile: number) {
+  private drawFarmRows(ox: number, oy: number, tile: number, g: Phaser.GameObjects.Graphics = this.graphics) {
     const rows = [
       { x: 2, y: 7, w: 3 },
       { x: 7, y: 7, w: 3 },
@@ -1753,15 +1804,15 @@ class HigeQuestScene extends Phaser.Scene {
     rows.forEach((row, i) => {
       const x = ox + row.x * tile + 4;
       const y = oy + row.y * tile + 8;
-      this.graphics.fillStyle(0x6b4a2d, 0.42);
-      this.graphics.fillRect(x, y, row.w * tile - 8, 4);
-      this.graphics.fillRect(x, y + 10, row.w * tile - 8, 4);
-      this.graphics.fillStyle(i % 2 ? 0xd8e277 : 0x7fcd6f, 0.9);
-      for (let n = 0; n < row.w * 3; n += 1) this.graphics.fillCircle(x + 8 + n * 9, y + 2 + (n % 2) * 10, 2);
+      g.fillStyle(0x6b4a2d, 0.42);
+      g.fillRect(x, y, row.w * tile - 8, 4);
+      g.fillRect(x, y + 10, row.w * tile - 8, 4);
+      g.fillStyle(i % 2 ? 0xd8e277 : 0x7fcd6f, 0.9);
+      for (let n = 0; n < row.w * 3; n += 1) g.fillCircle(x + 8 + n * 9, y + 2 + (n % 2) * 10, 2);
     });
   }
 
-  private drawMountainDetails(map: GameMap, ox: number, oy: number, tile: number) {
+  private drawMountainDetails(map: GameMap, ox: number, oy: number, tile: number, g: Phaser.GameObjects.Graphics = this.graphics) {
     map.tiles.forEach((row, y) => {
       [...row].forEach((cell, x) => {
         if (cell !== ".") return;
@@ -1769,34 +1820,34 @@ class HigeQuestScene extends Phaser.Scene {
         const px = ox + x * tile;
         const py = oy + y * tile;
         if (seed % 5 === 0) {
-          this.graphics.fillStyle(0x726248, 0.5);
-          this.graphics.fillRect(px + 7, py + 11, 9, 3);
-          this.graphics.fillRect(px + 16, py + 14, 5, 2);
+          g.fillStyle(0x726248, 0.5);
+          g.fillRect(px + 7, py + 11, 9, 3);
+          g.fillRect(px + 16, py + 14, 5, 2);
         }
         if (seed % 7 === 0) {
-          this.graphics.lineStyle(1, 0x4d4650, 0.45);
-          this.graphics.lineBetween(px + 8, py + 21, px + 18, py + 16);
-          this.graphics.lineBetween(px + 18, py + 16, px + 23, py + 20);
+          g.lineStyle(1, 0x4d4650, 0.45);
+          g.lineBetween(px + 8, py + 21, px + 18, py + 16);
+          g.lineBetween(px + 18, py + 16, px + 23, py + 20);
         }
       });
     });
     const depth = this.mapId === "dungeon1" ? 0.14 : this.mapId === "dungeon2" ? 0.22 : 0.3;
-    this.graphics.fillStyle(0x0f131a, depth);
-    this.graphics.fillRect(ox, oy, map.tiles[0].length * tile, 14 * tile);
+    g.fillStyle(0x0f131a, depth);
+    g.fillRect(ox, oy, map.tiles[0].length * tile, 14 * tile);
     if (this.mapId === "dungeon3") {
       const pulse = 0.22 + Math.sin(this.time.now * 0.006) * 0.08;
-      this.graphics.fillStyle(0xffe58a, pulse);
-      this.graphics.fillEllipse(ox + 5.5 * tile, oy + 9.6 * tile, 92, 38);
-      this.graphics.lineStyle(1, 0xfff3cb, 0.42);
-      this.graphics.lineBetween(ox + 3.8 * tile, oy + 8.6 * tile, ox + 7.1 * tile, oy + 8.15 * tile);
-      this.graphics.lineBetween(ox + 4.2 * tile, oy + 10.35 * tile, ox + 7.2 * tile, oy + 10.8 * tile);
+      g.fillStyle(0xffe58a, pulse);
+      g.fillEllipse(ox + 5.5 * tile, oy + 9.6 * tile, 92, 38);
+      g.lineStyle(1, 0xfff3cb, 0.42);
+      g.lineBetween(ox + 3.8 * tile, oy + 8.6 * tile, ox + 7.1 * tile, oy + 8.15 * tile);
+      g.lineBetween(ox + 4.2 * tile, oy + 10.35 * tile, ox + 7.2 * tile, oy + 10.8 * tile);
     }
   }
 
-  private drawGuidancePulse(x: number, y: number, color: number) {
+  private drawGuidancePulse(x: number, y: number, color: number, g: Phaser.GameObjects.Graphics = this.graphics) {
     const radius = 10 + Math.sin(this.time.now * 0.006) * 2;
-    this.graphics.lineStyle(2, color, 0.42);
-    this.graphics.strokeCircle(x, y, radius);
+    g.lineStyle(2, color, 0.42);
+    g.strokeCircle(x, y, radius);
   }
 
   private drawBossCinematic(map: GameMap, ox: number, oy: number, tile: number) {
@@ -1824,10 +1875,12 @@ class HigeQuestScene extends Phaser.Scene {
 
   private drawBattle() {
     if (!this.battle) return;
-    this.graphics.fillGradientStyle(0x31485a, 0x31485a, 0x1c2732, 0x1c2732, 1);
-    this.graphics.fillRect(0, 0, WIDTH, PANEL_Y);
-    this.graphics.fillStyle(0x7d8d61);
-    this.graphics.fillRect(0, 244, WIDTH, 62);
+    this.ensureBattleBackdrop();
+    if (this.battleBackdrop) {
+      this.battleBackdrop.setVisible(true);
+      this.battleBackdrop.setPosition(0, 0);
+      this.battleBackdrop.setDepth(-10);
+    }
     const shake = this.time.now < this.battle.shakeUntil ? Math.sin(this.time.now * 0.09) * 3 : 0;
     const enemyFlash = this.time.now < this.battle.enemyFlashUntil;
     if (this.battle.enemy.boss) this.drawBoss(BATTLE_ENEMY_X + shake, BATTLE_ENEMY_Y, 2.2, enemyFlash);
@@ -1880,45 +1933,70 @@ class HigeQuestScene extends Phaser.Scene {
     });
   }
 
+  private ensureBattleBackdrop() {
+    const key = "battle-backdrop";
+    if (this.battleBackdropKey === key) return;
+    this.battleBackdropKey = key;
+    if (this.textures.exists(key)) this.textures.remove(key);
+    const g = this.add.graphics();
+    g.fillGradientStyle(0x31485a, 0x31485a, 0x1c2732, 0x1c2732, 1);
+    g.fillRect(0, 0, WIDTH, PANEL_Y);
+    g.fillStyle(0x7d8d61);
+    g.fillRect(0, 244, WIDTH, 62);
+    g.generateTexture(key, WIDTH, PANEL_Y);
+    g.destroy();
+    if (!this.battleBackdrop) {
+      this.battleBackdrop = this.add.image(0, 0, key).setOrigin(0);
+      this.battleBackdrop.setDepth(-10);
+    } else {
+      this.battleBackdrop.setTexture(key);
+    }
+    this.battleBackdrop.setVisible(true);
+  }
+
   private drawTile(tile: string, x: number, y: number, size = TILE) {
+    this.drawTileTo(this.graphics, tile, x, y, size);
+  }
+
+  private drawTileTo(g: Phaser.GameObjects.Graphics, tile: string, x: number, y: number, size = TILE) {
     if (tile === "G" || tile === "F") {
-      this.graphics.fillStyle((x / TILE + y / TILE) % 2 ? colors.grass : colors.grass2);
-      this.graphics.fillRect(x, y, size, size);
+      g.fillStyle((x / TILE + y / TILE) % 2 ? colors.grass : colors.grass2);
+      g.fillRect(x, y, size, size);
       if (tile === "F") {
-        this.graphics.fillStyle(0xf2d15f);
-        this.graphics.fillRect(x + size * 0.56, y + size * 0.38, 5, 5);
-        this.graphics.fillStyle(0xd36a72);
-        this.graphics.fillRect(x + size * 0.5, y + size * 0.32, 3, 3);
-        this.graphics.fillRect(x + size * 0.69, y + size * 0.32, 3, 3);
+        g.fillStyle(0xf2d15f);
+        g.fillRect(x + size * 0.56, y + size * 0.38, 5, 5);
+        g.fillStyle(0xd36a72);
+        g.fillRect(x + size * 0.5, y + size * 0.32, 3, 3);
+        g.fillRect(x + size * 0.69, y + size * 0.32, 3, 3);
       }
     } else if (tile === "P") {
-      this.graphics.fillStyle(colors.path);
-      this.graphics.fillRect(x, y, size, size);
-      this.graphics.fillStyle(0x9f784b, 0.22);
-      this.graphics.fillRect(x + size * 0.14, y + size * 0.72, size * 0.7, 2);
+      g.fillStyle(colors.path);
+      g.fillRect(x, y, size, size);
+      g.fillStyle(0x9f784b, 0.22);
+      g.fillRect(x + size * 0.14, y + size * 0.72, size * 0.7, 2);
     } else if (tile === "T") {
-      this.graphics.fillStyle(0x507441);
-      this.graphics.fillRect(x, y, size, size);
-      this.graphics.fillStyle(colors.tree);
-      this.graphics.fillRect(x + 2, y + 2, size - 4, size - 8);
-      this.graphics.fillStyle(0x463523);
-      this.graphics.fillRect(x + size * 0.41, y + size * 0.64, 6, size * 0.36);
+      g.fillStyle(0x507441);
+      g.fillRect(x, y, size, size);
+      g.fillStyle(colors.tree);
+      g.fillRect(x + 2, y + 2, size - 4, size - 8);
+      g.fillStyle(0x463523);
+      g.fillRect(x + size * 0.41, y + size * 0.64, 6, size * 0.36);
     } else if (tile === "X") {
-      this.graphics.fillStyle(colors.wall);
-      this.graphics.fillRect(x, y, size, size);
+      g.fillStyle(colors.wall);
+      g.fillRect(x, y, size, size);
     } else if (tile === ".") {
-      this.graphics.fillStyle(colors.floor);
-      this.graphics.fillRect(x, y, size, size);
+      g.fillStyle(colors.floor);
+      g.fillRect(x, y, size, size);
     } else if (tile === "W") {
-      this.graphics.fillStyle(colors.water);
-      this.graphics.fillRect(x, y, size, size);
+      g.fillStyle(colors.water);
+      g.fillRect(x, y, size, size);
     } else if ("HSIC".includes(tile)) {
-      this.graphics.fillStyle(colors.grass);
-      this.graphics.fillRect(x, y, size, size);
-      this.graphics.fillStyle(tile === "C" ? 0xe7dfc6 : colors.wood);
-      this.graphics.fillRect(x + 2, y + size * 0.34, size - 4, size * 0.6);
-      this.graphics.fillStyle(tile === "S" ? 0x345e84 : tile === "I" ? 0x6d9450 : colors.roof);
-      this.graphics.fillRect(x, y + 4, size, size * 0.32);
+      g.fillStyle(colors.grass);
+      g.fillRect(x, y, size, size);
+      g.fillStyle(tile === "C" ? 0xe7dfc6 : colors.wood);
+      g.fillRect(x + 2, y + size * 0.34, size - 4, size * 0.6);
+      g.fillStyle(tile === "S" ? 0x345e84 : tile === "I" ? 0x6d9450 : colors.roof);
+      g.fillRect(x, y + 4, size, size * 0.32);
     }
   }
 
@@ -2429,10 +2507,17 @@ class HigeQuestScene extends Phaser.Scene {
   }
 
   private floatText(x: number, y: number, value: string, color: string) {
-    const label = this.add.text(Math.round(x), Math.round(y), value, { fontFamily: UI_FONT, fontSize: "18px", color, fontStyle: "bold", resolution: TEXT_RESOLUTION });
-    label.setPadding(4, 2, 4, 2);
-    label.setOrigin(0.5);
-    this.tweens.add({ targets: label, y: y - 26, alpha: 0, duration: 620, onComplete: () => label.destroy() });
+    const label = this.battleFloatTexts.find((item) => !item.active) ?? this.createBattleFloatText();
+    label.active = true;
+    label.startedAt = this.time.now;
+    label.duration = 620;
+    label.fromY = y;
+    label.toY = y - 26;
+    label.text.setText(value);
+    label.text.setStyle({ color });
+    label.text.setPosition(Math.round(x), Math.round(y));
+    label.text.setAlpha(1);
+    label.text.setVisible(true);
   }
 
   private flashEnemy() {
@@ -2449,6 +2534,59 @@ class HigeQuestScene extends Phaser.Scene {
 
   private addBattleEffect(kind: BattleEffect["kind"], x: number, y: number) {
     this.battleEffects.push({ kind, x, y, startedAt: this.time.now, duration: kind === "heal" ? 760 : 420 });
+  }
+
+  private createBattleFloatText(): BattleFloatText {
+    const text = this.add.text(0, 0, "", {
+      fontFamily: UI_FONT,
+      fontSize: "18px",
+      color: "#fff3cb",
+      fontStyle: "bold",
+      resolution: TEXT_RESOLUTION,
+    });
+    text.setPadding(4, 2, 4, 2);
+    text.setOrigin(0.5);
+    text.setVisible(false);
+    const entry: BattleFloatText = {
+      text,
+      active: false,
+      startedAt: 0,
+      duration: 0,
+      fromY: 0,
+      toY: 0,
+    };
+    this.battleFloatTexts.push(entry);
+    return entry;
+  }
+
+  private tickBattleFloatTexts() {
+    let active = false;
+    for (const entry of this.battleFloatTexts) {
+      if (!entry.active) continue;
+      active = true;
+      const progress = Phaser.Math.Clamp((this.time.now - entry.startedAt) / entry.duration, 0, 1);
+      const eased = Phaser.Math.Easing.Cubic.Out(progress);
+      entry.text.setY(Phaser.Math.Linear(entry.fromY, entry.toY, eased));
+      entry.text.setAlpha(1 - progress);
+      if (progress >= 1) {
+        entry.active = false;
+        entry.text.setVisible(false);
+      }
+    }
+    if (active) this.markDirty();
+  }
+
+  private setBattleFloatTextsVisible(visible: boolean) {
+    this.battleFloatTexts.forEach((entry) => {
+      if (entry.active) entry.text.setVisible(visible);
+    });
+  }
+
+  private resetBattleFloatTexts() {
+    this.battleFloatTexts.forEach((entry) => {
+      entry.active = false;
+      entry.text.setVisible(false);
+    });
   }
 
   private currentActor() {
@@ -3025,7 +3163,7 @@ const startGame = () => {
     },
     scene: HigeQuestScene,
     render: {
-      antialias: true,
+      antialias: false,
       roundPixels: true,
     },
   });
