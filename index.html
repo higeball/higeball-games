@@ -70,13 +70,12 @@
         .btn-line { background-color: #06c755; color: white; box-shadow: 0 5px 0 #049c42; }
         .btn-action { background-color: #8e44ad; color: white; box-shadow: 0 5px 0 #732d91; }
 
-        /* キャンバス（ゲーム画面）のスタイル */
         canvas {
-            background-color: #dcb37b; /* 土の色 */
+            background-color: #dcb37b;
             border: 3px solid #2c5e3b;
             border-radius: 8px;
             width: 100%;
-            max-width: 300px;
+            max-width: 320px; /* 走り抜けを見せるため少し広く */
             height: auto;
             margin: 0 auto 15px auto;
             display: block;
@@ -95,6 +94,11 @@
             margin: 10px 0;
             min-height: 24px;
         }
+        .runner-info {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -102,15 +106,16 @@
 <div id="app">
     <div id="screen-start" class="screen active">
         <h1>一塁塁審<br>ジャッジメント</h1>
-        <p>映像を見て判定せよ！<br>ランナーとボール、どちらが早い？</p>
+        <p>映像を見て判定せよ！<br>ランナーはベースを走り抜けます。</p>
         <input type="text" id="nickname" placeholder="ニックネームを入力">
         <button class="btn-start" onclick="startGame()">ゲームスタート</button>
     </div>
 
     <div id="screen-quiz" class="screen">
         <h2 id="round-title">第1球</h2>
+        <div id="runner-info" class="runner-info"></div>
         
-        <canvas id="gameCanvas" width="300" height="200"></canvas>
+        <canvas id="gameCanvas" width="320" height="200"></canvas>
         
         <button id="btn-play" class="btn-action" onclick="playAnimation()">プレイを見る ▶</button>
         
@@ -133,11 +138,18 @@
 </div>
 
 <script>
+    // ゲームデータ設定
+    const roundsData = [
+        { runnerName: "スズキタカノリ", speedDesc: "中速", runnerBaseFrames: 120, dustMaxRadius: 25 },
+        { runnerName: "ヒデノリ", speedDesc: "高速", runnerBaseFrames: 90, dustMaxRadius: 35 },
+        { runnerName: "シュウトウ", speedDesc: "超高速", runnerBaseFrames: 60, dustMaxRadius: 45 }
+    ];
+
     // ゲーム状態の変数
     let currentRound = 0;
     let score = 0;
     let playerName = "";
-    const totalRounds = 3;
+    const totalRounds = roundsData.length;
 
     // キャンバス設定
     const canvas = document.getElementById('gameCanvas');
@@ -146,72 +158,79 @@
     // アニメーション用変数
     let animId;
     let isAnimating = false;
-    let isPlayFinished = false;
+    let judgmentFixed = false; // 判定タイミングが確定したか
     
-    // オブジェクトの座標と速度
-    const BASE_X = 250, BASE_Y = 100;
-    let runner = { x: 0, y: 180, speedX: 0, speedY: 0, color: '#2980b9' };
-    let ball = { x: 50, y: 20, speedX: 0, speedY: 0, color: '#ffffff' };
+    // オブジェクト設定
+    const BASE_X = 250, BASE_Y = 100; // ベースの位置（判定ポイント）
+    const RUNNER_START_X = 20, RUNNER_START_Y = 180;
+    const BALL_START_X = 50, BALL_START_Y = -20;
+    const RUNNER_COLOR = '#2980b9'; // ランナー（青）
+    const BALL_COLOR = '#ffffff';   // ボール（白）
+    
+    let runner = { x: 0, y: 0, speedX: 0, speedY: 0 };
+    let ball = { x: 0, y: 0, speedX: 0, speedY: 0 };
     
     let trueAnswer = ""; // 正解（アウト or セーフ）
     let dustRadius = 0;  // 砂埃の大きさ
+    let roundDustMax = 0; // その回の最大砂埃
 
-    // 初期化：localStorageから名前を取得
+    // 初期化
     window.onload = () => {
         const savedName = localStorage.getItem('umpire_nickname_v2');
         if (savedName) document.getElementById('nickname').value = savedName;
-        drawField(); // 初期フィールドを描画
+        drawField();
     };
 
     function startGame() {
         const nameInput = document.getElementById('nickname').value.trim();
-        if (!nameInput) {
-            alert("ニックネームを入力してください");
-            return;
-        }
+        if (!nameInput) { alert("ニックネームを入力してください"); return; }
         
         playerName = nameInput;
         localStorage.setItem('umpire_nickname_v2', playerName);
 
-        currentRound = 0;
-        score = 0;
-        
+        currentRound = 0; score = 0;
         switchScreen('screen-quiz');
         prepareRound();
     }
 
     function prepareRound() {
+        const data = roundsData[currentRound];
         document.getElementById('round-title').innerText = `第 ${currentRound + 1} 球`;
-        document.getElementById('result-text').innerText = "";
+        document.getElementById('runner-info').innerHTML = `打者走者: <strong>${data.runnerName}</strong> (${data.speedDesc})`;
+        document.getElementById('result-text').innerText = "「プレイを見る」を押してください";
         
-        // ボタン状態の初期化
+        // ボタン状態
         document.getElementById('btn-play').style.display = 'inline-block';
+        document.getElementById('btn- play').disabled = false;
         document.getElementById('btn-next').style.display = 'none';
         document.getElementById('btn-out').disabled = true;
         document.getElementById('btn-safe').disabled = true;
         
-        // オブジェクトの位置リセット
-        runner.x = 20; runner.y = 180;
-        ball.x = 50; ball.y = -20;
+        // 位置リセット
+        runner.x = RUNNER_START_X; runner.y = RUNNER_START_Y;
+        ball.x = BALL_START_X; ball.y = BALL_START_Y;
         dustRadius = 0;
-        isPlayFinished = false;
+        roundDustMax = data.dustMaxRadius;
+        judgmentFixed = false;
 
         drawField();
     }
 
     function playAnimation() {
-        document.getElementById('btn-play').style.display = 'none';
+        document.getElementById('btn-play').disabled = true;
+        document.getElementById('result-text').innerText = "ジャッジ準備...";
         
-        // フレーム数の乱数生成（100フレームを基準に前後させる）
-        // ランナーとボールがベースに到達するまでの時間を微妙に変える
-        const baseFrames = 120;
-        const runnerFrames = baseFrames + (Math.random() * 20 - 10);
-        const ballFrames = baseFrames + (Math.random() * 20 - 10);
+        const data = roundsData[currentRound];
+        
+        // ランナーの速度設定（固定）
+        const runnerFrames = data.runnerBaseFrames;
+        // ボールの速度設定（ランナーの速度に合わせて、際どいタイミングを乱数生成）
+        const ballFrames = runnerFrames + (Math.random() * 10 - 5); // ±5フレームの差
 
-        // どちらが早く着くかで正解を決定（フレーム数が少ない方が早い）
+        // 判定タイミングの正解を決定
         trueAnswer = (runnerFrames < ballFrames) ? "セーフ" : "アウト";
 
-        // 速度を計算
+        // ベース（判定ポイント）までの速度を計算
         runner.speedX = (BASE_X - runner.x) / runnerFrames;
         runner.speedY = (BASE_Y - runner.y) / runnerFrames;
         ball.speedX = (BASE_X - ball.x) / ballFrames;
@@ -225,32 +244,48 @@
     function update() {
         if (!isAnimating) return;
 
-        // 移動
+        // 移動（常に移動し続ける）
         runner.x += runner.speedX;
         runner.y += runner.speedY;
         ball.x += ball.speedX;
         ball.y += ball.speedY;
 
-        // ベースとの距離を計算
+        // ベースまでの距離
         const distRunner = Math.hypot(BASE_X - runner.x, BASE_Y - runner.y);
         const distBall = Math.hypot(BASE_X - ball.x, BASE_Y - ball.y);
 
-        // どちらかがベースに到着したら（距離が一定以下）アニメーション終了
-        if (distRunner < 5 || distBall < 5) {
-            isAnimating = false;
-            isPlayFinished = true;
-            dustRadius = 30; // 砂埃を大きくする
-            drawField(); // 最後の1フレームを描画
+        // --- 判定タイミング（ベース到達）の処理 ---
+        if (!judgmentFixed) {
+            // 砂埃の演出（近づいたら大きく）
+            if (distRunner < 40 || distBall < 40) {
+                dustRadius = Math.min(dustRadius + 1.5, roundDustMax);
+            }
             
-            // 判定ボタンを有効化
-            document.getElementById('btn-out').disabled = false;
-            document.getElementById('btn-safe').disabled = false;
-            return;
+            // どちらかがベースに到達した瞬間
+            if (distRunner < 5 || distBall < 5) {
+                judgmentFixed = true; // 判定タイミング確定
+                // 判定ボタンを有効化
+                document.getElementById('btn-out').disabled = false;
+                document.getElementById('btn-safe').disabled = false;
+                document.getElementById('result-text').innerText = "ジャッジせよ！";
+            }
         }
 
-        // ベースに近づいたら砂埃を少しずつ大きくする（死角の演出）
-        if (distRunner < 40 || distBall < 40) {
-            dustRadius += 1;
+        // --- アニメーション終了条件（走り抜け） ---
+        // ランナーがキャンバスの右端を完全に超えたら終了
+        if (runner.x > canvas.width + 20) {
+            isAnimating = false;
+            drawField(); // 最後のフレームを描画
+            
+            // もし判定前に終わってしまった場合のセーフティ（通常はjudgmentFixedが先）
+            if (!judgmentFixed) {
+                judgmentFixed = true;
+                trueAnswer = "セーフ"; // 走り抜けたのでセーフ
+                document.getElementById('btn-out').disabled = false;
+                document.getElementById('btn-safe').disabled = false;
+                document.getElementById('result-text').innerText = "ジャッジせよ！";
+            }
+            return;
         }
 
         drawField();
@@ -258,50 +293,32 @@
     }
 
     function drawField() {
-        // 背景（土）
-        ctx.fillStyle = '#dcb37b';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // 背景
+        ctx.fillStyle = '#dcb37b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ファーストライン（白線）
-        ctx.beginPath();
-        ctx.moveTo(0, 200);
-        ctx.lineTo(260, 90);
-        ctx.strokeStyle = 'white';
-        ctx.lineWidth = 3;
-        ctx.stroke();
+        // ファーストライン
+        ctx.beginPath(); ctx.moveTo(0, 200); ctx.lineTo(260, 90);
+        ctx.strokeStyle = 'white'; ctx.lineWidth = 3; ctx.stroke();
 
-        // ベース（ひし形）
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.moveTo(BASE_X, BASE_Y - 10);
-        ctx.lineTo(BASE_X + 15, BASE_Y);
-        ctx.lineTo(BASE_X, BASE_Y + 10);
-        ctx.lineTo(BASE_X - 15, BASE_Y);
-        ctx.fill();
+        // ベース
+        ctx.fillStyle = 'white'; ctx.beginPath();
+        ctx.moveTo(BASE_X, BASE_Y - 10); ctx.lineTo(BASE_X + 15, BASE_Y);
+        ctx.lineTo(BASE_X, BASE_Y + 10); ctx.lineTo(BASE_X - 15, BASE_Y); ctx.fill();
 
         // 砂埃（ベース付近）
         if (dustRadius > 0) {
-            ctx.fillStyle = 'rgba(200, 190, 170, 0.8)';
-            ctx.beginPath();
-            ctx.arc(BASE_X, BASE_Y, dustRadius, 0, Math.PI * 2);
-            ctx.fill();
+            ctx.fillStyle = `rgba(200, 190, 170, ${judgmentFixed ? 0.5 : 0.8})`; // 判定後は少し薄く
+            ctx.beginPath(); ctx.arc(BASE_X, BASE_Y, dustRadius, 0, Math.PI * 2); ctx.fill();
         }
 
-        // ランナー（青い円）
-        ctx.fillStyle = runner.color;
-        ctx.beginPath();
-        ctx.arc(runner.x, runner.y, 8, 0, Math.PI * 2);
-        ctx.fill();
+        // ランナー
+        ctx.fillStyle = RUNNER_COLOR; ctx.beginPath();
+        ctx.arc(runner.x, runner.y, 8, 0, Math.PI * 2); ctx.fill();
 
-        // ボール（白い円）
-        ctx.fillStyle = ball.color;
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, 4, 0, Math.PI * 2);
-        ctx.fill();
-        // ボールの影
-        ctx.strokeStyle = '#333';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+        // ボール
+        ctx.fillStyle = BALL_COLOR; ctx.beginPath();
+        ctx.arc(ball.x, ball.y, 4, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
     }
 
     function answer(playerChoice) {
@@ -322,11 +339,7 @@
 
     function nextRound() {
         currentRound++;
-        if (currentRound >= totalRounds) {
-            showResult();
-        } else {
-            prepareRound();
-        }
+        if (currentRound >= totalRounds) { showResult(); } else { prepareRound(); }
     }
 
     function showResult() {
@@ -338,21 +351,19 @@
 
         document.getElementById('result-message').innerHTML = 
             `<strong>${playerName}</strong> 審判の成績<br><br>
-            <span style="font-size:28px; color:#c0392b; font-weight:bold;">3球中 ${score}球 正解</span><br><br>
+            <span style="font-size:28px; color:#c0392b; font-weight:bold;">${totalRounds}球中 ${score}球 正解</span><br><br>
             ${comment}`;
 
         switchScreen('screen-result');
     }
 
     function shareLine() {
-        const text = `${playerName}は一塁塁審としてクロスプレイの視覚判定に挑み、3問中${score}問正解しました！\n#一塁塁審ジャッジメント`;
+        const text = `${playerName}は一塁塁審としてクロスプレイの視覚判定に挑み、${totalRounds}問中${score}問正解しました！\n#一塁塁審ジャッジメント`;
         const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
         window.open(url, '_blank');
     }
 
-    function resetGame() {
-        switchScreen('screen-start');
-    }
+    function resetGame() { switchScreen('screen-start'); }
 
     function switchScreen(screenId) {
         document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
