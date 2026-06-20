@@ -1,15 +1,219 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ja">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
-    <title>HIGEBALL QUEST</title>
-    <link rel="stylesheet" href="./styles.css" />
-  </head>
-  <body>
-    <main class="phone">
-      <div id="game-root" aria-label="HIGEBALL QUEST game canvas"></div>
-    </main>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>一塁塁審ジャッジメント</title>
+    <style>
+        /* スマホ向けのリセットとベーススタイル */
+        body {
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
+            background-color: #2c5e3b; /* 球場の芝生をイメージしたグリーン */
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        #app {
+            background-color: #f4e8d3; /* 内野の土をイメージ */
+            width: 90%;
+            max-width: 400px;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+            box-sizing: border-box;
+        }
+        /* 画面切り替え用のクラス */
+        .screen { display: none; }
+        .screen.active { display: block; }
+        
+        h1 { margin-top: 0; color: #2c5e3b; font-size: 24px;}
+        h2 { color: #2c5e3b; }
+        
+        input[type="text"] {
+            width: 90%;
+            padding: 12px;
+            font-size: 16px;
+            margin: 15px 0;
+            border: 2px solid #ccc;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        
+        button {
+            width: 90%;
+            padding: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #999;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+        button:active {
+            transform: translateY(5px);
+            box-shadow: none;
+        }
+        
+        .btn-start { background-color: #f39c12; color: white; box-shadow: 0 5px 0 #d68910; }
+        .btn-out { background-color: #c0392b; color: white; box-shadow: 0 5px 0 #922b21; }
+        .btn-safe { background-color: #2980b9; color: white; box-shadow: 0 5px 0 #1f618d; }
+        .btn-line { background-color: #06c755; color: white; box-shadow: 0 5px 0 #049c42; }
+        
+        /* 状況表示エリア */
+        .situation-box {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            border: 3px solid #2c5e3b;
+            margin-bottom: 20px;
+            min-height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <div id="screen-start" class="screen active">
+        <h1>一塁塁審<br>ジャッジメント</h1>
+        <p>ファーストの際どいプレイ！<br>死角や砂埃に惑わされず判定せよ！</p>
+        <input type="text" id="nickname" placeholder="ニックネームを入力">
+        <button class="btn-start" onclick="startGame()">ゲームスタート</button>
+    </div>
+
+    <div id="screen-quiz" class="screen">
+        <h2 id="round-title">第1球</h2>
+        <div class="situation-box" id="question-text">
+            状況がここに表示されます。
+        </div>
+        <button class="btn-out" onclick="answer('アウト')">アウト！ ✊</button>
+        <button class="btn-safe" onclick="answer('セーフ')">セーフ！ 👐</button>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <h2>試合終了</h2>
+        <div id="result-message" style="margin: 20px 0; font-size: 18px;"></div>
+        <button class="btn-line" onclick="shareLine()">LINEで結果をシェア</button>
+        <button class="btn-start" onclick="resetGame()" style="margin-top:20px;">もう一度ジャッジする</button>
+    </div>
+</div>
+
+<script>
+    // 問題データプール（死角や際どいシチュエーションを意識）
+    const questionsPool = [
+        { text: "ボテボテのサードゴロ！打者走者と一塁手の足が交錯してベースが死角になった！タイミング的には...", answer: "セーフ" },
+        { text: "強烈なショートゴロ！送球が少し逸れ、一塁手が背伸びをして捕球。ベースから足が離れたように見えたが！？", answer: "アウト" },
+        { text: "セカンドの深い位置からの送球！一塁手の手元に土煙が舞い上がり、捕球の瞬間が完全に見えない！", answer: "セーフ" },
+        { text: "キャッチャー前のバント！送球と打者走者の駆け抜けが完全に同時！ミットの音と足音が重なった！", answer: "アウト" },
+        { text: "ライト前ヒットかと思われた当たりを一塁手がダイビングキャッチ！そのままベースカバーの投手へトス！送球がランナーと重なった！", answer: "アウト" },
+        { text: "ショートの深い位置からの送球。ワンバウンド送球になり一塁手が後逸したように見えたが、実はミットの奥に収まっている！？", answer: "セーフ" }
+    ];
+
+    let currentQuestions = [];
+    let currentRound = 0;
+    let score = 0;
+    let playerName = "";
+
+    // 画面読み込み時：localStorageからニックネームを復元
+    window.onload = () => {
+        const savedName = localStorage.getItem('umpire_nickname');
+        if (savedName) {
+            document.getElementById('nickname').value = savedName;
+        }
+    };
+
+    function startGame() {
+        const nameInput = document.getElementById('nickname').value.trim();
+        if (!nameInput) {
+            alert("ニックネームを入力してください");
+            return;
+        }
+        
+        // ニックネームを保存
+        playerName = nameInput;
+        localStorage.setItem('umpire_nickname', playerName);
+
+        // 問題プールからランダムに3問抽出
+        const shuffled = [...questionsPool].sort(() => 0.5 - Math.random());
+        currentQuestions = shuffled.slice(0, 3);
+        
+        // 変数初期化
+        currentRound = 0;
+        score = 0;
+        
+        switchScreen('screen-quiz');
+        showQuestion();
+    }
+
+    function showQuestion() {
+        document.getElementById('round-title').innerText = `第 ${currentRound + 1} 問`;
+        document.getElementById('question-text').innerText = currentQuestions[currentRound].text;
+    }
+
+    function answer(playerChoice) {
+        const correctAnswer = currentQuestions[currentRound].answer;
+        
+        // 正誤判定（アラートで結果を通知）
+        if (playerChoice === correctAnswer) {
+            alert(`正解！\n実際の判定は「${correctAnswer}」です。よく見えましたね！`);
+            score++;
+        } else {
+            alert(`ミスジャッジ！\n実際の判定は「${correctAnswer}」です。砂埃に騙されましたね。`);
+        }
+
+        currentRound++;
+
+        // 3問終わったら結果画面へ、そうでなければ次の問題へ
+        if (currentRound >= 3) {
+            showResult();
+        } else {
+            showQuestion();
+        }
+    }
+
+    function showResult() {
+        let comment = "";
+        if (score === 3) comment = "名審判誕生！完璧なジャッジです！";
+        else if (score === 2) comment = "惜しい！あと少しで一軍レベル！";
+        else if (score === 1) comment = "まだまだ修行が必要ですね。";
+        else comment = "大ブーイング！二軍でやり直しましょう。";
+
+        document.getElementById('result-message').innerHTML = 
+            `<strong>${playerName}</strong> 審判の成績<br><br>
+            <span style="font-size:28px; color:#c0392b; font-weight:bold;">3問中 ${score}問 正解</span><br><br>
+            ${comment}`;
+
+        switchScreen('screen-result');
+    }
+
+    function shareLine() {
+        const text = `${playerName}は一塁塁審としてクロスプレイの判定に挑み、3問中${score}問正解しました！\n#一塁塁審ジャッジメント`;
+        // LINEのテキスト共有URLスキーマ
+        const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+    }
+
+    function resetGame() {
+        switchScreen('screen-start');
+    }
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+</script>
+
+</body>
 </html>
