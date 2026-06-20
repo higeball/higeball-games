@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>一塁塁審ジャッジメント - Visual Ver.</title>
+    <title>一塁塁審ジャッジメント - 16bit Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Helvetica Neue', Arial, 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', Meiryo, sans-serif;
-            background-color: #2c5e3b;
-            color: #333;
+            font-family: 'DotGothic16', sans-serif;
+            background-color: #222; 
+            color: #fff;
             margin: 0;
             padding: 0;
             display: flex;
@@ -17,86 +18,107 @@
             min-height: 100vh;
             text-align: center;
         }
+        
         #app {
-            background-color: #f4e8d3;
+            background-color: #000;
             width: 95%;
             max-width: 400px;
-            border-radius: 12px;
-            padding: 15px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+            padding: 20px;
             box-sizing: border-box;
+            border: 4px solid #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff, inset 0 0 0 2px #fff;
         }
+
         .screen { display: none; }
         .screen.active { display: block; }
         
-        h1, h2 { color: #2c5e3b; margin-top: 0;}
+        h1, h2 { 
+            color: #fff; 
+            margin-top: 0;
+            text-shadow: 2px 2px 0 #888;
+        }
         
         input[type="text"] {
+            font-family: 'DotGothic16', sans-serif;
             width: 90%;
             padding: 12px;
             font-size: 16px;
             margin: 15px 0;
-            border: 2px solid #ccc;
-            border-radius: 6px;
+            background-color: #000;
+            color: #fff;
+            border: 2px solid #fff;
             box-sizing: border-box;
         }
+        input[type="text"]:focus { outline: none; border-color: #f39c12; }
         
         button {
+            font-family: 'DotGothic16', sans-serif;
             width: 90%;
             padding: 12px;
             font-size: 18px;
-            font-weight: bold;
             margin: 8px 0;
-            border: none;
-            border-radius: 8px;
+            background-color: #000;
+            color: #fff;
+            border: 2px solid #fff;
             cursor: pointer;
-            box-shadow: 0 5px 0 #999;
-            transition: transform 0.1s, box-shadow 0.1s;
+            text-align: left;
+            padding-left: 20px;
+            position: relative;
+        }
+        button:before {
+            content: "";
+            position: absolute;
+            left: 5px;
+            opacity: 0;
+        }
+        button:hover:not(:disabled):before,
+        button:active:not(:disabled):before {
+            content: "▶"; 
+            opacity: 1;
         }
         button:active:not(:disabled) {
-            transform: translateY(5px);
-            box-shadow: none;
+            background-color: #333;
         }
         button:disabled {
-            background-color: #ccc !important;
-            box-shadow: 0 5px 0 #999 !important;
-            color: #666 !important;
+            color: #666;
+            border-color: #666;
             cursor: not-allowed;
         }
         
-        .btn-start { background-color: #f39c12; color: white; box-shadow: 0 5px 0 #d68910; }
-        .btn-out { background-color: #c0392b; color: white; box-shadow: 0 5px 0 #922b21; }
-        .btn-safe { background-color: #2980b9; color: white; box-shadow: 0 5px 0 #1f618d; }
-        .btn-line { background-color: #06c755; color: white; box-shadow: 0 5px 0 #049c42; }
-        .btn-action { background-color: #8e44ad; color: white; box-shadow: 0 5px 0 #732d91; }
+        .btn-line { border-color: #06c755; color: #06c755; }
 
         canvas {
-            background-color: #dcb37b;
-            border: 3px solid #2c5e3b;
-            border-radius: 8px;
+            background-color: #a06a3f; 
+            border: 2px solid #fff;
             width: 100%;
             max-width: 320px;
             height: auto;
             margin: 0 auto 15px auto;
             display: block;
+            image-rendering: pixelated; 
         }
 
         #judge-controls {
             display: flex;
-            justify-content: space-around;
+            justify-content: space-between;
         }
         #judge-controls button {
-            width: 45%;
+            width: 48%;
+            text-align: center;
+            padding-left: 0;
         }
+        #judge-controls button:before { display: none; } 
+
         #result-text {
-            font-weight: bold;
-            font-size: 16px;
+            font-size: 18px;
             margin: 10px 0;
             min-height: 24px;
+            white-space: pre-wrap; /* 改行を有効にする */
         }
         .runner-info {
-            font-size: 14px;
-            color: #555;
+            font-size: 16px;
+            color: #aaa;
             margin-bottom: 10px;
         }
     </style>
@@ -105,44 +127,45 @@
 
 <div id="app">
     <div id="screen-start" class="screen active">
-        <h1>一塁塁審<br>ジャッジメント</h1>
-        <p>映像を見て判定せよ！<br>ランナーはベースを走り抜けます。</p>
-        <input type="text" id="nickname" placeholder="ニックネームを入力">
-        <button class="btn-start" onclick="startGame()">ゲームスタート</button>
+        <h1>ｲﾁﾙｲﾙｲｼﾝ<br>ｼﾞｬｯｼﾞﾒﾝﾄ</h1>
+        <p>えいぞうをみて はんていせよ！<br>ボールは 1るいに とまるぞ。</p>
+        <input type="text" id="nickname" placeholder="なまえをいれてね">
+        <button onclick="startGame()">▶ ゲームスタート</button>
     </div>
 
     <div id="screen-quiz" class="screen">
-        <h2 id="round-title">第1球</h2>
+        <h2 id="round-title">だい 1 きゅう</h2>
         <div id="runner-info" class="runner-info"></div>
         
         <canvas id="gameCanvas" width="320" height="200"></canvas>
         
-        <button id="btn-play" class="btn-action" onclick="playAnimation()">プレイを見る ▶</button>
+        <button id="btn-play" onclick="playAnimation()">▶ プレイをみる</button>
         
         <div id="result-text"></div>
 
         <div id="judge-controls">
-            <button id="btn-out" class="btn-out" onclick="answer('アウト')" disabled>アウト！ ✊</button>
-            <button id="btn-safe" class="btn-safe" onclick="answer('セーフ')" disabled>セーフ！ 👐</button>
+            <button id="btn-out" onclick="answer('アウト')" disabled>アウト</button>
+            <button id="btn-safe" onclick="answer('セーフ')" disabled>セーフ</button>
         </div>
         
-        <button id="btn-next" class="btn-start" onclick="nextRound()" style="display:none; margin-top:15px; width:100%;">次の判定へ</button>
+        <button id="btn-next" onclick="nextRound()" style="display:none; margin-top:15px; width:100%;">▶ つぎのプレイへ</button>
     </div>
 
     <div id="screen-result" class="screen">
-        <h2>試合終了</h2>
-        <div id="result-message" style="margin: 20px 0; font-size: 18px;"></div>
-        <button class="btn-line" onclick="shareLine()">LINEで結果をシェア</button>
-        <button class="btn-start" onclick="resetGame()" style="margin-top:20px;">もう一度ジャッジする</button>
+        <h2>しあいしゅうりょう</h2>
+        <div id="result-message" style="margin: 20px 0; font-size: 18px; line-height: 1.6; text-align: left;"></div>
+        <button class="btn-line" onclick="shareLine()">▶ LINEでシェアする</button>
+        <button onclick="resetGame()" style="margin-top:20px;">▶ もういちど ジャッジする</button>
     </div>
 </div>
 
 <script>
-    // 問題データ設定（難易度調整済）
+    // 問題データ設定
     const roundsData = [
-        { runnerName: "スズキタカノリ", speedDesc: "中速", runnerBaseFrames: 100, dustMaxRadius: 25 },
-        { runnerName: "ヒデノリ", speedDesc: "高速", runnerBaseFrames: 80, dustMaxRadius: 35 },
-        { runnerName: "シュウトウ", speedDesc: "超高速", runnerBaseFrames: 60, dustMaxRadius: 45 }
+        { runnerName: "スズキタカノリ", speedDesc: "ふつう", runnerBaseFrames: 100, dustMaxRadius: 24 },
+        { runnerName: "ヒデノリ", speedDesc: "はやい", runnerBaseFrames: 80, dustMaxRadius: 32 },
+        // 修正点：3問目は前回の半分のフレーム数（2倍速）に変更
+        { runnerName: "シュウトウ", speedDesc: "シンソク！！", runnerBaseFrames: 30, dustMaxRadius: 40 }
     ];
 
     let currentRound = 0;
@@ -152,16 +175,17 @@
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
     
-    // アニメーション管理用
     let animId = null;
     let isAnimating = false;
     let judgmentFixed = false;
+    let frameCount = 0; 
+    let ballArrivalFrame = 0; // ボールが止まるフレーム
     
-    // 座標定義（軌道を明確に分ける）
     const BASE_X = 250, BASE_Y = 100;
-    const RUNNER_START_X = 0, RUNNER_START_Y = 210; // 画面左下（ホームベース側）から
-    const BALL_START_X = 80, BALL_START_Y = -20;    // 画面左上（サード・ショート側）から
+    const RUNNER_START_X = 0, RUNNER_START_Y = 210;
+    const BALL_START_X = 80, BALL_START_Y = -20;
     
     let runner = { x: 0, y: 0, speedX: 0, speedY: 0 };
     let ball = { x: 0, y: 0, speedX: 0, speedY: 0 };
@@ -177,7 +201,7 @@
 
     function startGame() {
         const nameInput = document.getElementById('nickname').value.trim();
-        if (!nameInput) { alert("ニックネームを入力してください"); return; }
+        if (!nameInput) { alert("なまえをいれてください"); return; }
         
         playerName = nameInput;
         localStorage.setItem('umpire_nickname_v2', playerName);
@@ -188,25 +212,24 @@
     }
 
     function prepareRound() {
-        // ★修正点：前回のループが残っていれば確実にキャンセルする
         if (animId !== null) {
             cancelAnimationFrame(animId);
             animId = null;
         }
         isAnimating = false;
+        frameCount = 0;
 
         const data = roundsData[currentRound];
-        document.getElementById('round-title').innerText = `第 ${currentRound + 1} 球`;
-        document.getElementById('runner-info').innerHTML = `打者走者: <strong>${data.runnerName}</strong> (${data.speedDesc})`;
-        document.getElementById('result-text').innerText = "「プレイを見る」を押してください";
+        document.getElementById('round-title').innerText = `だい ${currentRound + 1} きゅう`;
+        document.getElementById('runner-info').innerHTML = `だしゃそうしゃ: ${data.runnerName} (${data.speedDesc})`;
+        document.getElementById('result-text').innerText = "「プレイをみる」をおしてね";
         
-        document.getElementById('btn-play').style.display = 'inline-block';
+        document.getElementById('btn-play').style.display = 'block';
         document.getElementById('btn-play').disabled = false;
         document.getElementById('btn-next').style.display = 'none';
         document.getElementById('btn-out').disabled = true;
         document.getElementById('btn-safe').disabled = true;
         
-        // 座標と状態を初期化
         runner.x = RUNNER_START_X; runner.y = RUNNER_START_Y;
         ball.x = BALL_START_X; ball.y = BALL_START_Y;
         dustRadius = 0;
@@ -217,23 +240,33 @@
     }
 
     function playAnimation() {
-        if (isAnimating) return; // 二重起動防止
+        if (isAnimating) return; 
 
         document.getElementById('btn-play').disabled = true;
-        document.getElementById('result-text').innerText = "ジャッジ準備...";
+        document.getElementById('result-text').innerText = "ジャッジの じゅんびを せよ...";
         
         const data = roundsData[currentRound];
-        
         const runnerFrames = data.runnerBaseFrames;
-        // ボールの速度はランナーの速度±5フレームのランダム差で際どくする
-        const ballFrames = runnerFrames + (Math.random() * 10 - 5); 
+        
+        // ボールの到達フレーム（ランナーの±3フレームで際どくする）
+        ballArrivalFrame = Math.floor(runnerFrames + (Math.random() * 6 - 3)); 
 
-        trueAnswer = (runnerFrames < ballFrames) ? "セーフ" : "アウト";
+        // 判定ロジック：フレーム数が少ない（早い）方が勝ち
+        if (runnerFrames < ballArrivalFrame) {
+            trueAnswer = "セーフ";
+        } else if (ballArrivalFrame < runnerFrames) {
+            trueAnswer = "アウト";
+        } else {
+            // 完全に同時の場合は、審判ゲームの常として「アウト」とする
+            trueAnswer = "アウト";
+        }
 
+        // 速度計算
         runner.speedX = (BASE_X - runner.x) / runnerFrames;
         runner.speedY = (BASE_Y - runner.y) / runnerFrames;
-        ball.speedX = (BASE_X - ball.x) / ballFrames;
-        ball.speedY = (BASE_Y - ball.y) / ballFrames;
+        // 修正点：ボールはballArrivalFrameに基づいて速度を計算
+        ball.speedX = (BASE_X - ball.x) / ballArrivalFrame;
+        ball.speedY = (BASE_Y - ball.y) / ballArrivalFrame;
 
         isAnimating = true;
         update();
@@ -241,20 +274,34 @@
 
     function update() {
         if (!isAnimating) return;
+        frameCount++;
 
+        // ランナーは常に移動（走り抜け）
         runner.x += runner.speedX; runner.y += runner.speedY;
-        ball.x += ball.speedX; ball.y += ball.speedY;
+        
+        // 修正点：ボールは指定フレームまで移動し、その後は1るいに停止
+        if (frameCount < ballArrivalFrame) {
+            ball.x += ball.speedX; ball.y += ball.speedY;
+        } else {
+            // 座標のズレを防ぐため、完全にベース座標に固定
+            ball.x = BASE_X; ball.y = BASE_Y;
+        }
 
+        // 演出用距離計算
         const distRunner = Math.hypot(BASE_X - runner.x, BASE_Y - runner.y);
         const distBall = Math.hypot(BASE_X - ball.x, BASE_Y - ball.y);
 
         if (!judgmentFixed) {
+            // 砂埃演出
             if (distRunner < 40 || distBall < 40) {
                 dustRadius = Math.min(dustRadius + 1.5, roundDustMax);
             }
             
-            // どちらかがベースに到着したタイミング
-            if (distRunner < 5 || distBall < 5) {
+            // どちらかがベースに到達したタイミング（フレーム数で判定）
+            const runnerArrived = frameCount >= roundsData[currentRound].runnerBaseFrames;
+            const ballArrived = frameCount >= ballArrivalFrame;
+
+            if (runnerArrived || ballArrived) {
                 judgmentFixed = true;
                 document.getElementById('btn-out').disabled = false;
                 document.getElementById('btn-safe').disabled = false;
@@ -262,11 +309,12 @@
             }
         }
 
-        // ランナーが画面外（右側）に走り抜けたらアニメーション停止
+        // アニメーション終了条件（ランナー走り抜け）
         if (runner.x > canvas.width + 20) {
             isAnimating = false;
-            drawField();
+            drawField(); // 停止したボールと走り抜けたランナーを描画
             
+            // セーフティ：もし判定前に終わったら（通常はない）
             if (!judgmentFixed) {
                 judgmentFixed = true;
                 trueAnswer = "セーフ"; 
@@ -282,35 +330,63 @@
     }
 
     function drawField() {
-        ctx.fillStyle = '#dcb37b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#a06a3f'; 
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ファーストライン（ランナーの軌道に合わせる）
-        ctx.beginPath(); 
-        ctx.moveTo(0, 210); 
-        ctx.lineTo(320, 69); // 右端まで線を伸ばす
-        ctx.strokeStyle = 'white'; 
-        ctx.lineWidth = 3; 
-        ctx.stroke();
-
-        // ベース
-        ctx.fillStyle = 'white'; ctx.beginPath();
-        ctx.moveTo(BASE_X, BASE_Y - 10); ctx.lineTo(BASE_X + 15, BASE_Y);
-        ctx.lineTo(BASE_X, BASE_Y + 10); ctx.lineTo(BASE_X - 15, BASE_Y); ctx.fill();
-
-        // 砂埃
-        if (dustRadius > 0) {
-            ctx.fillStyle = `rgba(200, 190, 170, ${judgmentFixed ? 0.4 : 0.8})`; 
-            ctx.beginPath(); ctx.arc(BASE_X, BASE_Y, dustRadius, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#fff';
+        for(let i=0; i<320; i+=4) {
+            ctx.fillRect(i, 210 - (i*0.35), 4, 4);
         }
 
-        // ボール（白）
-        ctx.fillStyle = '#ffffff'; ctx.beginPath();
-        ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = '#fff'; 
+        ctx.fillRect(BASE_X - 12, BASE_Y - 6, 24, 12);
+        ctx.fillStyle = '#ccc'; 
+        ctx.fillRect(BASE_X - 12, BASE_Y + 6, 24, 4);
 
-        // ランナー（青）
-        ctx.fillStyle = '#2980b9'; ctx.beginPath();
-        ctx.arc(runner.x, runner.y, 8, 0, Math.PI * 2); ctx.fill();
+        if (dustRadius > 0) {
+            ctx.fillStyle = `rgba(200, 190, 170, ${judgmentFixed ? 0.4 : 0.8})`; 
+            let r = Math.floor(dustRadius);
+            ctx.fillRect(BASE_X - r, BASE_Y - r/2, r*2, r);
+            ctx.fillRect(BASE_X - r/2, BASE_Y - r, r, r*2);
+        }
+
+        // ボール（白、四角）
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) - 3, 6, 6);
+        ctx.fillStyle = '#aaa'; 
+        ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) + 3, 6, 2);
+
+        drawRunner(Math.floor(runner.x), Math.floor(runner.y));
+    }
+
+    function drawRunner(rx, ry) {
+        const animState = Math.floor(frameCount / 6) % 2; 
+
+        ctx.fillStyle = '#f1c40f'; 
+        ctx.fillRect(rx - 6, ry - 18, 12, 10);
+        ctx.fillStyle = '#e67e22'; 
+        ctx.fillRect(rx - 4, ry - 10, 8, 6);
+
+        ctx.fillStyle = '#2980b9';
+        ctx.fillRect(rx - 8, ry - 4, 16, 12);
+
+        ctx.fillStyle = '#fff';
+        if (animState === 0) {
+            ctx.fillRect(rx - 12, ry - 4, 4, 10); 
+            ctx.fillRect(rx + 8, ry - 4, 4, 8);   
+        } else {
+            ctx.fillRect(rx - 10, ry - 4, 4, 8);  
+            ctx.fillRect(rx + 6, ry - 4, 4, 10);  
+        }
+
+        ctx.fillStyle = '#ecf0f1';
+        if (animState === 0) {
+            ctx.fillRect(rx - 6, ry + 8, 6, 8);  
+            ctx.fillRect(rx + 2, ry + 8, 4, 6);  
+        } else {
+            ctx.fillRect(rx - 4, ry + 8, 4, 6);  
+            ctx.fillRect(rx + 2, ry + 8, 6, 8);  
+        }
     }
 
     function answer(playerChoice) {
@@ -320,10 +396,10 @@
         const resultTextObj = document.getElementById('result-text');
         
         if (playerChoice === trueAnswer) {
-            resultTextObj.innerHTML = `<span style="color:#27ae60;">正解！実際の判定は「${trueAnswer}」です。</span>`;
+            resultTextObj.innerHTML = `<span style="color:#2ecc71;">せいかい！\nほんとうの はんていは「${trueAnswer}」だ！</span>`;
             score++;
         } else {
-            resultTextObj.innerHTML = `<span style="color:#c0392b;">ミスジャッジ！実際の判定は「${trueAnswer}」です。</span>`;
+            resultTextObj.innerHTML = `<span style="color:#e74c3c;">ミスジャッジ！\nほんとうの はんていは「${trueAnswer}」だ！</span>`;
         }
 
         document.getElementById('btn-next').style.display = 'block';
@@ -336,21 +412,21 @@
 
     function showResult() {
         let comment = "";
-        if (score === 3) comment = "名審判誕生！動体視力抜群です！";
-        else if (score === 2) comment = "惜しい！あと少しで一軍レベル！";
-        else if (score === 1) comment = "まだまだ修行が必要ですね。";
-        else comment = "大ブーイング！砂埃に騙されすぎです。";
+        if (score === 3) comment = "めいしんぱん たんじょう！<br>どうたいしりょくは ばつぐんだ！";
+        else if (score === 2) comment = "おしい！<br>あとすこしで １ぐんレベルだ！";
+        else if (score === 1) comment = "まだまだ しゅぎょうが たりないようだ。";
+        else comment = "だいブーイング！<br>すなぼこりに だまされすぎだぞ。";
 
         document.getElementById('result-message').innerHTML = 
-            `<strong>${playerName}</strong> 審判の成績<br><br>
-            <span style="font-size:28px; color:#c0392b; font-weight:bold;">${totalRounds}球中 ${score}球 正解</span><br><br>
+            `＊ <strong>${playerName}</strong> しんぱん の せいせき ＊<br><br>
+            <span style="color:#e74c3c; font-size:24px;">${totalRounds}きゅう ちゅう ${score}きゅう せいかい</span><br><br>
             ${comment}`;
 
         switchScreen('screen-result');
     }
 
     function shareLine() {
-        const text = `${playerName}は一塁塁審としてクロスプレイの視覚判定に挑み、${totalRounds}問中${score}問正解しました！\n#一塁塁審ジャッジメント`;
+        const text = `${playerName}は １るいるいしん として はんていに いどみ、${totalRounds}もんちゅう ${score}もん せいかいした！\n#一塁塁審ジャッジメント`;
         const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
         window.open(url, '_blank');
     }
