@@ -75,7 +75,7 @@
             border: 3px solid #2c5e3b;
             border-radius: 8px;
             width: 100%;
-            max-width: 320px; /* 走り抜けを見せるため少し広く */
+            max-width: 320px;
             height: auto;
             margin: 0 auto 15px auto;
             display: block;
@@ -138,43 +138,37 @@
 </div>
 
 <script>
-    // ゲームデータ設定
+    // 問題データ設定（難易度調整済）
     const roundsData = [
-        { runnerName: "スズキタカノリ", speedDesc: "中速", runnerBaseFrames: 120, dustMaxRadius: 25 },
-        { runnerName: "ヒデノリ", speedDesc: "高速", runnerBaseFrames: 90, dustMaxRadius: 35 },
+        { runnerName: "スズキタカノリ", speedDesc: "中速", runnerBaseFrames: 100, dustMaxRadius: 25 },
+        { runnerName: "ヒデノリ", speedDesc: "高速", runnerBaseFrames: 80, dustMaxRadius: 35 },
         { runnerName: "シュウトウ", speedDesc: "超高速", runnerBaseFrames: 60, dustMaxRadius: 45 }
     ];
 
-    // ゲーム状態の変数
     let currentRound = 0;
     let score = 0;
     let playerName = "";
     const totalRounds = roundsData.length;
 
-    // キャンバス設定
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     
-    // アニメーション用変数
-    let animId;
+    // アニメーション管理用
+    let animId = null;
     let isAnimating = false;
-    let judgmentFixed = false; // 判定タイミングが確定したか
+    let judgmentFixed = false;
     
-    // オブジェクト設定
-    const BASE_X = 250, BASE_Y = 100; // ベースの位置（判定ポイント）
-    const RUNNER_START_X = 20, RUNNER_START_Y = 180;
-    const BALL_START_X = 50, BALL_START_Y = -20;
-    const RUNNER_COLOR = '#2980b9'; // ランナー（青）
-    const BALL_COLOR = '#ffffff';   // ボール（白）
+    // 座標定義（軌道を明確に分ける）
+    const BASE_X = 250, BASE_Y = 100;
+    const RUNNER_START_X = 0, RUNNER_START_Y = 210; // 画面左下（ホームベース側）から
+    const BALL_START_X = 80, BALL_START_Y = -20;    // 画面左上（サード・ショート側）から
     
     let runner = { x: 0, y: 0, speedX: 0, speedY: 0 };
     let ball = { x: 0, y: 0, speedX: 0, speedY: 0 };
-    
-    let trueAnswer = ""; // 正解（アウト or セーフ）
-    let dustRadius = 0;  // 砂埃の大きさ
-    let roundDustMax = 0; // その回の最大砂埃
+    let trueAnswer = ""; 
+    let dustRadius = 0;  
+    let roundDustMax = 0; 
 
-    // 初期化
     window.onload = () => {
         const savedName = localStorage.getItem('umpire_nickname_v2');
         if (savedName) document.getElementById('nickname').value = savedName;
@@ -194,19 +188,25 @@
     }
 
     function prepareRound() {
+        // ★修正点：前回のループが残っていれば確実にキャンセルする
+        if (animId !== null) {
+            cancelAnimationFrame(animId);
+            animId = null;
+        }
+        isAnimating = false;
+
         const data = roundsData[currentRound];
         document.getElementById('round-title').innerText = `第 ${currentRound + 1} 球`;
         document.getElementById('runner-info').innerHTML = `打者走者: <strong>${data.runnerName}</strong> (${data.speedDesc})`;
         document.getElementById('result-text').innerText = "「プレイを見る」を押してください";
         
-        // ボタン状態
         document.getElementById('btn-play').style.display = 'inline-block';
-        document.getElementById('btn- play').disabled = false;
+        document.getElementById('btn-play').disabled = false;
         document.getElementById('btn-next').style.display = 'none';
         document.getElementById('btn-out').disabled = true;
         document.getElementById('btn-safe').disabled = true;
         
-        // 位置リセット
+        // 座標と状態を初期化
         runner.x = RUNNER_START_X; runner.y = RUNNER_START_Y;
         ball.x = BALL_START_X; ball.y = BALL_START_Y;
         dustRadius = 0;
@@ -217,20 +217,19 @@
     }
 
     function playAnimation() {
+        if (isAnimating) return; // 二重起動防止
+
         document.getElementById('btn-play').disabled = true;
         document.getElementById('result-text').innerText = "ジャッジ準備...";
         
         const data = roundsData[currentRound];
         
-        // ランナーの速度設定（固定）
         const runnerFrames = data.runnerBaseFrames;
-        // ボールの速度設定（ランナーの速度に合わせて、際どいタイミングを乱数生成）
-        const ballFrames = runnerFrames + (Math.random() * 10 - 5); // ±5フレームの差
+        // ボールの速度はランナーの速度±5フレームのランダム差で際どくする
+        const ballFrames = runnerFrames + (Math.random() * 10 - 5); 
 
-        // 判定タイミングの正解を決定
         trueAnswer = (runnerFrames < ballFrames) ? "セーフ" : "アウト";
 
-        // ベース（判定ポイント）までの速度を計算
         runner.speedX = (BASE_X - runner.x) / runnerFrames;
         runner.speedY = (BASE_Y - runner.y) / runnerFrames;
         ball.speedX = (BASE_X - ball.x) / ballFrames;
@@ -240,47 +239,37 @@
         update();
     }
 
-    // アニメーションループ
     function update() {
         if (!isAnimating) return;
 
-        // 移動（常に移動し続ける）
-        runner.x += runner.speedX;
-        runner.y += runner.speedY;
-        ball.x += ball.speedX;
-        ball.y += ball.speedY;
+        runner.x += runner.speedX; runner.y += runner.speedY;
+        ball.x += ball.speedX; ball.y += ball.speedY;
 
-        // ベースまでの距離
         const distRunner = Math.hypot(BASE_X - runner.x, BASE_Y - runner.y);
         const distBall = Math.hypot(BASE_X - ball.x, BASE_Y - ball.y);
 
-        // --- 判定タイミング（ベース到達）の処理 ---
         if (!judgmentFixed) {
-            // 砂埃の演出（近づいたら大きく）
             if (distRunner < 40 || distBall < 40) {
                 dustRadius = Math.min(dustRadius + 1.5, roundDustMax);
             }
             
-            // どちらかがベースに到達した瞬間
+            // どちらかがベースに到着したタイミング
             if (distRunner < 5 || distBall < 5) {
-                judgmentFixed = true; // 判定タイミング確定
-                // 判定ボタンを有効化
+                judgmentFixed = true;
                 document.getElementById('btn-out').disabled = false;
                 document.getElementById('btn-safe').disabled = false;
                 document.getElementById('result-text').innerText = "ジャッジせよ！";
             }
         }
 
-        // --- アニメーション終了条件（走り抜け） ---
-        // ランナーがキャンバスの右端を完全に超えたら終了
+        // ランナーが画面外（右側）に走り抜けたらアニメーション停止
         if (runner.x > canvas.width + 20) {
             isAnimating = false;
-            drawField(); // 最後のフレームを描画
+            drawField();
             
-            // もし判定前に終わってしまった場合のセーフティ（通常はjudgmentFixedが先）
             if (!judgmentFixed) {
                 judgmentFixed = true;
-                trueAnswer = "セーフ"; // 走り抜けたのでセーフ
+                trueAnswer = "セーフ"; 
                 document.getElementById('btn-out').disabled = false;
                 document.getElementById('btn-safe').disabled = false;
                 document.getElementById('result-text').innerText = "ジャッジせよ！";
@@ -293,32 +282,35 @@
     }
 
     function drawField() {
-        // 背景
         ctx.fillStyle = '#dcb37b'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // ファーストライン
-        ctx.beginPath(); ctx.moveTo(0, 200); ctx.lineTo(260, 90);
-        ctx.strokeStyle = 'white'; ctx.lineWidth = 3; ctx.stroke();
+        // ファーストライン（ランナーの軌道に合わせる）
+        ctx.beginPath(); 
+        ctx.moveTo(0, 210); 
+        ctx.lineTo(320, 69); // 右端まで線を伸ばす
+        ctx.strokeStyle = 'white'; 
+        ctx.lineWidth = 3; 
+        ctx.stroke();
 
         // ベース
         ctx.fillStyle = 'white'; ctx.beginPath();
         ctx.moveTo(BASE_X, BASE_Y - 10); ctx.lineTo(BASE_X + 15, BASE_Y);
         ctx.lineTo(BASE_X, BASE_Y + 10); ctx.lineTo(BASE_X - 15, BASE_Y); ctx.fill();
 
-        // 砂埃（ベース付近）
+        // 砂埃
         if (dustRadius > 0) {
-            ctx.fillStyle = `rgba(200, 190, 170, ${judgmentFixed ? 0.5 : 0.8})`; // 判定後は少し薄く
+            ctx.fillStyle = `rgba(200, 190, 170, ${judgmentFixed ? 0.4 : 0.8})`; 
             ctx.beginPath(); ctx.arc(BASE_X, BASE_Y, dustRadius, 0, Math.PI * 2); ctx.fill();
         }
 
-        // ランナー
-        ctx.fillStyle = RUNNER_COLOR; ctx.beginPath();
-        ctx.arc(runner.x, runner.y, 8, 0, Math.PI * 2); ctx.fill();
-
-        // ボール
-        ctx.fillStyle = BALL_COLOR; ctx.beginPath();
-        ctx.arc(ball.x, ball.y, 4, 0, Math.PI * 2); ctx.fill();
+        // ボール（白）
+        ctx.fillStyle = '#ffffff'; ctx.beginPath();
+        ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2); ctx.fill();
         ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.stroke();
+
+        // ランナー（青）
+        ctx.fillStyle = '#2980b9'; ctx.beginPath();
+        ctx.arc(runner.x, runner.y, 8, 0, Math.PI * 2); ctx.fill();
     }
 
     function answer(playerChoice) {
