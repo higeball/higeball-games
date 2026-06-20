@@ -19,6 +19,7 @@
             text-align: center;
         }
         
+        /* コマンドウィンドウ風の装飾を強化 */
         #app {
             background-color: #000;
             width: 95%;
@@ -26,18 +27,21 @@
             padding: 20px;
             box-sizing: border-box;
             border: 4px solid #fff;
-            border-radius: 8px;
+            border-radius: 6px;
             box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff, inset 0 0 0 2px #fff;
         }
 
         .screen { display: none; }
         .screen.active { display: block; }
         
-        h1, h2 { 
+        h1 { 
             color: #fff; 
             margin-top: 0;
-            text-shadow: 2px 2px 0 #888;
+            font-size: 26px;
+            text-shadow: 2px 2px 0 #555;
+            letter-spacing: 2px;
         }
+        h2 { margin-top: 0; text-shadow: 2px 2px 0 #555; }
         
         input[type="text"] {
             font-family: 'DotGothic16', sans-serif;
@@ -61,6 +65,7 @@
             background-color: #000;
             color: #fff;
             border: 2px solid #fff;
+            border-radius: 4px;
             cursor: pointer;
             text-align: left;
             padding-left: 20px;
@@ -89,8 +94,9 @@
         .btn-share { border-color: #3498db; color: #3498db; }
 
         canvas {
-            background-color: #a06a3f; 
+            background-color: #000; 
             border: 2px solid #fff;
+            border-radius: 4px;
             width: 100%;
             max-width: 320px;
             height: auto;
@@ -115,10 +121,11 @@
             margin: 10px 0;
             min-height: 24px;
             white-space: pre-wrap; 
+            text-shadow: 1px 1px 0 #555;
         }
         .runner-info {
             font-size: 16px;
-            color: #aaa;
+            color: #ccc;
             margin-bottom: 10px;
         }
     </style>
@@ -182,7 +189,7 @@
     let ballArrivalFrame = 0; 
     
     const BASE_X = 250, BASE_Y = 100;
-    const RUNNER_START_X = 0, RUNNER_START_Y = 210;
+    const RUNNER_START_X = -10, RUNNER_START_Y = 210;
     const BALL_START_X = 80, BALL_START_Y = -20;
     
     let runner = { x: 0, y: 0, speedX: 0, speedY: 0 };
@@ -191,7 +198,6 @@
     let dustRadius = 0;  
     let roundDustMax = 0; 
 
-    // フォントの読み込み完了を待つ（画像生成時にフォントが当たらないのを防ぐため）
     document.fonts.ready.then(() => {
         console.log("Fonts loaded.");
     });
@@ -320,60 +326,94 @@
     }
 
     function drawField() {
-        ctx.fillStyle = '#a06a3f'; 
+        // --- 1. 背景（芝生と土のコントラスト） ---
+        ctx.fillStyle = '#227A2A'; // 深い芝生の緑
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        ctx.fillStyle = '#C08A55'; // 内野の土（アンツーカー）
+        ctx.beginPath();
+        ctx.moveTo(340, -10);  // 右上から
+        ctx.lineTo(-20, 150);  // 左下へ斜めに区切る
+        ctx.lineTo(-20, 220);
+        ctx.lineTo(340, 220);
+        ctx.fill();
+
+        // --- 2. ファーストライン ---
         ctx.fillStyle = '#fff';
-        for(let i=0; i<320; i+=4) {
-            ctx.fillRect(i, 210 - (i*0.35), 4, 4);
+        // ドットのラインを描画してレトロ感を出す
+        for(let i=-20; i<320; i+=6) {
+            ctx.fillRect(i, 160 - (i*0.45), 4, 4);
         }
 
+        // --- 3. ベース（立体感を追加） ---
         ctx.fillStyle = '#fff'; 
-        ctx.fillRect(BASE_X - 12, BASE_Y - 6, 24, 12);
-        ctx.fillStyle = '#ccc'; 
-        ctx.fillRect(BASE_X - 12, BASE_Y + 6, 24, 4);
+        ctx.fillRect(BASE_X - 12, BASE_Y - 6, 24, 12); // 上面
+        ctx.fillStyle = '#bdc3c7'; 
+        ctx.fillRect(BASE_X - 12, BASE_Y + 6, 24, 4);  // 側面（影）
 
+        // --- 4. 砂埃 ---
         if (dustRadius > 0) {
-            ctx.fillStyle = `rgba(200, 190, 170, ${judgmentFixed ? 0.4 : 0.8})`; 
+            ctx.fillStyle = `rgba(220, 210, 180, ${judgmentFixed ? 0.5 : 0.9})`; 
             let r = Math.floor(dustRadius);
             ctx.fillRect(BASE_X - r, BASE_Y - r/2, r*2, r);
             ctx.fillRect(BASE_X - r/2, BASE_Y - r, r, r*2);
         }
 
+        // --- 5. ボール（影付き） ---
+        // ボールの影
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; 
+        ctx.fillRect(Math.floor(ball.x) - 4, Math.floor(ball.y) + 6, 8, 3);
+        // ボール本体
         ctx.fillStyle = '#fff';
         ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) - 3, 6, 6);
-        ctx.fillStyle = '#aaa'; 
+        ctx.fillStyle = '#999'; 
         ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) + 3, 6, 2);
 
+        // --- 6. ランナー ---
         drawRunner(Math.floor(runner.x), Math.floor(runner.y));
+
+        // --- 7. ブラウン管(CRT)スキャンライン効果 ---
+        // 全体に半透明の黒い横線を一定間隔で重ねる
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
+        for(let y = 0; y < canvas.height; y += 3) {
+            ctx.fillRect(0, y, canvas.width, 1);
+        }
     }
 
     function drawRunner(rx, ry) {
-        const animState = Math.floor(frameCount / 6) % 2; 
+        // キャラクターの影
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(rx - 8, ry + 14, 16, 4);
 
+        const animState = Math.floor(frameCount / 4) % 2; 
+
+        // ヘルメットと顔
         ctx.fillStyle = '#f1c40f'; 
         ctx.fillRect(rx - 6, ry - 18, 12, 10);
         ctx.fillStyle = '#e67e22'; 
         ctx.fillRect(rx - 4, ry - 10, 8, 6);
 
+        // ユニフォーム
         ctx.fillStyle = '#2980b9';
         ctx.fillRect(rx - 8, ry - 4, 16, 12);
 
+        // 腕（白）- フォームを微調整して躍動感をアップ
         ctx.fillStyle = '#fff';
         if (animState === 0) {
-            ctx.fillRect(rx - 12, ry - 4, 4, 10); 
-            ctx.fillRect(rx + 8, ry - 4, 4, 8);   
+            ctx.fillRect(rx - 12, ry - 6, 4, 10); // 大きく振る腕
+            ctx.fillRect(rx + 8, ry - 2, 4, 8);   
         } else {
-            ctx.fillRect(rx - 10, ry - 4, 4, 8);  
-            ctx.fillRect(rx + 6, ry - 4, 4, 10);  
+            ctx.fillRect(rx - 10, ry - 2, 4, 8);  
+            ctx.fillRect(rx + 6, ry - 6, 4, 10);  
         }
 
+        // 足（白パンツ）
         ctx.fillStyle = '#ecf0f1';
         if (animState === 0) {
             ctx.fillRect(rx - 6, ry + 8, 6, 8);  
-            ctx.fillRect(rx + 2, ry + 8, 4, 6);  
+            ctx.fillRect(rx + 4, ry + 8, 4, 4); // 後ろ足は短く（蹴り上げている感）
         } else {
-            ctx.fillRect(rx - 4, ry + 8, 4, 6);  
+            ctx.fillRect(rx - 2, ry + 8, 4, 4);  
             ctx.fillRect(rx + 2, ry + 8, 6, 8);  
         }
     }
@@ -414,13 +454,11 @@
         switchScreen('screen-result');
     }
 
-    // --- 画像生成とシェア機能 ---
     async function shareResultImage() {
         const btn = document.getElementById('btn-share');
         btn.innerText = "がぞう を つくっています...";
         btn.disabled = true;
 
-        // 1. RPGのステータス画面風の画像を裏側で描画するキャンバスを作成
         const shareCanvas = document.createElement('canvas');
         shareCanvas.width = 400;
         shareCanvas.height = 300;
@@ -435,14 +473,17 @@
         sCtx.strokeRect(10, 10, 380, 280);
         sCtx.strokeRect(16, 16, 368, 268);
 
-        // テキスト描画
+        // テキスト描画（はみ出しを修正）
         sCtx.font = "24px 'DotGothic16', sans-serif";
         sCtx.fillStyle = '#fff';
         sCtx.fillText("＊ しんぱん ステータス ＊", 30, 60);
 
         sCtx.font = "20px 'DotGothic16', sans-serif";
-        sCtx.fillText(`なまえ：${playerName}`, 30, 110);
-        sCtx.fillText(`せいせき：${totalRounds}きゅう ちゅう ${score}きゅう せいかい`, 30, 150);
+        sCtx.fillText(`なまえ　：${playerName}`, 30, 110);
+        
+        // 長いテキストを2行に分割
+        sCtx.fillText(`せいせき：`, 30, 150);
+        sCtx.fillText(`  ${totalRounds}きゅう ちゅう ${score}きゅう せいかい`, 30, 180);
 
         let rank = "";
         if (score === 3) rank = "めいしんぱん";
@@ -451,15 +492,13 @@
         else rank = "２ぐんおち";
 
         sCtx.fillStyle = '#f39c12';
-        sCtx.fillText(`しょうごう：${rank}`, 30, 190);
+        sCtx.fillText(`しょうごう：${rank}`, 30, 230); // Y座標を下に調整
 
         sCtx.fillStyle = '#ccc';
         sCtx.font = "16px 'DotGothic16', sans-serif";
-        sCtx.fillText("#一塁塁審ジャッジメント", 30, 260);
+        sCtx.fillText("#一塁塁審ジャッジメント", 30, 275); // Y座標を下に調整
 
-        // 2. キャンバスを画像(Blob)に変換
         shareCanvas.toBlob(async (blob) => {
-            // 画像シェアがサポートされているかチェック
             const file = new File([blob], "judgement.png", { type: "image/png" });
             const data = {
                 text: `${playerName}の判定結果！ #一塁塁審ジャッジメント`,
@@ -468,13 +507,11 @@
 
             if (navigator.canShare && navigator.canShare(data)) {
                 try {
-                    // スマホ標準のシェアシートを呼び出す（ここでLINEなどを選べる）
                     await navigator.share(data);
                 } catch (err) {
                     console.log("シェアがキャンセルされました", err);
                 }
             } else {
-                // PCブラウザなどで非対応の場合のフォールバック（旧テキストシェア）
                 alert("お使いのブラウザは画像シェアにひたいおうのため、テキストでシェアします。");
                 const text = `${playerName}は １るいるいしん として はんていに いどみ、${totalRounds}もんちゅう ${score}もん せいかいした！\n#一塁塁審ジャッジメント`;
                 const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
