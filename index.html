@@ -86,7 +86,7 @@
             cursor: not-allowed;
         }
         
-        .btn-line { border-color: #06c755; color: #06c755; }
+        .btn-share { border-color: #3498db; color: #3498db; }
 
         canvas {
             background-color: #a06a3f; 
@@ -114,7 +114,7 @@
             font-size: 18px;
             margin: 10px 0;
             min-height: 24px;
-            white-space: pre-wrap; /* 改行を有効にする */
+            white-space: pre-wrap; 
         }
         .runner-info {
             font-size: 16px;
@@ -154,17 +154,15 @@
     <div id="screen-result" class="screen">
         <h2>しあいしゅうりょう</h2>
         <div id="result-message" style="margin: 20px 0; font-size: 18px; line-height: 1.6; text-align: left;"></div>
-        <button class="btn-line" onclick="shareLine()">▶ LINEでシェアする</button>
+        <button id="btn-share" class="btn-share" onclick="shareResultImage()">▶ がぞう で シェアする</button>
         <button onclick="resetGame()" style="margin-top:20px;">▶ もういちど ジャッジする</button>
     </div>
 </div>
 
 <script>
-    // 問題データ設定
     const roundsData = [
         { runnerName: "スズキタカノリ", speedDesc: "ふつう", runnerBaseFrames: 100, dustMaxRadius: 24 },
         { runnerName: "ヒデノリ", speedDesc: "はやい", runnerBaseFrames: 80, dustMaxRadius: 32 },
-        // 修正点：3問目は前回の半分のフレーム数（2倍速）に変更
         { runnerName: "シュウトウ", speedDesc: "シンソク！！", runnerBaseFrames: 30, dustMaxRadius: 40 }
     ];
 
@@ -181,7 +179,7 @@
     let isAnimating = false;
     let judgmentFixed = false;
     let frameCount = 0; 
-    let ballArrivalFrame = 0; // ボールが止まるフレーム
+    let ballArrivalFrame = 0; 
     
     const BASE_X = 250, BASE_Y = 100;
     const RUNNER_START_X = 0, RUNNER_START_Y = 210;
@@ -192,6 +190,11 @@
     let trueAnswer = ""; 
     let dustRadius = 0;  
     let roundDustMax = 0; 
+
+    // フォントの読み込み完了を待つ（画像生成時にフォントが当たらないのを防ぐため）
+    document.fonts.ready.then(() => {
+        console.log("Fonts loaded.");
+    });
 
     window.onload = () => {
         const savedName = localStorage.getItem('umpire_nickname_v2');
@@ -248,23 +251,18 @@
         const data = roundsData[currentRound];
         const runnerFrames = data.runnerBaseFrames;
         
-        // ボールの到達フレーム（ランナーの±3フレームで際どくする）
         ballArrivalFrame = Math.floor(runnerFrames + (Math.random() * 6 - 3)); 
 
-        // 判定ロジック：フレーム数が少ない（早い）方が勝ち
         if (runnerFrames < ballArrivalFrame) {
             trueAnswer = "セーフ";
         } else if (ballArrivalFrame < runnerFrames) {
             trueAnswer = "アウト";
         } else {
-            // 完全に同時の場合は、審判ゲームの常として「アウト」とする
             trueAnswer = "アウト";
         }
 
-        // 速度計算
         runner.speedX = (BASE_X - runner.x) / runnerFrames;
         runner.speedY = (BASE_Y - runner.y) / runnerFrames;
-        // 修正点：ボールはballArrivalFrameに基づいて速度を計算
         ball.speedX = (BASE_X - ball.x) / ballArrivalFrame;
         ball.speedY = (BASE_Y - ball.y) / ballArrivalFrame;
 
@@ -276,28 +274,22 @@
         if (!isAnimating) return;
         frameCount++;
 
-        // ランナーは常に移動（走り抜け）
         runner.x += runner.speedX; runner.y += runner.speedY;
         
-        // 修正点：ボールは指定フレームまで移動し、その後は1るいに停止
         if (frameCount < ballArrivalFrame) {
             ball.x += ball.speedX; ball.y += ball.speedY;
         } else {
-            // 座標のズレを防ぐため、完全にベース座標に固定
             ball.x = BASE_X; ball.y = BASE_Y;
         }
 
-        // 演出用距離計算
         const distRunner = Math.hypot(BASE_X - runner.x, BASE_Y - runner.y);
         const distBall = Math.hypot(BASE_X - ball.x, BASE_Y - ball.y);
 
         if (!judgmentFixed) {
-            // 砂埃演出
             if (distRunner < 40 || distBall < 40) {
                 dustRadius = Math.min(dustRadius + 1.5, roundDustMax);
             }
             
-            // どちらかがベースに到達したタイミング（フレーム数で判定）
             const runnerArrived = frameCount >= roundsData[currentRound].runnerBaseFrames;
             const ballArrived = frameCount >= ballArrivalFrame;
 
@@ -309,12 +301,10 @@
             }
         }
 
-        // アニメーション終了条件（ランナー走り抜け）
         if (runner.x > canvas.width + 20) {
             isAnimating = false;
-            drawField(); // 停止したボールと走り抜けたランナーを描画
+            drawField(); 
             
-            // セーフティ：もし判定前に終わったら（通常はない）
             if (!judgmentFixed) {
                 judgmentFixed = true;
                 trueAnswer = "セーフ"; 
@@ -350,7 +340,6 @@
             ctx.fillRect(BASE_X - r/2, BASE_Y - r, r, r*2);
         }
 
-        // ボール（白、四角）
         ctx.fillStyle = '#fff';
         ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) - 3, 6, 6);
         ctx.fillStyle = '#aaa'; 
@@ -425,10 +414,76 @@
         switchScreen('screen-result');
     }
 
-    function shareLine() {
-        const text = `${playerName}は １るいるいしん として はんていに いどみ、${totalRounds}もんちゅう ${score}もん せいかいした！\n#一塁塁審ジャッジメント`;
-        const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
-        window.open(url, '_blank');
+    // --- 画像生成とシェア機能 ---
+    async function shareResultImage() {
+        const btn = document.getElementById('btn-share');
+        btn.innerText = "がぞう を つくっています...";
+        btn.disabled = true;
+
+        // 1. RPGのステータス画面風の画像を裏側で描画するキャンバスを作成
+        const shareCanvas = document.createElement('canvas');
+        shareCanvas.width = 400;
+        shareCanvas.height = 300;
+        const sCtx = shareCanvas.getContext('2d');
+        sCtx.imageSmoothingEnabled = false;
+
+        // 背景とウィンドウ枠
+        sCtx.fillStyle = '#000';
+        sCtx.fillRect(0, 0, 400, 300);
+        sCtx.strokeStyle = '#fff';
+        sCtx.lineWidth = 4;
+        sCtx.strokeRect(10, 10, 380, 280);
+        sCtx.strokeRect(16, 16, 368, 268);
+
+        // テキスト描画
+        sCtx.font = "24px 'DotGothic16', sans-serif";
+        sCtx.fillStyle = '#fff';
+        sCtx.fillText("＊ しんぱん ステータス ＊", 30, 60);
+
+        sCtx.font = "20px 'DotGothic16', sans-serif";
+        sCtx.fillText(`なまえ：${playerName}`, 30, 110);
+        sCtx.fillText(`せいせき：${totalRounds}きゅう ちゅう ${score}きゅう せいかい`, 30, 150);
+
+        let rank = "";
+        if (score === 3) rank = "めいしんぱん";
+        else if (score === 2) rank = "１ぐん はんていいん";
+        else if (score === 1) rank = "みならい しんぱん";
+        else rank = "２ぐんおち";
+
+        sCtx.fillStyle = '#f39c12';
+        sCtx.fillText(`しょうごう：${rank}`, 30, 190);
+
+        sCtx.fillStyle = '#ccc';
+        sCtx.font = "16px 'DotGothic16', sans-serif";
+        sCtx.fillText("#一塁塁審ジャッジメント", 30, 260);
+
+        // 2. キャンバスを画像(Blob)に変換
+        shareCanvas.toBlob(async (blob) => {
+            // 画像シェアがサポートされているかチェック
+            const file = new File([blob], "judgement.png", { type: "image/png" });
+            const data = {
+                text: `${playerName}の判定結果！ #一塁塁審ジャッジメント`,
+                files: [file]
+            };
+
+            if (navigator.canShare && navigator.canShare(data)) {
+                try {
+                    // スマホ標準のシェアシートを呼び出す（ここでLINEなどを選べる）
+                    await navigator.share(data);
+                } catch (err) {
+                    console.log("シェアがキャンセルされました", err);
+                }
+            } else {
+                // PCブラウザなどで非対応の場合のフォールバック（旧テキストシェア）
+                alert("お使いのブラウザは画像シェアにひたいおうのため、テキストでシェアします。");
+                const text = `${playerName}は １るいるいしん として はんていに いどみ、${totalRounds}もんちゅう ${score}もん せいかいした！\n#一塁塁審ジャッジメント`;
+                const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+                window.open(url, '_blank');
+            }
+
+            btn.innerText = "▶ がぞう で シェアする";
+            btn.disabled = false;
+        });
     }
 
     function resetGame() { switchScreen('screen-start'); }
