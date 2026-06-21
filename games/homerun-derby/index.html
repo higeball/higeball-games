@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ネオン ホームランダービー | Higeball Games</title>
+    <!-- Google Fonts for Neon and Retro style -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff007f;
+            --secondary: #00f0ff;
+            --dark: #0a0a16;
+            --text: #f1f1f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;
+            overscroll-behavior: none;
+        }
+
+        #game-container {
+            position: relative;
+            background-color: var(--dark);
+            border: 4px solid var(--primary);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.4);
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 720px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Responsive game canvas */
+        canvas {
+            display: block;
+            width: 100%;
+            flex: 1;
+            background-color: #0c0a1f;
+        }
+
+        /* Mobile Touch Panels at the bottom */
+        #touch-panels {
+            width: 100%;
+            height: 120px;
+            background-color: #121026;
+            border-top: 3px solid rgba(255, 0, 127, 0.3);
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .touch-zone {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.1s;
+        }
+
+        #zone-left {
+            border-right: 2px solid rgba(255, 0, 127, 0.2);
+            background: linear-gradient(to top, rgba(255, 0, 127, 0.1), transparent);
+        }
+
+        #zone-right {
+            background: linear-gradient(to top, rgba(0, 240, 255, 0.1), transparent);
+        }
+
+        .touch-zone:active {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .zone-title {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            pointer-events: none;
+        }
+
+        #zone-left .zone-title {
+            color: var(--primary);
+            text-shadow: 0 0 8px var(--primary);
+        }
+
+        #zone-right .zone-title {
+            color: var(--secondary);
+            text-shadow: 0 0 8px var(--secondary);
+        }
+
+        .zone-desc {
+            font-size: 9px;
+            color: #a0a0cf;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        /* Mobile UI Screen Overlay */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10, 10, 22, 0.9);
+            z-index: 10;
+            padding: 30px;
+        }
+
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 0 0 8px var(--primary), 0 0 15px var(--primary);
+            margin-bottom: 25px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .game-title span {
+            color: var(--secondary);
+            text-shadow: 0 0 8px var(--secondary), 0 0 15px var(--secondary);
+        }
+
+        input[type="text"] {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 14px;
+            width: 100%;
+            background-color: #060510;
+            color: #fff;
+            border: 2px solid var(--secondary);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 12px rgba(255, 0, 127, 0.4);
+        }
+
+        .menu-btn {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #d0006f);
+            color: #fff;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.4);
+            transition: transform 0.1s, box-shadow 0.2s;
+            text-align: center;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 8px rgba(255, 0, 127, 0.6);
+        }
+
+        #controls-info {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #a0a0cf;
+            line-height: 1.8;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #back-link {
+            margin-top: 25px;
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 12px;
+            border-bottom: 1px dotted var(--secondary);
+            padding-bottom: 2px;
+        }
+
+        #back-link:hover {
+            text-shadow: 0 0 5px var(--secondary);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Interactive Game Canvas -->
+        <canvas id="gameCanvas" width="320" height="380"></canvas>
+        
+        <!-- Touch zones at bottom for mobile players -->
+        <div id="touch-panels">
+            <div class="touch-zone" id="zone-left">
+                <span class="zone-title">◀ LEFT SWING</span>
+                <span class="zone-desc">PULL (引っ張り)</span>
+            </div>
+            <div class="touch-zone" id="zone-right">
+                <span class="zone-title">RIGHT SWING ▶</span>
+                <span class="zone-desc">PUSH (流し打ち)</span>
+            </div>
+        </div>
+
+        <!-- UI Screen Overlay -->
+        <div id="ui-overlay">
+            <!-- START SCREEN -->
+            <div id="screen-start" class="menu-screen">
+                <div class="game-title">NEON<br>HOME RUN<br><span>DERBY</span></div>
+                <input type="text" id="nickname" placeholder="なまえをいれてね" maxlength="10">
+                <button class="menu-btn" onclick="startGame()">ゲームスタート</button>
+                <div id="controls-info">
+                    【操作方法】<br>
+                    ボールがホームベースを通過するタイミングで、コースに合わせて下のパネルをタップ！<br>
+                    ・内角（左寄り）➔ LEFT SWING<br>
+                    ・外角（右寄り）➔ RIGHT SWING<br>
+                    ※PCキーボード（Aキー / Dキー）でも操作できます。
+                </div>
+                <a href="../../index.html" id="back-link">BACK TO HUB</a>
+            </div>
+
+            <!-- RESULT SCREEN -->
+            <div id="screen-result" class="menu-screen" style="display:none;">
+                <div class="game-title" id="result-title">しあいしゅうりょう</div>
+                <div id="result-message" style="margin: 15px 0; font-size: 14px; line-height: 1.8; color: #fff; width: 100%; text-align: left;"></div>
+                <button class="menu-btn" id="btn-share" onclick="shareResultImage()">▶ 結果を画像でシェアする</button>
+                <button class="menu-btn" onclick="resetGame()" style="background: linear-gradient(135deg, var(--secondary), #00b0df); box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);">▶ もう一度プレイする</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Audio System (Web Audio API) ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+            this.failed = false;
+        }
+        init() {
+            if (this.failed) return;
+            if (!this.ctx) {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        this.ctx = new AudioContextClass();
+                    } else {
+                        this.failed = true;
+                    }
+                } catch(e) {
+                    this.failed = true;
+                }
+            }
+        }
+        playTone(freq, duration, type = 'square', timeOffset = 0) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch(e){}
+        }
+        playHit(isHomeRun) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime;
+                // High crisp sound
+                this.playTone(isHomeRun ? 880 : 580, 0.15, 'triangle');
+                this.playTone(isHomeRun ? 440 : 290, 0.15, 'sine');
+                
+                // Add noise for crunch
+                let bufferSize = this.ctx.sampleRate * 0.08;
+                let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                let data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                let noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                let gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(isHomeRun ? 0.35 : 0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+                noise.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start(now);
+            } catch(e){}
+        }
+        playSwing() {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime;
+                // Soft wind noise
+                let bufferSize = this.ctx.sampleRate * 0.12;
+                let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                let data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                let noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                let filter = this.ctx.createBiquadFilter();
+                filter.type = 'peaking';
+                filter.frequency.setValueAtTime(200, now);
+                filter.frequency.exponentialRampToValueAtTime(800, now + 0.12);
+                let gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start(now);
+            } catch(e){}
+        }
+        playCheer() {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime;
+                // Stadium crowd cheer
+                let bufferSize = this.ctx.sampleRate * 1.5;
+                let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                let data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                let noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                let filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 1200;
+                let gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start(now);
+            } catch(e){}
+        }
+        playFanfare() {
+            let now = 0;
+            this.playTone(523, 0.08, 'square', now);
+            this.playTone(659, 0.08, 'square', now + 0.08);
+            this.playTone(784, 0.08, 'square', now + 0.16);
+            this.playTone(1046, 0.25, 'square', now + 0.24);
+        }
+        playSelect() { this.playTone(660, 0.05, 'triangle'); }
+        playMiss() { this.playTone(180, 0.2, 'sawtooth'); }
+    }
+    const sound = new SoundFX();
+
+    // --- Game States ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    let gameState = 'MENU'; // MENU, PITCHING, BAT_SWING, BALL_FLYING, RESULT
+    let totalPitches = 10;
+    let pitchCount = 0;
+    let homeRuns = 0;
+    let maxDistance = 0;
+    let playerName = "";
+
+    // Pitch variables
+    let ballX = 160, ballY = 80, ballZ = 0; // Z goes from 0 (Pitcher) to 1.2 (Catch)
+    let ballSpeed = 0.018;
+    let ballTargetX = 160; // 130 (Left / Inside), 190 (Right / Outside)
+    let ballTargetY = 190;
+    let curveType = 'straight'; // straight, curve (swings left), shoot (swings right), change (slow)
+    
+    // Batter variables
+    let batterSwingSide = null; // 'left' or 'right'
+    let batterSwingFrame = 0;
+    let hitTimingResult = ""; // PERFECT, GREAT, GOOD, LATE, EARLY, MISS
+    let hitTimingColor = "#ff007f";
+    
+    // Flying ball variables
+    let flyBallX = 160, flyBallY = 200, flyBallRadius = 10;
+    let flyBallVx = 0, flyBallVy = 0;
+    let flyBallZ = 0, flyBallVz = 0;
+    let flyDistance = 0;
+    let flyResultText = ""; // HOME RUN, HIT, OUT, FOUL
+
+    // Timers
+    let animId = null;
+    let pitchIntervalTimer = 0;
+    let cameraShake = 0;
+
+    // Keys mapping
+    window.addEventListener('keydown', e => {
+        if (gameState !== 'PITCHING') return;
+        if (e.code === 'KeyA') triggerSwing('left');
+        if (e.code === 'KeyD') triggerSwing('right');
+    });
+
+    // Touch panels listener
+    const leftZone = document.getElementById('zone-left');
+    const rightZone = document.getElementById('zone-right');
+
+    const handleLeftTouch = (e) => {
+        e.preventDefault();
+        if (gameState === 'PITCHING') triggerSwing('left');
+    };
+    const handleRightTouch = (e) => {
+        e.preventDefault();
+        if (gameState === 'PITCHING') triggerSwing('right');
+    };
+
+    leftZone.addEventListener('touchstart', handleLeftTouch, { passive: false });
+    leftZone.addEventListener('mousedown', handleLeftTouch);
+    rightZone.addEventListener('touchstart', handleRightTouch, { passive: false });
+    rightZone.addEventListener('mousedown', handleRightTouch);
+
+    window.onload = () => {
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName) document.getElementById('nickname').value = savedName;
+        drawStaticStadium();
+    };
+
+    function startGame() {
+        const nameInput = document.getElementById('nickname').value.trim();
+        if (!nameInput) { alert("なまえをいれてね！"); return; }
+        
+        playerName = nameInput;
+        localStorage.setItem('umpire_nickname_v2', playerName);
+
+        sound.init();
+        document.getElementById('ui-overlay').style.display = 'none';
+
+        // Reset game count
+        pitchCount = 0;
+        homeRuns = 0;
+        maxDistance = 0;
+
+        prepareNewPitch();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function prepareNewPitch() {
+        pitchCount++;
+        if (pitchCount > totalPitches) {
+            gameState = 'RESULT';
+            showResultScreen();
+            return;
+        }
+
+        gameState = 'PITCHING';
+        ballZ = 0;
+        ballX = 160;
+        ballY = 80;
+        batterSwingSide = null;
+        batterSwingFrame = 0;
+        hitTimingResult = "";
+
+        // Randomize pitch
+        // Decide Course (Left=130 or Right=190)
+        ballTargetX = Math.random() < 0.5 ? 130 : 190;
+        
+        // Randomize pitch type
+        let r = Math.random();
+        if (r < 0.3) {
+            curveType = 'straight';
+            ballSpeed = 0.018 + Math.random() * 0.005; // Fast straight
+        } else if (r < 0.55) {
+            curveType = 'curve';
+            ballSpeed = 0.016;
+        } else if (r < 0.8) {
+            curveType = 'shoot';
+            ballSpeed = 0.016;
+        } else {
+            curveType = 'change';
+            ballSpeed = 0.011; // Slow changeup
+        }
+    }
+
+    function triggerSwing(side) {
+        if (batterSwingSide !== null) return; // Already swung
+        
+        batterSwingSide = side;
+        batterSwingFrame = 0;
+        sound.playSwing();
+
+        // Calculate Hit Timing based on ballZ
+        // Ideal hit zone is when ballZ is between 0.88 and 0.94
+        let timingDiff = ballZ - 0.91; // 0 is perfect
+
+        // Check if the swing matches the ball course (Left swipe for Left ball, etc.)
+        let isCorrectCourse = (side === 'left' && ballTargetX === 130) || (side === 'right' && ballTargetX === 190);
+
+        if (ballZ < 0.75) {
+            hitTimingResult = "TOO EARLY";
+            hitTimingColor = "#ff007f";
+        } else if (ballZ > 1.02) {
+            hitTimingResult = "TOO LATE";
+            hitTimingColor = "#ff007f";
+        } else {
+            // Hit landed!
+            if (!isCorrectCourse) {
+                // Wrong course means poor contact
+                hitTimingResult = "BAD CONTACT";
+                hitTimingColor = "#a0a0cf";
+                triggerWeakHit();
+            } else {
+                let absDiff = Math.abs(timingDiff);
+                if (absDiff < 0.02) {
+                    hitTimingResult = "PERFECT!!";
+                    hitTimingColor = "#39ff14"; // neon green
+                    triggerStrongHit(1.0); // 100% power
+                } else if (absDiff < 0.05) {
+                    hitTimingResult = "GREAT!";
+                    hitTimingColor = varColor('--secondary');
+                    triggerStrongHit(0.85); // 85% power
+                } else if (absDiff < 0.09) {
+                    hitTimingResult = "GOOD";
+                    hitTimingColor = "#ffdd00";
+                    triggerStrongHit(0.65); // 65% power
+                } else {
+                    hitTimingResult = "POOR TIMING";
+                    hitTimingColor = "#ff007f";
+                    triggerWeakHit();
+                }
+            }
+        }
+    }
+
+    function varColor(vName) {
+        return getComputedStyle(document.documentElement).getPropertyValue(vName).trim();
+    }
+
+    function triggerStrongHit(powerMult) {
+        gameState = 'BALL_FLYING';
+        sound.playHit(powerMult > 0.8);
+        cameraShake = 15;
+
+        // Ball launch parameters
+        flyBallX = ballX;
+        flyBallY = ballY;
+        flyBallRadius = 8;
+        flyBallZ = 0;
+
+        // Strong launch angle (slightly upwards)
+        let angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.3; // almost straight up
+        let velocity = 7.5 * powerMult;
+
+        flyBallVx = Math.cos(angle) * velocity;
+        flyBallVy = -velocity * 0.8;
+        flyBallVz = 3.5 + Math.random() * 2.5;
+
+        flyDistance = 0;
+        flyResultText = "";
+
+        if (powerMult > 0.75) {
+            sound.playCheer();
+        }
+    }
+
+    function triggerWeakHit() {
+        gameState = 'BALL_FLYING';
+        sound.playHit(false);
+
+        flyBallX = ballX;
+        flyBallY = ballY;
+        flyBallRadius = 8;
+        flyBallZ = 0;
+
+        // Foul or grounder
+        let angle = -Math.PI / 2 + (Math.random() < 0.5 ? -1.0 : 1.0) * (0.6 + Math.random() * 0.4); // skewed angle
+        let velocity = 3.0 + Math.random() * 2.0;
+
+        flyBallVx = Math.cos(angle) * velocity;
+        flyBallVy = -velocity * 0.6;
+        flyBallVz = 1.0 + Math.random() * 1.5;
+
+        flyDistance = 0;
+        flyResultText = "";
+    }
+
+    function triggerMissOrStrike() {
+        sound.playMiss();
+        hitTimingResult = "MISS";
+        hitTimingColor = "#ff007f";
+        
+        // Wait and start new pitch
+        setTimeout(() => {
+            prepareNewPitch();
+        }, 1200);
+    }
+
+    // --- Game loop ---
+    function gameLoop() {
+        if (gameState === 'RESULT') return;
+
+        update();
+        render();
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function update() {
+        // Camera shake reduction
+        if (cameraShake > 0) cameraShake *= 0.9;
+
+        if (gameState === 'PITCHING') {
+            ballZ += ballSpeed;
+
+            // Curved ball path
+            let p = ballZ;
+            let startX = 160;
+            let endX = ballTargetX;
+            if (curveType === 'straight') {
+                ballX = startX + (endX - startX) * p;
+            } else if (curveType === 'curve') {
+                let curve = Math.sin(p * Math.PI) * -30;
+                ballX = startX + (endX - startX) * p + curve;
+            } else if (curveType === 'shoot') {
+                let curve = Math.sin(p * Math.PI) * 30;
+                ballX = startX + (endX - startX) * p + curve;
+            } else if (curveType === 'change') {
+                ballX = startX + (endX - startX) * p;
+            }
+
+            // Ball y increases as it comes closer
+            ballY = 80 + (ballTargetY - 80) * p;
+
+            // Missed pitch threshold
+            if (ballZ >= 1.05 && batterSwingSide === null) {
+                gameState = 'BAT_SWING'; // block further swings
+                triggerMissOrStrike();
+            }
+        }
+
+        // Update batter swing frames
+        if (batterSwingSide !== null) {
+            batterSwingFrame += 0.35;
+            if (batterSwingFrame >= 4) {
+                // Swing finished, if missed, proceed
+                if (hitTimingResult === "TOO EARLY" || hitTimingResult === "TOO LATE" || hitTimingResult === "POOR TIMING" || hitTimingResult === "MISS") {
+                    // Start new pitch after minor delay
+                    if (gameState === 'PITCHING' || gameState === 'BAT_SWING') {
+                        gameState = 'BAT_SWING';
+                        setTimeout(() => {
+                            prepareNewPitch();
+                        }, 1200);
+                    }
+                }
+            }
+        }
+
+        if (gameState === 'BALL_FLYING') {
+            // Apply physics to fly ball
+            flyBallX += flyBallVx;
+            flyBallY += flyBallVy;
+            flyBallZ += flyBallVz;
+            flyBallVz -= 0.08; // gravity
+
+            // Calculate simulated distance in meters
+            // Height makes distance increase, forward velocity contributes
+            if (flyBallZ > 0) {
+                flyDistance += Math.abs(flyBallVy) * 0.35;
+            } else {
+                // Ball landed on ground
+                flyBallZ = 0;
+                flyBallVz = 0;
+                flyBallVx *= 0.6;
+                flyBallVy *= 0.6;
+
+                if (flyResultText === "") {
+                    // Calculate outcome based on distance & angle
+                    let isFoul = flyBallX < 30 || flyBallX > 290;
+                    if (isFoul) {
+                        flyResultText = "FOUL";
+                        sound.playMiss();
+                    } else if (flyDistance >= 100) {
+                        flyResultText = "HOME RUN!!";
+                        homeRuns++;
+                        if (flyDistance > maxDistance) {
+                            maxDistance = Math.floor(flyDistance);
+                        }
+                        sound.playFanfare();
+                    } else if (flyDistance >= 50) {
+                        flyResultText = "HIT!";
+                        sound.playCheer();
+                    } else {
+                        flyResultText = "OUT";
+                        sound.playMiss();
+                    }
+
+                    // Reset and prepare new pitch after 2.5 seconds
+                    setTimeout(() => {
+                        prepareNewPitch();
+                    }, 2500);
+                }
+            }
+
+            // Ball size scaling for depth illusion
+            flyBallRadius = Math.max(3, 8 + flyBallZ * 1.5);
+        }
+    }
+
+    // --- Rendering ---
+    function render() {
+        ctx.save();
+        
+        // Shake screen on impact
+        if (cameraShake > 0.5) {
+            let dx = (Math.random() - 0.5) * cameraShake;
+            let dy = (Math.random() - 0.5) * cameraShake;
+            ctx.translate(dx, dy);
+        }
+
+        // Draw Stadium
+        drawStadium();
+
+        if (gameState === 'PITCHING' || gameState === 'BAT_SWING') {
+            renderActivePitchScene();
+        } else if (gameState === 'BALL_FLYING') {
+            renderFlyingBallScene();
+        }
+
+        // Render Pitch Count HUD
+        renderHUD();
+
+        ctx.restore();
+    }
+
+    function drawStadium() {
+        // Deep purple sky
+        ctx.fillStyle = '#0a0a16';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Neon Green Field Grass
+        ctx.fillStyle = '#0a3d1b';
+        ctx.fillRect(0, 80, canvas.width, canvas.height - 80);
+
+        // Neon lines for fence outfield boundary
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(20, 80, 280, 1);
+
+        // Clay infield dirt (neon colored)
+        ctx.fillStyle = '#3a201c';
+        ctx.beginPath();
+        ctx.moveTo(160, 80);
+        ctx.lineTo(320, 220);
+        ctx.lineTo(320, 380);
+        ctx.lineTo(0, 380);
+        ctx.lineTo(0, 220);
+        ctx.closePath();
+        ctx.fill();
+
+        // Home plate white lines
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.strokeRect(80, 160, 160, 120);
+
+        // Home Plate
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(160, 230);
+        ctx.lineTo(172, 242);
+        ctx.lineTo(172, 252);
+        ctx.lineTo(148, 252);
+        ctx.lineTo(148, 242);
+        ctx.closePath();
+        ctx.fill();
+
+        // Neon Stadium lights decor
+        ctx.fillStyle = '#1c1b3f';
+        ctx.fillRect(30, 20, 50, 15);
+        ctx.fillRect(240, 20, 50, 15);
+        ctx.fillStyle = '#fff';
+        for(let i=0; i<4; i++) {
+            ctx.fillRect(35 + i*12, 22, 6, 6);
+            ctx.fillRect(245 + i*12, 22, 6, 6);
+        }
+    }
+
+    function drawStaticStadium() {
+        drawStadium();
+        // Pitcher placeholder
+        ctx.fillStyle = '#ff007f';
+        ctx.fillRect(155, 60, 10, 20);
+    }
+
+    function renderActivePitchScene() {
+        // Strike Zone box overlay (semi-transparent)
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(120, 140, 80, 80);
+
+        // Draw Pitcher (Red team)
+        ctx.fillStyle = '#ff0055';
+        ctx.fillRect(154, 60, 12, 20); // body
+        ctx.fillStyle = '#ffddaa';
+        ctx.fillRect(156, 54, 8, 6); // head
+
+        // Draw Batter (depending on swing side or default left stance)
+        let isLeftSwing = (batterSwingSide === 'left');
+        let isRightSwing = (batterSwingSide === 'right');
+
+        // Draw Batter Body (Blue Team)
+        // Default left stance: stands on right side of plate (viewer's perspective)
+        let bx = 220;
+        let by = 200;
+        
+        ctx.fillStyle = '#00f0ff';
+        ctx.fillRect(bx - 6, by - 12, 12, 24);
+        ctx.fillStyle = '#ffddaa';
+        ctx.fillRect(bx - 4, by - 18, 8, 6);
+
+        // Swing arm and bat rendering
+        ctx.strokeStyle = '#f1c40f'; // Golden Bat
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+
+        if (batterSwingSide !== null) {
+            let frame = Math.floor(batterSwingFrame);
+            if (isLeftSwing) {
+                // Swinging from right to left across zone
+                if (frame === 0) {
+                    ctx.moveTo(bx - 6, by - 8);
+                    ctx.lineTo(bx - 22, by - 22);
+                } else if (frame === 1) {
+                    ctx.moveTo(bx - 4, by - 4);
+                    ctx.lineTo(bx - 26, by - 4);
+                } else if (frame === 2) {
+                    ctx.moveTo(bx, by - 4);
+                    ctx.lineTo(bx - 12, by + 12);
+                } else {
+                    ctx.moveTo(bx, by - 4);
+                    ctx.lineTo(bx - 4, by + 14);
+                }
+            } else {
+                // Right swing (流し打ち)
+                if (frame === 0) {
+                    ctx.moveTo(bx - 6, by - 8);
+                    ctx.lineTo(bx - 18, by - 24);
+                } else if (frame === 1) {
+                    ctx.moveTo(bx, by - 4);
+                    ctx.lineTo(bx + 24, by - 4);
+                } else if (frame === 2) {
+                    ctx.moveTo(bx, by - 4);
+                    ctx.lineTo(bx + 14, by + 12);
+                } else {
+                    ctx.moveTo(bx, by - 4);
+                    ctx.lineTo(bx + 6, by + 14);
+                }
+            }
+            ctx.stroke();
+        } else {
+            // Standing Bat (Ready stance)
+            ctx.moveTo(bx - 6, by - 8);
+            ctx.lineTo(bx - 18, by - 24);
+            ctx.stroke();
+        }
+
+        // Draw Pitch Ball
+        if (ballZ > 0) {
+            let r = 1 + ballZ * 8;
+            ctx.fillStyle = 'rgba(0,0,0,0.2)'; // Shadow
+            ctx.fillRect(ballX - r/2, ballY + r + 4, r, 2);
+
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(ballX, ballY, r, 0, Math.PI*2);
+            ctx.fill();
+        }
+
+        // Render Timing/Hit feedback
+        if (hitTimingResult !== "") {
+            ctx.font = 'bold 16px "Press Start 2P", sans-serif';
+            ctx.fillStyle = hitTimingColor;
+            ctx.textAlign = 'center';
+            ctx.fillText(hitTimingResult, 160, 120);
+        }
+    }
+
+    function renderFlyingBallScene() {
+        // High angle field view
+        // Show stadium layout smaller to simulate flying distance
+        ctx.fillStyle = '#0a3d1b';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Small infield diamond at bottom
+        ctx.fillStyle = '#3a201c';
+        ctx.beginPath();
+        ctx.moveTo(160, 300);
+        ctx.lineTo(210, 340);
+        ctx.lineTo(160, 380);
+        ctx.lineTo(110, 340);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+        ctx.stroke();
+
+        // Neon outfield fence line
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(160, 380, 260, Math.PI, Math.PI*2);
+        ctx.stroke();
+
+        // Draw flying ball
+        ctx.fillStyle = 'rgba(0,0,0,0.3)'; // Shadow
+        ctx.fillRect(flyBallX - flyBallRadius/2, flyBallY + flyBallRadius + 10, flyBallRadius, 3);
+
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(flyBallX, flyBallY - flyBallZ * 2, flyBallRadius, 0, Math.PI*2);
+        ctx.fill();
+        
+        // Add neon glow trail to ball
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+        ctx.lineWidth = flyBallRadius * 0.8;
+        ctx.beginPath();
+        ctx.moveTo(flyBallX - flyBallVx * 2, (flyBallY - flyBallVy * 2) - flyBallZ * 2);
+        ctx.lineTo(flyBallX, flyBallY - flyBallZ * 2);
+        ctx.stroke();
+
+        // Render Distance HUD in real-time
+        ctx.font = 'bold 18px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${Math.floor(flyDistance)}m`, 160, 100);
+
+        // Feedback overlay (Foul, Home Run, etc.)
+        if (flyResultText !== "") {
+            ctx.font = 'bold 22px "Press Start 2P"';
+            ctx.fillStyle = flyResultText.includes("HOME RUN") ? varColor('--primary') : '#fff';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 6;
+            ctx.fillText(flyResultText, 160, 160);
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    function renderHUD() {
+        ctx.fillStyle = 'rgba(10, 10, 22, 0.6)';
+        ctx.fillRect(0, 0, canvas.width, 50);
+
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+
+        // Left info
+        ctx.fillText(`PITCH: ${pitchCount}/${totalPitches}`, 15, 28);
+        
+        // Right info
+        ctx.textAlign = 'right';
+        ctx.fillText(`HR: ${homeRuns}`, canvas.width - 15, 20);
+        ctx.fillText(`MAX: ${maxDistance}m`, canvas.width - 15, 38);
+    }
+
+    function showResultScreen() {
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+
+        let rank = "";
+        let comment = "";
+        if (homeRuns === 10) {
+            rank = "レジェンド・バッター";
+            comment = "パーフェクト！<br>すべてのたまを スタンドへ はこびだした！";
+        } else if (homeRuns >= 7) {
+            rank = "プロやきゅう レベル";
+            comment = "みごとな バッティングだ！<br>かんきゃく も おおよろこびだぞ！";
+        } else if (homeRuns >= 4) {
+            rank = "アマチュア強打者";
+            comment = "いいあたり が でてきたぞ！<br>ハイスコア を めざして がんばろう！";
+        } else if (homeRuns >= 1) {
+            rank = "みならい スラッガー";
+            comment = "まずは 1ぽん！<br>タイミング を あわせる練習を しよう！";
+        } else {
+            rank = "ベンチあたため要員";
+            comment = "すべて 空振りか 凡打だ！<br>ボールを よくみて スイングしよう。";
+        }
+
+        document.getElementById('result-message').innerHTML = 
+            `＊ <strong>${playerName}</strong> 監督の成績 ＊<br><br>
+            <span style="color:var(--primary); font-size:16px;">ホームラン: ${homeRuns}本 / 10球</span><br>
+            最長飛距離: <span style="color:var(--secondary); font-size:14px; font-weight:700;">${maxDistance}m</span><br><br>
+            称号 : <strong>${rank}</strong><br><br>
+            ${comment}`;
+    }
+
+    async function shareResultImage() {
+        const btn = document.getElementById('btn-share');
+        btn.innerText = "作成中...";
+        btn.disabled = true;
+
+        const shareCanvas = document.createElement('canvas');
+        shareCanvas.width = 400;
+        shareCanvas.height = 300;
+        const sCtx = shareCanvas.getContext('2d');
+        sCtx.imageSmoothingEnabled = false;
+
+        sCtx.fillStyle = '#0a0a16';
+        sCtx.fillRect(0, 0, 400, 300);
+        
+        // Neon borders
+        sCtx.strokeStyle = '#ff007f';
+        sCtx.lineWidth = 4;
+        sCtx.strokeRect(10, 10, 380, 280);
+        
+        sCtx.strokeStyle = '#00f0ff';
+        sCtx.lineWidth = 2;
+        sCtx.strokeRect(15, 15, 370, 270);
+
+        sCtx.font = "bold 20px 'Press Start 2P', sans-serif";
+        sCtx.fillStyle = '#fff';
+        sCtx.fillText("HOME RUN DERBY", 35, 60);
+
+        sCtx.font = "bold 13px 'Noto Sans JP', sans-serif";
+        sCtx.fillText(`名前　　: ${playerName}`, 35, 110);
+        
+        sCtx.fillText(`成績　　: ${homeRuns} 本 / 10球`, 35, 150);
+        sCtx.fillText(`最長飛距離: ${maxDistance} m`, 35, 190);
+
+        let rank = "";
+        if (homeRuns === 10) rank = "レジェンド・バッター";
+        else if (homeRuns >= 7) rank = "プロ野球レベル";
+        else if (homeRuns >= 4) rank = "アマチュア強打者";
+        else if (homeRuns >= 1) rank = "みならいスラッガー";
+        else rank = "ベンチ要員";
+
+        sCtx.fillStyle = '#00f0ff';
+        sCtx.fillText(`称号　　: ${rank}`, 35, 235);
+
+        sCtx.fillStyle = '#ff007f';
+        sCtx.font = "14px 'Noto Sans JP', sans-serif";
+        sCtx.fillText("#ネオンホームランダービー", 35, 275);
+
+        shareCanvas.toBlob(async (blob) => {
+            const file = new File([blob], "derby_result.png", { type: "image/png" });
+            const data = {
+                text: `${playerName}のネオンホームランダービー成績！ ホームラン ${homeRuns}本！ #ネオンホームランダービー`,
+                files: [file]
+            };
+
+            if (navigator.canShare && navigator.canShare(data)) {
+                try {
+                    await navigator.share(data);
+                } catch (err) {
+                    console.log("キャンセルされました", err);
+                }
+            } else {
+                alert("画像シェア非対応のため、テキストでシェアします。");
+                const text = `${playerName}はネオンホームランダービーに挑み、ホームラン ${homeRuns}本（最長飛距離 ${maxDistance}m）を記録した！\n#ネオンホームランダービー`;
+                const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+                window.open(url, '_blank');
+            }
+
+            btn.innerText = "▶ 結果を画像でシェアする";
+            btn.disabled = false;
+        });
+    }
+
+    function resetGame() {
+        document.getElementById('screen-start').style.display = 'flex';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('ui-overlay').style.display = 'flex';
+        
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName) document.getElementById('nickname').value = savedName;
+        
+        drawStaticStadium();
+    }
+</script>
+
+</body>
+</html>

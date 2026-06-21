@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="AIと育てる簡単ブラウザゲーム集。レトロでモダンなゲームの数々をお楽しみください！">
-    <title>Higeball Games | レトロブラウザゲーム集</title>
+    <meta name="description" content="スマホに最適化された直感的なブラウザゲーム集。第一弾「ネオン ホームランダービー」配信中！">
+    <title>Higeball Games | スマホ向けブラウザゲーム集</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-color: #0b0a16;
-            --card-bg: rgba(18, 16, 35, 0.7);
+            --bg-color: #080710;
+            --card-bg: rgba(18, 16, 35, 0.6);
             --text-color: #f1f1f9;
             --text-muted: #a0a0cf;
             --primary-neon: #ff007f;
             --secondary-neon: #00f0ff;
-            --accent-neon: #39ff14;
-            --border-glow: rgba(255, 0, 127, 0.3);
             --font-game: 'Press Start 2P', cursive;
             --font-sans: 'Outfit', 'Noto Sans JP', sans-serif;
         }
@@ -40,75 +38,59 @@
             overflow-x: hidden;
         }
 
-        /* Scanline effect */
-        body::before {
-            content: " ";
-            display: block;
-            position: fixed;
-            top: 0; left: 0; bottom: 0; right: 0;
-            background: linear-gradient(rgba(18, 16, 35, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
-            z-index: 9999;
-            background-size: 100% 4px, 6px 100%;
-            pointer-events: none;
-        }
-
         header {
             text-align: center;
-            padding: 60px 20px 40px;
-            position: relative;
+            padding: 50px 20px 30px;
         }
 
         .logo-container {
             display: inline-block;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             animation: float 4s ease-in-out infinite;
         }
 
         h1 {
             font-family: var(--font-game);
-            font-size: 2.2rem;
+            font-size: 1.8rem;
             color: #fff;
             text-shadow: 
                 0 0 5px var(--primary-neon),
-                0 0 10px var(--primary-neon),
-                0 0 20px var(--primary-neon);
+                0 0 10px var(--primary-neon);
             letter-spacing: 2px;
             text-transform: uppercase;
             margin-bottom: 10px;
-            position: relative;
         }
 
         h1 span {
             color: var(--secondary-neon);
             text-shadow: 
                 0 0 5px var(--secondary-neon),
-                0 0 10px var(--secondary-neon),
-                0 0 20px var(--secondary-neon);
+                0 0 10px var(--secondary-neon);
         }
 
         .subtitle {
-            font-size: 1.1rem;
+            font-size: 0.95rem;
             color: var(--text-muted);
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
             font-weight: 300;
-            max-width: 600px;
+            max-width: 500px;
             margin: 0 auto;
             line-height: 1.6;
         }
 
         main {
             flex: 1;
-            max-width: 1200px;
+            max-width: 480px;
             width: 100%;
             margin: 0 auto;
-            padding: 0 20px 60px;
+            padding: 0 20px 40px;
         }
 
         .games-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 40px;
-            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            margin-top: 10px;
         }
 
         .game-card {
@@ -118,11 +100,11 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
             position: relative;
+            transition: transform 0.2s, box-shadow 0.2s;
         }
 
         .game-card::after {
@@ -136,25 +118,28 @@
             -webkit-mask-composite: destination-out;
             mask-composite: exclude;
             opacity: 0.15;
-            transition: opacity 0.3s ease;
             pointer-events: none;
         }
 
-        .game-card:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 
-                0 15px 30px rgba(0, 0, 0, 0.6),
-                0 0 20px rgba(0, 240, 255, 0.2);
-            border-color: rgba(0, 240, 255, 0.3);
+        /* Responsive hover for desktop, scale-down active for mobile */
+        @media (hover: hover) {
+            .game-card:hover {
+                transform: translateY(-5px);
+                box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.15);
+                border-color: rgba(0, 240, 255, 0.2);
+            }
+            .game-card:hover::after {
+                opacity: 0.6;
+            }
         }
 
-        .game-card:hover::after {
-            opacity: 0.8;
+        .game-card:active {
+            transform: scale(0.98);
         }
 
         .thumbnail-container {
             width: 100%;
-            height: 220px;
+            height: 200px;
             overflow: hidden;
             position: relative;
             background: #000;
@@ -164,78 +149,65 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
-            transition: transform 0.5s ease;
-        }
-
-        .game-card:hover .thumbnail-container img {
-            transform: scale(1.08);
         }
 
         .game-badge {
             position: absolute;
             top: 15px;
             right: 15px;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(10, 7, 16, 0.85);
             border: 1px solid var(--secondary-neon);
             color: var(--secondary-neon);
-            font-family: var(--font-game);
-            font-size: 0.6rem;
-            padding: 6px 12px;
-            border-radius: 4px;
-            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+            font-family: var(--font-sans);
+            font-weight: 700;
+            font-size: 0.75rem;
+            padding: 5px 12px;
+            border-radius: 6px;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
         }
 
         .game-badge.coming-soon {
             border-color: var(--primary-neon);
             color: var(--primary-neon);
-            box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
         }
 
         .game-info {
-            padding: 25px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            flex: 1;
         }
 
         .game-title {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             color: #fff;
-            background: linear-gradient(90deg, #fff, var(--text-muted));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
         }
 
         .game-description {
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             color: var(--text-muted);
-            line-height: 1.6;
-            margin-bottom: 25px;
-            flex: 1;
+            line-height: 1.5;
+            margin-bottom: 20px;
         }
 
         .btn-play {
-            display: inline-block;
+            display: block;
+            width: 100%;
             text-align: center;
             background: linear-gradient(135deg, var(--primary-neon), #d0006f);
             color: #fff;
             text-decoration: none;
-            font-weight: 600;
-            padding: 12px 25px;
+            font-weight: 700;
+            padding: 14px;
             border-radius: 8px;
-            transition: all 0.3s ease;
             font-size: 1rem;
-            border: none;
-            cursor: pointer;
             box-shadow: 0 4px 15px rgba(255, 0, 127, 0.3);
+            transition: opacity 0.2s;
         }
 
-        .btn-play:hover {
-            background: linear-gradient(135deg, #ff1a8c, #e6007b);
-            box-shadow: 0 6px 20px rgba(255, 0, 127, 0.5);
-            transform: translateY(-2px);
+        .btn-play:active {
+            opacity: 0.9;
         }
 
         .btn-disabled {
@@ -245,49 +217,29 @@
             cursor: not-allowed;
         }
 
-        .btn-disabled:hover {
-            background: #252335;
-            box-shadow: none;
-            transform: none;
-        }
-
         footer {
             text-align: center;
-            padding: 40px 20px;
+            padding: 30px 20px;
             border-top: 1px solid rgba(255, 255, 255, 0.05);
             background-color: rgba(8, 7, 16, 0.9);
             margin-top: auto;
         }
 
         footer p {
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         footer a {
             color: var(--secondary-neon);
             text-decoration: none;
-            transition: color 0.3s ease;
         }
 
-        footer a:hover {
-            color: #fff;
-            text-shadow: 0 0 8px var(--secondary-neon);
-        }
-
-        /* Floating Animation */
         @keyframes float {
             0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
+            50% { transform: translateY(-6px); }
             100% { transform: translateY(0px); }
-        }
-
-        /* Responsive adjustments */
-        @media (max-width: 600px) {
-            h1 { font-size: 1.6rem; }
-            .subtitle { font-size: 0.95rem; }
-            .games-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -297,61 +249,34 @@
         <div class="logo-container">
             <h1>Higeball <span>Games</span></h1>
         </div>
-        <p class="subtitle">AIと共創する、懐かしくも新しいブラウザゲームの世界。随時、新ゲームを追加中！</p>
+        <p class="subtitle">スマートフォンに最適化された、直感的に楽しめるカジュアルゲーム集。</p>
     </header>
 
     <main>
         <div class="games-grid">
             
-            <!-- Game Card 1: 一塁塁審ジャッジメント -->
-            <div class="game-card" id="card-umpire">
+            <!-- Game Card 1: ネオン ホームランダービー -->
+            <div class="game-card" id="card-homerun-derby">
                 <div class="thumbnail-container">
-                    <img src="assets/images/first_base_umpire.jpg" alt="一塁塁審ジャッジメント">
+                    <img src="assets/images/homerun_derby.jpg" alt="ネオン ホームランダービー">
                     <span class="game-badge">PLAYABLE</span>
                 </div>
                 <div class="game-info">
-                    <h3 class="game-title">一塁塁審ジャッジメント</h3>
-                    <p class="game-description">16-bit風のレトロ野球ジャッジゲーム。ランナーがベースに滑り込む瞬間を見極め、瞬時に「アウト」か「セーフ」かを判定しよう。あなたの動体視力が試されます。</p>
-                    <a href="games/first-base-umpire/index.html" class="btn-play">ゲームを始める</a>
+                    <h3 class="game-title">ネオン ホームランダービー</h3>
+                    <p class="game-description">タイミングを合わせて画面の左右をタップするだけの簡単バッティングゲーム。インコース・アウトコースの変化球を見極めて、夜空へ特大ホームランを放ちましょう！</p>
+                    <a href="games/homerun-derby/index.html" class="btn-play">ゲームを始める</a>
                 </div>
             </div>
 
-            <!-- Game Card 2: 8-bit ベースボール -->
-            <div class="game-card" id="card-nes-baseball">
-                <div class="thumbnail-container">
-                    <img src="assets/images/nes_baseball.jpg" alt="8-bit ベースボール">
-                    <span class="game-badge">PLAYABLE</span>
-                </div>
-                <div class="game-info">
-                    <h3 class="game-title">8-bit ベースボール</h3>
-                    <p class="game-description">懐かしのファミリーコンピュータ風野球ゲームクローン。投球・打撃画面と、打球が飛んだ後の守備画面の切り替えを忠実に再現。CPUとの3イニング対戦が楽しめます！</p>
-                    <a href="games/nes-baseball/index.html" class="btn-play">ゲームを始める</a>
-                </div>
-            </div>
-
-            <!-- Game Card 3: 球審ジャッジメント -->
-            <div class="game-card" id="card-plate-umpire">
-                <div class="thumbnail-container">
-                    <img src="assets/images/plate_umpire.jpg" alt="球審ジャッジメント">
-                    <span class="game-badge">PLAYABLE</span>
-                </div>
-                <div class="game-info">
-                    <h3 class="game-title">球審ジャッジメント</h3>
-                    <p class="game-description">キャッチャー後方の視点からピッチャーの投球を見極めるゲーム。ストレート・カーブ・フォークなどの球種を見極め、「ストライク」か「ボール」かをジャッジしよう！</p>
-                    <a href="games/plate-umpire/index.html" class="btn-play">ゲームを始める</a>
-                </div>
-            </div>
-
-            <!-- Game Card 4: Coming Soon -->
+            <!-- Game Card 2: Coming Soon -->
             <div class="game-card" id="card-coming-soon">
                 <div class="thumbnail-container">
-                    <img src="assets/images/coming_soon.jpg" alt="Coming Soon">
                     <span class="game-badge coming-soon">NEXT GAME</span>
                 </div>
                 <div class="game-info">
-                    <h3 class="game-title">新ゲーム 開発中</h3>
-                    <p class="game-description">AIツールがアイデアを出して開発する、新しいレトロ風ミニゲームを準備中です。シューティング、アクション、パズルなど何が追加されるかお楽しみに！</p>
-                    <button class="btn-play btn-disabled" disabled>Coming Soon</button>
+                    <h3 class="game-title">次のゲーム 開発中</h3>
+                    <p class="game-description">スマホでの手軽さと楽しさに特化した、新しい簡単カジュアルゲームを追加予定です。お楽しみに！</p>
+                    <a href="#" class="btn-play btn-disabled" onclick="return false;">開発中</a>
                 </div>
             </div>
 
@@ -359,8 +284,8 @@
     </main>
 
     <footer>
-        <p>&copy; 2026 Higeball Games. All rights reserved.</p>
-        <p>Built with Antigravity AI. Repository: <a href="https://github.com/higeball/higeball-games" target="_blank" id="footer-repo-link">higeball/higeball-games</a></p>
+        <p>&copy; 2026 Higeball Games.</p>
+        <p>Built with Antigravity AI.<br>Repository: <a href="https://github.com/higeball/higeball-games" target="_blank">higeball/higeball-games</a></p>
     </footer>
 
 </body>
