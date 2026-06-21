@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ネオン ランナー | Higeball Games</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff007f;
+            --secondary: #00f0ff;
+            --dark: #0a0a16;
+            --text: #f1f1f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;
+            overscroll-behavior: none;
+        }
+
+        #game-container {
+            position: relative;
+            background-color: var(--dark);
+            border: 4px solid var(--primary);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.4);
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 720px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            flex: 1;
+            background-color: #0c0a1f;
+        }
+
+        #touch-panels {
+            width: 100%;
+            height: 120px;
+            background-color: #121026;
+            border-top: 3px solid rgba(255, 0, 127, 0.3);
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .touch-zone {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.1s;
+        }
+
+        #zone-left {
+            border-right: 2px solid rgba(255, 0, 127, 0.2);
+            background: linear-gradient(to top, rgba(255, 0, 127, 0.1), transparent);
+        }
+
+        #zone-right {
+            background: linear-gradient(to top, rgba(0, 240, 255, 0.1), transparent);
+        }
+
+        .touch-zone:active {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .zone-title {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+            pointer-events: none;
+        }
+
+        #zone-left .zone-title {
+            color: var(--primary);
+            text-shadow: 0 0 8px var(--primary);
+        }
+
+        #zone-right .zone-title {
+            color: var(--secondary);
+            text-shadow: 0 0 8px var(--secondary);
+        }
+
+        .zone-desc {
+            font-size: 9px;
+            color: #a0a0cf;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        /* Screen overlays */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10, 10, 22, 0.9);
+            z-index: 10;
+            padding: 30px;
+        }
+
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 0 0 8px var(--primary), 0 0 15px var(--primary);
+            margin-bottom: 25px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .game-title span {
+            color: var(--secondary);
+            text-shadow: 0 0 8px var(--secondary), 0 0 15px var(--secondary);
+        }
+
+        input[type="text"] {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 14px;
+            width: 100%;
+            background-color: #060510;
+            color: #fff;
+            border: 2px solid var(--secondary);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .menu-btn {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #d0006f);
+            color: #fff;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.4);
+            text-align: center;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.98);
+        }
+
+        #controls-info {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #a0a0cf;
+            line-height: 1.8;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #back-link {
+            margin-top: 25px;
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 12px;
+            border-bottom: 1px dotted var(--secondary);
+            padding-bottom: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="320" height="380"></canvas>
+        
+        <div id="touch-panels">
+            <div class="touch-zone" id="zone-left">
+                <span class="zone-title">◀ SLIDE</span>
+                <span class="zone-desc">くぐる</span>
+            </div>
+            <div class="touch-zone" id="zone-right">
+                <span class="zone-title">JUMP ▶</span>
+                <span class="zone-desc">とぶ</span>
+            </div>
+        </div>
+
+        <div id="ui-overlay">
+            <!-- START SCREEN -->
+            <div id="screen-start" class="menu-screen">
+                <div class="game-title">NEON<br>RUNNER</div>
+                <input type="text" id="nickname" placeholder="なまえをいれてね" maxlength="10">
+                <button class="menu-btn" onclick="startGame()">ゲームスタート</button>
+                <div id="controls-info">
+                    【操作方法】<br>
+                    障害物に合わせて下の左右パネルをタップ！<br>
+                    ・地面の障害物 ➔ JUMP で飛び越える<br>
+                    ・空中の障害物 ➔ SLIDE で下をくぐる<br>
+                    ※PCキーボード（Aキー: スライド / Dキー: ジャンプ）も対応
+                </div>
+                <a href="../../index.html" id="back-link">BACK TO HUB</a>
+            </div>
+
+            <!-- RESULT SCREEN -->
+            <div id="screen-result" class="menu-screen" style="display:none;">
+                <div class="game-title" id="result-title">GAME OVER</div>
+                <div id="result-message" style="margin: 15px 0; font-size: 14px; line-height: 1.8; color: #fff; width: 100%; text-align: left;"></div>
+                <button class="menu-btn" id="btn-share" onclick="shareResultImage()">▶ 結果を画像でシェアする</button>
+                <button class="menu-btn" onclick="resetGame()" style="background: linear-gradient(135deg, var(--secondary), #00b0df); box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);">▶ もう一度走る</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Audio System ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+            this.failed = false;
+        }
+        init() {
+            if (this.failed) return;
+            if (!this.ctx) {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) this.ctx = new AudioContextClass();
+                    else this.failed = true;
+                } catch(e) { this.failed = true; }
+            }
+        }
+        playTone(freq, duration, type = 'square', timeOffset = 0) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch(e){}
+        }
+        playJump() { this.playTone(440, 0.1, 'triangle'); this.playTone(660, 0.1, 'triangle', 0.05); }
+        playSlide() { this.playTone(300, 0.15, 'sawtooth'); }
+        playCrash() { this.playTone(150, 0.3, 'sawtooth'); }
+        playCheer() { this.playTone(523, 0.08, 'square'); this.playTone(659, 0.08, 'square', 0.08); }
+    }
+    const sound = new SoundFX();
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let gameState = 'MENU';
+    let playerName = "";
+    let distance = 0;
+    let highscore = 0;
+
+    // Runner variables
+    let runner = { x: 50, y: 280, w: 20, h: 36, vy: 0, groundY: 280, isJumping: false, isSliding: false, slideTimer: 0 };
+    let obstacles = [];
+    let speed = 4.0;
+    let spawnTimer = 0;
+
+    const keys = {};
+    window.addEventListener('keydown', e => {
+        if (gameState !== 'PLAYING') return;
+        if (e.code === 'KeyD') triggerJump();
+        if (e.code === 'KeyA') triggerSlide();
+    });
+
+    document.getElementById('zone-left').addEventListener('touchstart', (e) => { e.preventDefault(); triggerSlide(); });
+    document.getElementById('zone-left').addEventListener('mousedown', () => triggerSlide());
+    document.getElementById('zone-right').addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
+    document.getElementById('zone-right').addEventListener('mousedown', () => triggerJump());
+
+    function startGame() {
+        const nameInput = document.getElementById('nickname').value.trim();
+        if (!nameInput) { alert("なまえをいれてね！"); return; }
+        playerName = nameInput;
+        localStorage.setItem('umpire_nickname_v2', playerName);
+        document.getElementById('ui-overlay').style.display = 'none';
+
+        gameState = 'PLAYING';
+        distance = 0;
+        speed = 4.0;
+        obstacles = [];
+        spawnTimer = 0;
+        runner.y = runner.groundY;
+        runner.vy = 0;
+        runner.isJumping = false;
+        runner.isSliding = false;
+        runner.h = 36;
+
+        sound.init();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function triggerJump() {
+        if (runner.isJumping || runner.isSliding) return;
+        runner.isJumping = true;
+        runner.vy = -7.5;
+        sound.playJump();
+    }
+
+    function triggerSlide() {
+        if (runner.isJumping || runner.isSliding) return;
+        runner.isSliding = true;
+        runner.slideTimer = 35; // Frames of slide
+        runner.h = 18; // Half height
+        runner.y = runner.groundY + 18;
+        sound.playSlide();
+    }
+
+    function gameLoop() {
+        if (gameState !== 'PLAYING') return;
+        update();
+        render();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function update() {
+        distance += speed * 0.05;
+        speed += 0.001; // Accelerate
+
+        // Jump physics
+        if (runner.isJumping) {
+            runner.y += runner.vy;
+            runner.vy += 0.4; // Gravity
+            if (runner.y >= runner.groundY) {
+                runner.y = runner.groundY;
+                runner.isJumping = false;
+            }
+        }
+
+        // Slide timer
+        if (runner.isSliding) {
+            runner.slideTimer--;
+            if (runner.slideTimer <= 0) {
+                runner.isSliding = false;
+                runner.h = 36;
+                runner.y = runner.groundY;
+            }
+        }
+
+        // Spawn obstacles
+        spawnTimer--;
+        if (spawnTimer <= 0) {
+            let type = Math.random() < 0.5 ? 'low' : 'high'; // low needs JUMP, high needs SLIDE
+            let obsY = type === 'low' ? runner.groundY + 16 : runner.groundY - 10;
+            obstacles.push({ x: 340, y: obsY, w: 18, h: 20, type: type });
+            spawnTimer = 70 + Math.random() * 60 - speed * 2;
+        }
+
+        // Move obstacles and collision detect
+        for (let i = obstacles.length - 1; i >= 0; i--) {
+            let o = obstacles[i];
+            o.x -= speed;
+
+            // Collision box check
+            if (runner.x < o.x + o.w && runner.x + runner.w > o.x &&
+                runner.y < o.y + o.h && runner.y + runner.h > o.y) {
+                // CRASH!
+                triggerGameOver();
+            }
+
+            if (o.x < -20) obstacles.splice(i, 1);
+        }
+    }
+
+    function triggerGameOver() {
+        gameState = 'GAMEOVER';
+        sound.playCrash();
+        if (distance > highscore) highscore = Math.floor(distance);
+
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+
+        document.getElementById('result-message').innerHTML = 
+            `＊ <strong>${playerName}</strong> 選手の記録 ＊<br><br>
+            走破距離: <span style="color:var(--primary); font-size:16px;">${Math.floor(distance)}m</span><br>
+            ハイスコア: <span style="color:var(--secondary); font-size:14px; font-weight:700;">${highscore}m</span>`;
+    }
+
+    function render() {
+        ctx.fillStyle = '#0c0a1f';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Ground line (neon blue)
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(0, 316, canvas.width, 1);
+
+        // Grid lines moving in background to show speed
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
+        ctx.lineWidth = 1;
+        let gridOffset = (distance * 5) % 40;
+        for (let x = -gridOffset; x < canvas.width; x += 40) {
+            ctx.beginPath();
+            ctx.moveTo(x, 316);
+            ctx.lineTo(x - 50, canvas.height);
+            ctx.stroke();
+        }
+
+        // Draw runner (neon pink)
+        ctx.fillStyle = varColor('--primary');
+        ctx.fillRect(runner.x, runner.y, runner.w, runner.h);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(runner.x, runner.y, runner.w, runner.h);
+
+        // Draw obstacles
+        obstacles.forEach(o => {
+            ctx.fillStyle = o.type === 'low' ? '#ff3300' : '#ffdd00';
+            ctx.fillRect(o.x, o.y, o.w, o.h);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(o.x, o.y, o.w, o.h);
+        });
+
+        // HUD distance
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        ctx.fillText(`DIST: ${Math.floor(distance)}m`, 15, 25);
+    }
+
+    function varColor(vName) { return getComputedStyle(document.documentElement).getPropertyValue(vName).trim(); }
+
+    async function shareResultImage() {
+        const btn = document.getElementById('btn-share');
+        btn.innerText = "作成中...";
+        btn.disabled = true;
+
+        const shareCanvas = document.createElement('canvas');
+        shareCanvas.width = 400;
+        shareCanvas.height = 300;
+        const sCtx = shareCanvas.getContext('2d');
+
+        sCtx.fillStyle = '#0a0a16';
+        sCtx.fillRect(0, 0, 400, 300);
+        sCtx.strokeStyle = '#ff007f';
+        sCtx.lineWidth = 4;
+        sCtx.strokeRect(10, 10, 380, 280);
+
+        sCtx.font = "bold 20px 'Press Start 2P'";
+        sCtx.fillStyle = '#fff';
+        sCtx.fillText("NEON RUNNER", 35, 60);
+
+        sCtx.font = "bold 13px 'Noto Sans JP'";
+        sCtx.fillText(`名前　: ${playerName}`, 35, 110);
+        sCtx.fillText(`記録　: ${Math.floor(distance)} m`, 35, 150);
+        sCtx.fillText(`最高　: ${highscore} m`, 35, 190);
+
+        sCtx.fillStyle = '#ff007f';
+        sCtx.font = "14px 'Noto Sans JP'";
+        sCtx.fillText("#ネオンランナー #HigeballGames", 35, 260);
+
+        shareCanvas.toBlob(async (blob) => {
+            const file = new File([blob], "runner_result.png", { type: "image/png" });
+            const data = { text: `${playerName}のネオンランナー記録！ 走破距離: ${Math.floor(distance)}m！ #HigeballGames`, files: [file] };
+
+            if (navigator.canShare && navigator.canShare(data)) {
+                try { await navigator.share(data); } catch (err) {}
+            } else {
+                alert("テキストでシェアします。");
+                const text = `${playerName}はネオンランナーで走破距離 ${Math.floor(distance)}mを記録した！\n#HigeballGames`;
+                window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+            }
+            btn.innerText = "▶ 結果を画像でシェアする";
+            btn.disabled = false;
+        });
+    }
+
+    function resetGame() {
+        document.getElementById('screen-start').style.display = 'flex';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('ui-overlay').style.display = 'flex';
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName) document.getElementById('nickname').value = savedName;
+        drawStaticStadium();
+    }
+
+    function drawStaticStadium() {
+        ctx.fillStyle = '#0c0a1f';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        ctx.strokeRect(0, 316, canvas.width, 1);
+    }
+</script>
+
+</body>
+</html>

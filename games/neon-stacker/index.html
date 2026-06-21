@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ネオン ブロックタワー | Higeball Games</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff007f;
+            --secondary: #00f0ff;
+            --dark: #0a0a16;
+            --text: #f1f1f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;
+            overscroll-behavior: none;
+        }
+
+        #game-container {
+            position: relative;
+            background-color: var(--dark);
+            border: 4px solid var(--primary);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.4);
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 720px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            flex: 1;
+            background-color: #0c0a1f;
+        }
+
+        /* Large single tap zone at the bottom */
+        #touch-panels {
+            width: 100%;
+            height: 120px;
+            background-color: #121026;
+            border-top: 3px solid rgba(255, 0, 127, 0.3);
+            display: flex;
+            box-sizing: border-box;
+        }
+
+        .touch-zone {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            position: relative;
+            background: linear-gradient(to top, rgba(0, 240, 255, 0.1), transparent);
+            transition: background-color 0.1s;
+        }
+
+        .touch-zone:active {
+            background-color: rgba(255, 255, 255, 0.08);
+        }
+
+        .zone-title {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            margin-bottom: 5px;
+            color: var(--secondary);
+            text-shadow: 0 0 8px var(--secondary);
+            pointer-events: none;
+        }
+
+        .zone-desc {
+            font-size: 9px;
+            color: #a0a0cf;
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        /* Overlays */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10, 10, 22, 0.9);
+            z-index: 10;
+            padding: 30px;
+        }
+
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 0 0 8px var(--primary), 0 0 15px var(--primary);
+            margin-bottom: 25px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .game-title span {
+            color: var(--secondary);
+            text-shadow: 0 0 8px var(--secondary), 0 0 15px var(--secondary);
+        }
+
+        input[type="text"] {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 14px;
+            width: 100%;
+            background-color: #060510;
+            color: #fff;
+            border: 2px solid var(--secondary);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .menu-btn {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #d0006f);
+            color: #fff;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.4);
+            text-align: center;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.98);
+        }
+
+        #controls-info {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #a0a0cf;
+            line-height: 1.8;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #back-link {
+            margin-top: 25px;
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 12px;
+            border-bottom: 1px dotted var(--secondary);
+            padding-bottom: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="320" height="380"></canvas>
+        
+        <div id="touch-panels">
+            <div class="touch-zone" id="zone-drop">
+                <span class="zone-title">▲ DROP BLOCK</span>
+                <span class="zone-desc">ブロックを重ねる (画面タップでも可)</span>
+            </div>
+        </div>
+
+        <div id="ui-overlay">
+            <!-- START SCREEN -->
+            <div id="screen-start" class="menu-screen">
+                <div class="game-title">NEON<br>BLOCK TOWER</div>
+                <input type="text" id="nickname" placeholder="なまえをいれてね" maxlength="10">
+                <button class="menu-btn" onclick="startGame()">ゲームスタート</button>
+                <div id="controls-info">
+                    【操作方法】<br>
+                    スライドするブロックを、下のブロックに重なるようにタイミングよくタップ！<br>
+                    ・はみ出た部分は削り落とされます<br>
+                    ・ぴったり重ねて（Perfect）高さを競いましょう！<br>
+                    ※PCキーボード（Space / Enterキー）でも操作できます。
+                </div>
+                <a href="../../index.html" id="back-link">BACK TO HUB</a>
+            </div>
+
+            <!-- RESULT SCREEN -->
+            <div id="screen-result" class="menu-screen" style="display:none;">
+                <div class="game-title" id="result-title">TOWER COLLAPSED</div>
+                <div id="result-message" style="margin: 15px 0; font-size: 14px; line-height: 1.8; color: #fff; width: 100%; text-align: left;"></div>
+                <button class="menu-btn" id="btn-share" onclick="shareResultImage()">▶ 結果を画像でシェアする</button>
+                <button class="menu-btn" onclick="resetGame()" style="background: linear-gradient(135deg, var(--secondary), #00b0df); box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);">▶ もう一度積む</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Audio System ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+            this.failed = false;
+        }
+        init() {
+            if (this.failed) return;
+            if (!this.ctx) {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) this.ctx = new AudioContextClass();
+                    else this.failed = true;
+                } catch(e) { this.failed = true; }
+            }
+        }
+        playTone(freq, duration, type = 'square', timeOffset = 0) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0.12, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch(e){}
+        }
+        playDrop(isPerfect) {
+            if (isPerfect) {
+                this.playTone(523, 0.08, 'triangle');
+                this.playTone(659, 0.08, 'triangle', 0.06);
+                this.playTone(784, 0.15, 'triangle', 0.12);
+            } else {
+                this.playTone(330, 0.1, 'triangle');
+            }
+        }
+        playCut() { this.playTone(180, 0.08, 'sawtooth'); }
+        playCollapse() { this.playTone(150, 0.3, 'sawtooth'); this.playTone(100, 0.4, 'sawtooth', 0.1); }
+    }
+    const sound = new SoundFX();
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let gameState = 'MENU';
+    let playerName = "";
+    let towerHeight = 0;
+    let highscore = 0;
+
+    // Game parameters
+    let blocks = []; // list of placed blocks { x, w, color }
+    let currentBlock = { x: 0, w: 120, speed: 2.5, dir: 1 };
+    let blockHeight = 18;
+    let cameraY = 0;
+    let targetCameraY = 0;
+    let perfectStreak = 0;
+    let stackColors = ['#ff007f', '#ff5500', '#ffaa00', '#aaff00', '#39ff14', '#00f0ff', '#007fff', '#7f00ff'];
+
+    window.addEventListener('keydown', e => {
+        if (gameState !== 'PLAYING') return;
+        if (e.code === 'Space' || e.code === 'Enter') triggerDrop();
+    });
+
+    document.getElementById('zone-drop').addEventListener('touchstart', (e) => { e.preventDefault(); triggerDrop(); });
+    document.getElementById('zone-drop').addEventListener('mousedown', () => triggerDrop());
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); triggerDrop(); });
+    canvas.addEventListener('mousedown', () => triggerDrop());
+
+    function startGame() {
+        const nameInput = document.getElementById('nickname').value.trim();
+        if (!nameInput) { alert("なまえをいれてね！"); return; }
+        playerName = nameInput;
+        localStorage.setItem('umpire_nickname_v2', playerName);
+        document.getElementById('ui-overlay').style.display = 'none';
+
+        gameState = 'PLAYING';
+        towerHeight = 0;
+        perfectStreak = 0;
+        cameraY = 0;
+        targetCameraY = 0;
+
+        // Init base block
+        blocks = [
+            { x: 100, w: 120, color: '#00f0ff' } // Base
+        ];
+
+        prepareNextBlock();
+
+        sound.init();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function prepareNextBlock() {
+        let lastBlock = blocks[blocks.length - 1];
+        currentBlock.w = lastBlock.w;
+        currentBlock.x = Math.random() < 0.5 ? 0 : (canvas.width - currentBlock.w);
+        currentBlock.speed = 2.5 + Math.min(blocks.length * 0.12, 3.5); // Accelerate speed
+        currentBlock.dir = currentBlock.x === 0 ? 1 : -1;
+    }
+
+    function triggerDrop() {
+        if (gameState !== 'PLAYING') return;
+
+        let baseBlock = blocks[blocks.length - 1];
+        let diff = currentBlock.x - baseBlock.x;
+        let absDiff = Math.abs(diff);
+
+        if (absDiff < 4) {
+            // PERFECT stack!
+            currentBlock.x = baseBlock.x; // Align perfectly
+            perfectStreak++;
+            sound.playDrop(true);
+            
+            // Expand block slightly if streak is high (reward)
+            if (perfectStreak >= 5) {
+                currentBlock.w = Math.min(160, currentBlock.w + 8);
+                perfectStreak = 0;
+            }
+        } else {
+            perfectStreak = 0;
+            // Trim block
+            if (diff > 0) {
+                // Slipped right
+                currentBlock.w -= diff;
+            } else {
+                // Slipped left
+                currentBlock.w += diff;
+                currentBlock.x = baseBlock.x;
+            }
+
+            if (currentBlock.w <= 0) {
+                // Tower collapsed!
+                triggerCollapse();
+                return;
+            }
+            sound.playDrop(false);
+            sound.playCut();
+        }
+
+        // Place block
+        blocks.push({
+            x: currentBlock.x,
+            w: currentBlock.w,
+            color: stackColors[blocks.length % stackColors.length]
+        });
+
+        towerHeight = blocks.length - 1;
+
+        // Camera scroll
+        if (blocks.length > 5) {
+            targetCameraY = (blocks.length - 5) * blockHeight;
+        }
+
+        prepareNextBlock();
+    }
+
+    function triggerCollapse() {
+        gameState = 'GAMEOVER';
+        sound.playCollapse();
+        if (towerHeight > highscore) highscore = towerHeight;
+
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+
+        document.getElementById('result-message').innerHTML = 
+            `＊ <strong>${playerName}</strong> 監督のタワー ＊<br><br>
+            積み上げた高さ: <span style="color:var(--primary); font-size:16px;">${towerHeight} 段</span><br>
+            ハイスコア: <span style="color:var(--secondary); font-size:14px; font-weight:700;">${highscore} 段</span>`;
+    }
+
+    function gameLoop() {
+        if (gameState !== 'PLAYING') return;
+        update();
+        render();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function update() {
+        // Move current block
+        currentBlock.x += currentBlock.speed * currentBlock.dir;
+        if (currentBlock.x < 0) {
+            currentBlock.x = 0;
+            currentBlock.dir = 1;
+        } else if (currentBlock.x + currentBlock.w > canvas.width) {
+            currentBlock.x = canvas.width - currentBlock.w;
+            currentBlock.dir = -1;
+        }
+
+        // Camera smooth scroll
+        cameraY += (targetCameraY - cameraY) * 0.1;
+    }
+
+    function render() {
+        ctx.fillStyle = '#0c0a1f';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(0, cameraY);
+
+        // Draw stacked blocks
+        for (let i = 0; i < blocks.length; i++) {
+            let b = blocks[i];
+            let y = canvas.height - 40 - (i * blockHeight);
+            
+            ctx.fillStyle = b.color;
+            ctx.fillRect(b.x, y, b.w, blockHeight);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(b.x, y, b.w, blockHeight);
+        }
+
+        // Draw current moving block
+        if (gameState === 'PLAYING') {
+            let y = canvas.height - 40 - (blocks.length * blockHeight);
+            ctx.fillStyle = stackColors[blocks.length % stackColors.length];
+            ctx.fillRect(currentBlock.x, y, currentBlock.w, blockHeight);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(currentBlock.x, y, currentBlock.w, blockHeight);
+        }
+
+        ctx.restore();
+
+        // HUD height
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        ctx.fillText(`HEIGHT: ${towerHeight}`, 15, 25);
+    }
+
+    async function shareResultImage() {
+        const btn = document.getElementById('btn-share');
+        btn.innerText = "作成中...";
+        btn.disabled = true;
+
+        const shareCanvas = document.createElement('canvas');
+        shareCanvas.width = 400;
+        shareCanvas.height = 300;
+        const sCtx = shareCanvas.getContext('2d');
+
+        sCtx.fillStyle = '#0a0a16';
+        sCtx.fillRect(0, 0, 400, 300);
+        sCtx.strokeStyle = '#ff007f';
+        sCtx.lineWidth = 4;
+        sCtx.strokeRect(10, 10, 380, 280);
+
+        sCtx.font = "bold 20px 'Press Start 2P'";
+        sCtx.fillStyle = '#fff';
+        sCtx.fillText("BLOCK TOWER", 35, 60);
+
+        sCtx.font = "bold 13px 'Noto Sans JP'";
+        sCtx.fillText(`名前　: ${playerName}`, 35, 110);
+        sCtx.fillText(`記録　: ${towerHeight} 段`, 35, 150);
+        sCtx.fillText(`最高　: ${highscore} 段`, 35, 190);
+
+        sCtx.fillStyle = '#ff007f';
+        sCtx.font = "14px 'Noto Sans JP'";
+        sCtx.fillText("#ネオンブロックタワー #HigeballGames", 35, 260);
+
+        shareCanvas.toBlob(async (blob) => {
+            const file = new File([blob], "tower_result.png", { type: "image/png" });
+            const data = { text: `${playerName}のブロックタワー記録！ 高さ: ${towerHeight}段！ #HigeballGames`, files: [file] };
+
+            if (navigator.canShare && navigator.canShare(data)) {
+                try { await navigator.share(data); } catch (err) {}
+            } else {
+                alert("テキストでシェアします。");
+                const text = `${playerName}はブロックタワーで ${towerHeight}段を記録した！\n#HigeballGames`;
+                window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+            }
+            btn.innerText = "▶ 結果を画像でシェアする";
+            btn.disabled = false;
+        });
+    }
+
+    function resetGame() {
+        document.getElementById('screen-start').style.display = 'flex';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('ui-overlay').style.display = 'flex';
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName) document.getElementById('nickname').value = savedName;
+        
+        ctx.fillStyle = '#0c0a1f';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+</script>
+
+</body>
+</html>

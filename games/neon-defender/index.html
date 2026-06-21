@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ネオン ディフェンダー | Higeball Games</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #00f0ff; /* Cyan */
+            --secondary: #ff007f; /* Pink */
+            --dark: #0a0a16;
+            --text: #f1f1f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;
+            overscroll-behavior: none;
+        }
+
+        #game-container {
+            position: relative;
+            background-color: var(--dark);
+            border: 4px solid var(--primary);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 720px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            flex: 1;
+            background-color: #050414;
+        }
+
+        /* Instructions HUD at the bottom */
+        #touch-panels {
+            width: 100%;
+            height: 60px;
+            background-color: #0a091d;
+            border-top: 3px solid rgba(0, 240, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .tap-hint {
+            font-size: 11px;
+            color: #8888b0;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        /* Screen overlays */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(10, 10, 22, 0.9);
+            z-index: 10;
+            padding: 30px;
+        }
+
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 320px;
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 0 0 8px var(--primary), 0 0 15px var(--primary);
+            margin-bottom: 25px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .game-title span {
+            color: var(--secondary);
+            text-shadow: 0 0 8px var(--secondary), 0 0 15px var(--secondary);
+        }
+
+        input[type="text"] {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 16px;
+            font-weight: bold;
+            padding: 14px;
+            width: 100%;
+            background-color: #060510;
+            color: #fff;
+            border: 2px solid var(--primary);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .menu-btn {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #00b0df);
+            color: #000;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);
+            text-align: center;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.98);
+        }
+
+        #controls-info {
+            margin-top: 20px;
+            font-size: 11px;
+            color: #a0a0cf;
+            line-height: 1.8;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        #back-link {
+            margin-top: 25px;
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 12px;
+            border-bottom: 1px dotted var(--secondary);
+            padding-bottom: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="320" height="400"></canvas>
+        
+        <div id="touch-panels">
+            <span class="tap-hint">◀ TAP ON SCREEN TO DEFEND ▶</span>
+        </div>
+
+        <div id="ui-overlay">
+            <!-- START SCREEN -->
+            <div id="screen-start" class="menu-screen">
+                <div class="game-title">STAR<br>NEON<br><span>DEFENDER</span></div>
+                <input type="text" id="nickname" placeholder="なまえをいれてね" maxlength="10">
+                <button class="menu-btn" onclick="startGame()">ゲームスタート</button>
+                <div id="controls-info">
+                    【操作方法】<br>
+                    上空から落ちてくる隕石を、タップ（クリック）して撃ち落とそう！<br>
+                    ・タップした位置で爆風が発生し、隕石を巻き込んで破壊します<br>
+                    ・爆風に巻き込まれた隕石が誘爆（チェーンリアクション）して、コンボになります<br>
+                    ・一番下に到達するとベースのライフ（ハート）が減ります。
+                </div>
+                <a href="../../index.html" id="back-link">BACK TO HUB</a>
+            </div>
+
+            <!-- RESULT SCREEN -->
+            <div id="screen-result" class="menu-screen" style="display:none;">
+                <div class="game-title" id="result-title">BASE DESTROYED</div>
+                <div id="result-message" style="margin: 15px 0; font-size: 14px; line-height: 1.8; color: #fff; width: 100%; text-align: left;"></div>
+                <button class="menu-btn" id="btn-share" onclick="shareResultImage()" style="color: #fff;">▶ 結果を画像でシェアする</button>
+                <button class="menu-btn" onclick="resetGame()" style="background: linear-gradient(135deg, var(--secondary), #00b0df); box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4); color: #fff;">▶ もう一度防衛する</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Audio System ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+            this.failed = false;
+        }
+        init() {
+            if (this.failed) return;
+            if (!this.ctx) {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) this.ctx = new AudioContextClass();
+                    else this.failed = true;
+                } catch(e) { this.failed = true; }
+            }
+        }
+        playTone(freq, duration, type = 'square', timeOffset = 0) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch(e){}
+        }
+        playShoot() { this.playTone(800, 0.08, 'sine'); this.playTone(400, 0.08, 'sine', 0.03); }
+        playExplode(isCombo) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime;
+                this.playTone(isCombo ? 300 : 150, 0.25, 'sawtooth');
+                
+                // Noise blast
+                let bufferSize = this.ctx.sampleRate * 0.15;
+                let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                let data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                let noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                let gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.2, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+                noise.connect(gain);
+                gain.connect(this.ctx.destination);
+                noise.start(now);
+            } catch(e){}
+        }
+        playDamage() { this.playTone(100, 0.3, 'sawtooth'); }
+    }
+    const sound = new SoundFX();
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let gameState = 'MENU';
+    let playerName = "";
+    let score = 0;
+    let highscore = 0;
+    let baseLife = 3;
+
+    // Entities
+    let meteors = [];
+    let bullets = [];
+    let explosions = [];
+    let spawnTimer = 0;
+    let baseCannon = { x: 160, y: 390 };
+
+    // Touch/Click to Shoot
+    const handleShootTouch = (e) => {
+        if (gameState !== 'PLAYING') return;
+        e.preventDefault();
+        
+        // Get touch coordinates relative to canvas
+        let rect = canvas.getBoundingClientRect();
+        let scaleX = canvas.width / rect.width;
+        let scaleY = canvas.height / rect.height;
+        let touch = e.touches ? e.touches[0] : e;
+        let targetX = (touch.clientX - rect.left) * scaleX;
+        let targetY = (touch.clientY - rect.top) * scaleY;
+
+        // Shoot bullet towards target
+        shootBullet(targetX, targetY);
+    };
+
+    canvas.addEventListener('touchstart', handleShootTouch, { passive: false });
+    canvas.addEventListener('mousedown', handleShootTouch);
+
+    function startGame() {
+        const nameInput = document.getElementById('nickname').value.trim();
+        if (!nameInput) { alert("なまえをいれてね！"); return; }
+        playerName = nameInput;
+        localStorage.setItem('umpire_nickname_v2', playerName);
+        document.getElementById('ui-overlay').style.display = 'none';
+
+        gameState = 'PLAYING';
+        score = 0;
+        baseLife = 3;
+        meteors = [];
+        bullets = [];
+        explosions = [];
+        spawnTimer = 0;
+
+        sound.init();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function shootBullet(tx, ty) {
+        // limit bullets on screen
+        if (bullets.length > 5 || ty > 360) return;
+
+        let startX = baseCannon.x;
+        let startY = baseCannon.y;
+        let dx = tx - startX;
+        let dy = ty - startY;
+        let dist = Math.hypot(dx, dy);
+        
+        let speed = 9.0;
+        let vx = (dx / dist) * speed;
+        let vy = (dy / dist) * speed;
+
+        bullets.push({
+            x: startX,
+            y: startY,
+            vx: vx,
+            vy: vy,
+            tx: tx,
+            ty: ty
+        });
+
+        sound.playShoot();
+    }
+
+    function gameLoop() {
+        if (gameState !== 'PLAYING') return;
+        update();
+        render();
+        requestAnimationFrame(gameLoop);
+    }
+
+    function update() {
+        // 1. Move bullets
+        for (let i = bullets.length - 1; i >= 0; i--) {
+            let b = bullets[i];
+            b.x += b.vx;
+            b.y += b.vy;
+
+            // Check if bullet reached target or went out of bounds
+            let reachedTarget = Math.hypot(b.x - b.tx, b.y - b.ty) < 10 || b.y <= b.ty;
+            if (reachedTarget) {
+                // Trigger explosion
+                explosions.push({
+                    x: b.tx,
+                    y: b.ty,
+                    radius: 2,
+                    maxRadius: 36,
+                    growing: true,
+                    combo: false
+                });
+                sound.playExplode(false);
+                bullets.splice(i, 1);
+            }
+        }
+
+        // 2. Spawn Meteors
+        spawnTimer--;
+        if (spawnTimer <= 0) {
+            meteors.push({
+                x: 20 + Math.random() * (canvas.width - 40),
+                y: -10,
+                vy: 0.8 + Math.random() * 0.7 + (score * 0.02), // accelerate velocity with score
+                radius: 6 + Math.random() * 6
+            });
+            spawnTimer = 80 - Math.min(score * 0.5, 45); // faster spawn with score
+        }
+
+        // 3. Move and collide meteors
+        for (let i = meteors.length - 1; i >= 0; i--) {
+            let m = meteors[i];
+            m.y += m.vy;
+
+            // Check base collision
+            if (m.y >= 390) {
+                baseLife--;
+                sound.playDamage();
+                meteors.splice(i, 1);
+                
+                if (baseLife <= 0) {
+                    triggerGameOver();
+                    return;
+                }
+                continue;
+            }
+
+            // Check collision with explosions
+            for (let j = 0; j < explosions.length; j++) {
+                let e = explosions[j];
+                let dist = Math.hypot(m.x - e.x, m.y - e.y);
+                if (dist < m.radius + e.radius) {
+                    // Destroy meteor and trigger cascade combo explosion!
+                    explosions.push({
+                        x: m.x,
+                        y: m.y,
+                        radius: 2,
+                        maxRadius: 28,
+                        growing: true,
+                        combo: true
+                    });
+                    sound.playExplode(true);
+                    score += e.combo ? 2 : 1; // Double score on combo chain
+                    meteors.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
+        // 4. Update explosions
+        for (let i = explosions.length - 1; i >= 0; i--) {
+            let e = explosions[i];
+            if (e.growing) {
+                e.radius += 2.2;
+                if (e.radius >= e.maxRadius) {
+                    e.growing = false;
+                }
+            } else {
+                e.radius -= 1.5;
+                if (e.radius <= 0) {
+                    explosions.splice(i, 1);
+                }
+            }
+        }
+    }
+
+    function triggerGameOver() {
+        gameState = 'GAMEOVER';
+        sound.playDamage();
+        if (score > highscore) highscore = score;
+
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+
+        document.getElementById('result-message').innerHTML = 
+            `＊ <strong>${playerName}</strong> 司令官の記録 ＊<br><br>
+            迎撃スコア: <span style="color:var(--primary); font-size:16px;">${score} 点</span><br>
+            ハイスコア: <span style="color:var(--secondary); font-size:14px; font-weight:700;">${highscore} 点</span>`;
+    }
+
+    function render() {
+        ctx.fillStyle = '#050414';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Ground defense base (neon green line)
+        ctx.strokeStyle = '#39ff14';
+        ctx.lineWidth = 4;
+        ctx.strokeRect(0, 390, canvas.width, 1);
+
+        // Draw cannon
+        ctx.fillStyle = '#39ff14';
+        ctx.beginPath();
+        ctx.arc(baseCannon.x, baseCannon.y, 14, Math.PI, 0);
+        ctx.fill();
+
+        // Draw meteors (glowing neon orange/red)
+        meteors.forEach(m => {
+            ctx.fillStyle = varColor('--secondary');
+            ctx.beginPath();
+            ctx.arc(m.x, m.y, m.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Fire tail
+            ctx.strokeStyle = 'rgba(255, 0, 127, 0.3)';
+            ctx.lineWidth = m.radius * 0.8;
+            ctx.beginPath();
+            ctx.moveTo(m.x, m.y);
+            ctx.lineTo(m.x, m.y - m.radius * 2);
+            ctx.stroke();
+        });
+
+        // Draw bullets
+        bullets.forEach(b => {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(b.x - 2, b.y - 2, 4, 4);
+            ctx.strokeStyle = varColor('--primary');
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(b.x - 2, b.y - 2, 4, 4);
+        });
+
+        // Draw explosions (neon circles)
+        explosions.forEach(e => {
+            ctx.fillStyle = e.combo ? 'rgba(57, 255, 20, 0.25)' : 'rgba(0, 240, 255, 0.25)';
+            ctx.beginPath();
+            ctx.arc(e.x, e.y, e.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.strokeStyle = e.combo ? '#39ff14' : varColor('--primary');
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        });
+
+        // HUD: Score and Lives (Hearts)
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        ctx.fillText(`SCORE: ${score}`, 15, 25);
+
+        ctx.textAlign = 'right';
+        let hearts = "";
+        for (let i = 0; i < baseLife; i++) hearts += "♥";
+        ctx.fillStyle = varColor('--secondary');
+        ctx.fillText(hearts, canvas.width - 15, 25);
+    }
+
+    function varColor(vName) { return getComputedStyle(document.documentElement).getPropertyValue(vName).trim(); }
+
+    async function shareResultImage() {
+        const btn = document.getElementById('btn-share');
+        btn.innerText = "作成中...";
+        btn.disabled = true;
+
+        const shareCanvas = document.createElement('canvas');
+        shareCanvas.width = 400;
+        shareCanvas.height = 300;
+        const sCtx = shareCanvas.getContext('2d');
+
+        sCtx.fillStyle = '#0a0a16';
+        sCtx.fillRect(0, 0, 400, 300);
+        sCtx.strokeStyle = '#00f0ff';
+        sCtx.lineWidth = 4;
+        sCtx.strokeRect(10, 10, 380, 280);
+
+        sCtx.font = "bold 20px 'Press Start 2P'";
+        sCtx.fillStyle = '#fff';
+        sCtx.fillText("NEON DEFENDER", 35, 60);
+
+        sCtx.font = "bold 13px 'Noto Sans JP'";
+        sCtx.fillText(`名前　: ${playerName}`, 35, 110);
+        sCtx.fillText(`スコア: ${score} 点`, 35, 150);
+        sCtx.fillText(`最高　: ${highscore} 点`, 35, 190);
+
+        sCtx.fillStyle = '#00f0ff';
+        sCtx.font = "14px 'Noto Sans JP'";
+        sCtx.fillText("#ネオンディフェンダー #HigeballGames", 35, 260);
+
+        shareCanvas.toBlob(async (blob) => {
+            const file = new File([blob], "defender_result.png", { type: "image/png" });
+            const data = { text: `${playerName}のネオンディフェンダースコア！ ${score}点獲得！ #HigeballGames`, files: [file] };
+
+            if (navigator.canShare && navigator.canShare(data)) {
+                try { await navigator.share(data); } catch (err) {}
+            } else {
+                alert("テキストでシェアします。");
+                const text = `${playerName}はネオンディフェンダーで ${score}点を獲得した！\n#HigeballGames`;
+                window.open(`https://line.me/R/msg/text/?${encodeURIComponent(text)}`, '_blank');
+            }
+            btn.innerText = "▶ 結果を画像でシェアする";
+            btn.disabled = false;
+        });
+    }
+
+    function resetGame() {
+        document.getElementById('screen-start').style.display = 'flex';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('ui-overlay').style.display = 'flex';
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName) document.getElementById('nickname').value = savedName;
+        
+        ctx.fillStyle = '#0c0a1f';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+</script>
+
+</body>
+</html>
