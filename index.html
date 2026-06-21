@@ -2,534 +2,339 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>一塁塁審ジャッジメント - 16bit Edition</title>
-    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="AIと育てる簡単ブラウザゲーム集。レトロでモダンなゲームの数々をお楽しみください！">
+    <title>Higeball Games | レトロブラウザゲーム集</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'DotGothic16', sans-serif;
-            background-color: #222; 
-            color: #fff;
+        :root {
+            --bg-color: #0b0a16;
+            --card-bg: rgba(18, 16, 35, 0.7);
+            --text-color: #f1f1f9;
+            --text-muted: #a0a0cf;
+            --primary-neon: #ff007f;
+            --secondary-neon: #00f0ff;
+            --accent-neon: #39ff14;
+            --border-glow: rgba(255, 0, 127, 0.3);
+            --font-game: 'Press Start 2P', cursive;
+            --font-sans: 'Outfit', 'Noto Sans JP', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            text-align: center;
-        }
-        
-        /* コマンドウィンドウ風の装飾を強化 */
-        #app {
-            background-color: #000;
-            width: 95%;
-            max-width: 400px;
-            padding: 20px;
-            box-sizing: border-box;
-            border: 4px solid #fff;
-            border-radius: 6px;
-            box-shadow: 0 0 0 2px #000, 0 0 0 4px #fff, inset 0 0 0 2px #fff;
         }
 
-        .screen { display: none; }
-        .screen.active { display: block; }
-        
-        h1 { 
-            color: #fff; 
-            margin-top: 0;
-            font-size: 26px;
-            text-shadow: 2px 2px 0 #555;
-            letter-spacing: 2px;
+        body {
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(255, 0, 127, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(0, 240, 255, 0.08) 0%, transparent 40%);
+            color: var(--text-color);
+            font-family: var(--font-sans);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
         }
-        h2 { margin-top: 0; text-shadow: 2px 2px 0 #555; }
-        
-        input[type="text"] {
-            font-family: 'DotGothic16', sans-serif;
-            width: 90%;
-            padding: 12px;
-            font-size: 16px;
-            margin: 15px 0;
-            background-color: #000;
-            color: #fff;
-            border: 2px solid #fff;
-            box-sizing: border-box;
+
+        /* Scanline effect */
+        body::before {
+            content: " ";
+            display: block;
+            position: fixed;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 35, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03));
+            z-index: 9999;
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
         }
-        input[type="text"]:focus { outline: none; border-color: #f39c12; }
-        
-        button {
-            font-family: 'DotGothic16', sans-serif;
-            width: 90%;
-            padding: 12px;
-            font-size: 18px;
-            margin: 8px 0;
-            background-color: #000;
-            color: #fff;
-            border: 2px solid #fff;
-            border-radius: 4px;
-            cursor: pointer;
-            text-align: left;
-            padding-left: 20px;
+
+        header {
+            text-align: center;
+            padding: 60px 20px 40px;
             position: relative;
         }
-        button:before {
-            content: "";
+
+        .logo-container {
+            display: inline-block;
+            margin-bottom: 15px;
+            animation: float 4s ease-in-out infinite;
+        }
+
+        h1 {
+            font-family: var(--font-game);
+            font-size: 2.2rem;
+            color: #fff;
+            text-shadow: 
+                0 0 5px var(--primary-neon),
+                0 0 10px var(--primary-neon),
+                0 0 20px var(--primary-neon);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            position: relative;
+        }
+
+        h1 span {
+            color: var(--secondary-neon);
+            text-shadow: 
+                0 0 5px var(--secondary-neon),
+                0 0 10px var(--secondary-neon),
+                0 0 20px var(--secondary-neon);
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            font-weight: 300;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        main {
+            flex: 1;
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0 20px 60px;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 40px;
+            margin-top: 20px;
+        }
+
+        .game-card {
+            background: var(--card-bg);
+            border: 2px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+
+        .game-card::after {
+            content: '';
             position: absolute;
-            left: 5px;
-            opacity: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
+            border-radius: 16px;
+            border: 2px solid transparent;
+            background: linear-gradient(135deg, var(--primary-neon), var(--secondary-neon)) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            opacity: 0.15;
+            transition: opacity 0.3s ease;
         }
-        button:hover:not(:disabled):before,
-        button:active:not(:disabled):before {
-            content: "▶"; 
-            opacity: 1;
+
+        .game-card:hover {
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 
+                0 15px 30px rgba(0, 0, 0, 0.6),
+                0 0 20px rgba(0, 240, 255, 0.2);
+            border-color: rgba(0, 240, 255, 0.3);
         }
-        button:active:not(:disabled) {
-            background-color: #333;
+
+        .game-card:hover::after {
+            opacity: 0.8;
         }
-        button:disabled {
-            color: #666;
-            border-color: #666;
+
+        .thumbnail-container {
+            width: 100%;
+            height: 220px;
+            overflow: hidden;
+            position: relative;
+            background: #000;
+        }
+
+        .thumbnail-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .game-card:hover .thumbnail-container img {
+            transform: scale(1.08);
+        }
+
+        .game-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--secondary-neon);
+            color: var(--secondary-neon);
+            font-family: var(--font-game);
+            font-size: 0.6rem;
+            padding: 6px 12px;
+            border-radius: 4px;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+
+        .game-badge.coming-soon {
+            border-color: var(--primary-neon);
+            color: var(--primary-neon);
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.3);
+        }
+
+        .game-info {
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .game-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #fff;
+            background: linear-gradient(90deg, #fff, var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .game-description {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            line-height: 1.6;
+            margin-bottom: 25px;
+            flex: 1;
+        }
+
+        .btn-play {
+            display: inline-block;
+            text-align: center;
+            background: linear-gradient(135deg, var(--primary-neon), #d0006f);
+            color: #fff;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 12px 25px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.3);
+        }
+
+        .btn-play:hover {
+            background: linear-gradient(135deg, #ff1a8c, #e6007b);
+            box-shadow: 0 6px 20px rgba(255, 0, 127, 0.5);
+            transform: translateY(-2px);
+        }
+
+        .btn-disabled {
+            background: #252335;
+            color: #5d5a7d;
+            box-shadow: none;
             cursor: not-allowed;
         }
-        
-        .btn-share { border-color: #3498db; color: #3498db; }
 
-        canvas {
-            background-color: #000; 
-            border: 2px solid #fff;
-            border-radius: 4px;
-            width: 100%;
-            max-width: 320px;
-            height: auto;
-            margin: 0 auto 15px auto;
-            display: block;
-            image-rendering: pixelated; 
+        .btn-disabled:hover {
+            background: #252335;
+            box-shadow: none;
+            transform: none;
         }
 
-        #judge-controls {
-            display: flex;
-            justify-content: space-between;
-        }
-        #judge-controls button {
-            width: 48%;
+        footer {
             text-align: center;
-            padding-left: 0;
+            padding: 40px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            background-color: rgba(8, 7, 16, 0.9);
+            margin-top: auto;
         }
-        #judge-controls button:before { display: none; } 
 
-        #result-text {
-            font-size: 18px;
-            margin: 10px 0;
-            min-height: 24px;
-            white-space: pre-wrap; 
-            text-shadow: 1px 1px 0 #555;
-        }
-        .runner-info {
-            font-size: 16px;
-            color: #ccc;
+        footer p {
+            font-size: 0.9rem;
+            color: var(--text-muted);
             margin-bottom: 10px;
+        }
+
+        footer a {
+            color: var(--secondary-neon);
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        footer a:hover {
+            color: #fff;
+            text-shadow: 0 0 8px var(--secondary-neon);
+        }
+
+        /* Floating Animation */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 600px) {
+            h1 { font-size: 1.6rem; }
+            .subtitle { font-size: 0.95rem; }
+            .games-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
 
-<div id="app">
-    <div id="screen-start" class="screen active">
-        <h1>ｲﾁﾙｲﾙｲｼﾝ<br>ｼﾞｬｯｼﾞﾒﾝﾄ</h1>
-        <p>えいぞうをみて はんていせよ！<br>ボールは 1るいに とまるぞ。</p>
-        <input type="text" id="nickname" placeholder="なまえをいれてね">
-        <button onclick="startGame()">▶ ゲームスタート</button>
-    </div>
-
-    <div id="screen-quiz" class="screen">
-        <h2 id="round-title">だい 1 きゅう</h2>
-        <div id="runner-info" class="runner-info"></div>
-        
-        <canvas id="gameCanvas" width="320" height="200"></canvas>
-        
-        <button id="btn-play" onclick="playAnimation()">▶ プレイをみる</button>
-        
-        <div id="result-text"></div>
-
-        <div id="judge-controls">
-            <button id="btn-out" onclick="answer('アウト')" disabled>アウト</button>
-            <button id="btn-safe" onclick="answer('セーフ')" disabled>セーフ</button>
+    <header>
+        <div class="logo-container">
+            <h1>Higeball <span>Games</span></h1>
         </div>
-        
-        <button id="btn-next" onclick="nextRound()" style="display:none; margin-top:15px; width:100%;">▶ つぎのプレイへ</button>
-    </div>
+        <p class="subtitle">AIと共創する、懐かしくも新しいブラウザゲームの世界。随時、新ゲームを追加中！</p>
+    </header>
 
-    <div id="screen-result" class="screen">
-        <h2>しあいしゅうりょう</h2>
-        <div id="result-message" style="margin: 20px 0; font-size: 18px; line-height: 1.6; text-align: left;"></div>
-        <button id="btn-share" class="btn-share" onclick="shareResultImage()">▶ がぞう で シェアする</button>
-        <button onclick="resetGame()" style="margin-top:20px;">▶ もういちど ジャッジする</button>
-    </div>
-</div>
-
-<script>
-    const roundsData = [
-        { runnerName: "スズキタカノリ", speedDesc: "ふつう", runnerBaseFrames: 100, dustMaxRadius: 24 },
-        { runnerName: "ヒデノリ", speedDesc: "はやい", runnerBaseFrames: 80, dustMaxRadius: 32 },
-        { runnerName: "シュウトウ", speedDesc: "シンソク！！", runnerBaseFrames: 30, dustMaxRadius: 40 }
-    ];
-
-    let currentRound = 0;
-    let score = 0;
-    let playerName = "";
-    const totalRounds = roundsData.length;
-
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    
-    let animId = null;
-    let isAnimating = false;
-    let judgmentFixed = false;
-    let frameCount = 0; 
-    let ballArrivalFrame = 0; 
-    
-    const BASE_X = 250, BASE_Y = 100;
-    const RUNNER_START_X = -10, RUNNER_START_Y = 210;
-    const BALL_START_X = 80, BALL_START_Y = -20;
-    
-    let runner = { x: 0, y: 0, speedX: 0, speedY: 0 };
-    let ball = { x: 0, y: 0, speedX: 0, speedY: 0 };
-    let trueAnswer = ""; 
-    let dustRadius = 0;  
-    let roundDustMax = 0; 
-
-    document.fonts.ready.then(() => {
-        console.log("Fonts loaded.");
-    });
-
-    window.onload = () => {
-        const savedName = localStorage.getItem('umpire_nickname_v2');
-        if (savedName) document.getElementById('nickname').value = savedName;
-        drawField();
-    };
-
-    function startGame() {
-        const nameInput = document.getElementById('nickname').value.trim();
-        if (!nameInput) { alert("なまえをいれてください"); return; }
-        
-        playerName = nameInput;
-        localStorage.setItem('umpire_nickname_v2', playerName);
-
-        currentRound = 0; score = 0;
-        switchScreen('screen-quiz');
-        prepareRound();
-    }
-
-    function prepareRound() {
-        if (animId !== null) {
-            cancelAnimationFrame(animId);
-            animId = null;
-        }
-        isAnimating = false;
-        frameCount = 0;
-
-        const data = roundsData[currentRound];
-        document.getElementById('round-title').innerText = `だい ${currentRound + 1} きゅう`;
-        document.getElementById('runner-info').innerHTML = `だしゃそうしゃ: ${data.runnerName} (${data.speedDesc})`;
-        document.getElementById('result-text').innerText = "「プレイをみる」をおしてね";
-        
-        document.getElementById('btn-play').style.display = 'block';
-        document.getElementById('btn-play').disabled = false;
-        document.getElementById('btn-next').style.display = 'none';
-        document.getElementById('btn-out').disabled = true;
-        document.getElementById('btn-safe').disabled = true;
-        
-        runner.x = RUNNER_START_X; runner.y = RUNNER_START_Y;
-        ball.x = BALL_START_X; ball.y = BALL_START_Y;
-        dustRadius = 0;
-        roundDustMax = data.dustMaxRadius;
-        judgmentFixed = false;
-
-        drawField();
-    }
-
-    function playAnimation() {
-        if (isAnimating) return; 
-
-        document.getElementById('btn-play').disabled = true;
-        document.getElementById('result-text').innerText = "ジャッジの じゅんびを せよ...";
-        
-        const data = roundsData[currentRound];
-        const runnerFrames = data.runnerBaseFrames;
-        
-        ballArrivalFrame = Math.floor(runnerFrames + (Math.random() * 6 - 3)); 
-
-        if (runnerFrames < ballArrivalFrame) {
-            trueAnswer = "セーフ";
-        } else if (ballArrivalFrame < runnerFrames) {
-            trueAnswer = "アウト";
-        } else {
-            trueAnswer = "アウト";
-        }
-
-        runner.speedX = (BASE_X - runner.x) / runnerFrames;
-        runner.speedY = (BASE_Y - runner.y) / runnerFrames;
-        ball.speedX = (BASE_X - ball.x) / ballArrivalFrame;
-        ball.speedY = (BASE_Y - ball.y) / ballArrivalFrame;
-
-        isAnimating = true;
-        update();
-    }
-
-    function update() {
-        if (!isAnimating) return;
-        frameCount++;
-
-        runner.x += runner.speedX; runner.y += runner.speedY;
-        
-        if (frameCount < ballArrivalFrame) {
-            ball.x += ball.speedX; ball.y += ball.speedY;
-        } else {
-            ball.x = BASE_X; ball.y = BASE_Y;
-        }
-
-        const distRunner = Math.hypot(BASE_X - runner.x, BASE_Y - runner.y);
-        const distBall = Math.hypot(BASE_X - ball.x, BASE_Y - ball.y);
-
-        if (!judgmentFixed) {
-            if (distRunner < 40 || distBall < 40) {
-                dustRadius = Math.min(dustRadius + 1.5, roundDustMax);
-            }
+    <main>
+        <div class="games-grid">
             
-            const runnerArrived = frameCount >= roundsData[currentRound].runnerBaseFrames;
-            const ballArrived = frameCount >= ballArrivalFrame;
+            <!-- Game Card 1: 一塁塁審ジャッジメント -->
+            <div class="game-card" id="card-umpire">
+                <div class="thumbnail-container">
+                    <img src="assets/images/first_base_umpire.jpg" alt="一塁塁審ジャッジメント">
+                    <span class="game-badge">PLAYABLE</span>
+                </div>
+                <div class="game-info">
+                    <h3 class="game-title">一塁塁審ジャッジメント</h3>
+                    <p class="game-description">16-bit風のレトロ野球ジャッジゲーム。ランナーがベースに滑り込む瞬間を見極め、瞬時に「アウト」か「セーフ」かを判定しよう。あなたの動体視力が試されます。</p>
+                    <a href="games/first-base-umpire/index.html" class="btn-play">ゲームを始める</a>
+                </div>
+            </div>
 
-            if (runnerArrived || ballArrived) {
-                judgmentFixed = true;
-                document.getElementById('btn-out').disabled = false;
-                document.getElementById('btn-safe').disabled = false;
-                document.getElementById('result-text').innerText = "ジャッジせよ！";
-            }
-        }
+            <!-- Game Card 2: Coming Soon -->
+            <div class="game-card" id="card-coming-soon">
+                <div class="thumbnail-container">
+                    <img src="assets/images/coming_soon.jpg" alt="Coming Soon">
+                    <span class="game-badge coming-soon">NEXT GAME</span>
+                </div>
+                <div class="game-info">
+                    <h3 class="game-title">新ゲーム 開発中</h3>
+                    <p class="game-description">AIツールがアイデアを出して開発する、新しいレトロ風ミニゲームを準備中です。シューティング、アクション、パズルなど何が追加されるかお楽しみに！</p>
+                    <button class="btn-play btn-disabled" disabled>Coming Soon</button>
+                </div>
+            </div>
 
-        if (runner.x > canvas.width + 20) {
-            isAnimating = false;
-            drawField(); 
-            
-            if (!judgmentFixed) {
-                judgmentFixed = true;
-                trueAnswer = "セーフ"; 
-                document.getElementById('btn-out').disabled = false;
-                document.getElementById('btn-safe').disabled = false;
-                document.getElementById('result-text').innerText = "ジャッジせよ！";
-            }
-            return;
-        }
+        </div>
+    </main>
 
-        drawField();
-        animId = requestAnimationFrame(update);
-    }
-
-    function drawField() {
-        // --- 1. 背景（芝生と土のコントラスト） ---
-        ctx.fillStyle = '#227A2A'; // 深い芝生の緑
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = '#C08A55'; // 内野の土（アンツーカー）
-        ctx.beginPath();
-        ctx.moveTo(340, -10);  // 右上から
-        ctx.lineTo(-20, 150);  // 左下へ斜めに区切る
-        ctx.lineTo(-20, 220);
-        ctx.lineTo(340, 220);
-        ctx.fill();
-
-        // --- 2. ファーストライン ---
-        ctx.fillStyle = '#fff';
-        // ドットのラインを描画してレトロ感を出す
-        for(let i=-20; i<320; i+=6) {
-            ctx.fillRect(i, 160 - (i*0.45), 4, 4);
-        }
-
-        // --- 3. ベース（立体感を追加） ---
-        ctx.fillStyle = '#fff'; 
-        ctx.fillRect(BASE_X - 12, BASE_Y - 6, 24, 12); // 上面
-        ctx.fillStyle = '#bdc3c7'; 
-        ctx.fillRect(BASE_X - 12, BASE_Y + 6, 24, 4);  // 側面（影）
-
-        // --- 4. 砂埃 ---
-        if (dustRadius > 0) {
-            ctx.fillStyle = `rgba(220, 210, 180, ${judgmentFixed ? 0.5 : 0.9})`; 
-            let r = Math.floor(dustRadius);
-            ctx.fillRect(BASE_X - r, BASE_Y - r/2, r*2, r);
-            ctx.fillRect(BASE_X - r/2, BASE_Y - r, r, r*2);
-        }
-
-        // --- 5. ボール（影付き） ---
-        // ボールの影
-        ctx.fillStyle = 'rgba(0,0,0,0.3)'; 
-        ctx.fillRect(Math.floor(ball.x) - 4, Math.floor(ball.y) + 6, 8, 3);
-        // ボール本体
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) - 3, 6, 6);
-        ctx.fillStyle = '#999'; 
-        ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) + 3, 6, 2);
-
-        // --- 6. ランナー ---
-        drawRunner(Math.floor(runner.x), Math.floor(runner.y));
-
-        // --- 7. ブラウン管(CRT)スキャンライン効果 ---
-        // 全体に半透明の黒い横線を一定間隔で重ねる
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-        for(let y = 0; y < canvas.height; y += 3) {
-            ctx.fillRect(0, y, canvas.width, 1);
-        }
-    }
-
-    function drawRunner(rx, ry) {
-        // キャラクターの影
-        ctx.fillStyle = 'rgba(0,0,0,0.3)';
-        ctx.fillRect(rx - 8, ry + 14, 16, 4);
-
-        const animState = Math.floor(frameCount / 4) % 2; 
-
-        // ヘルメットと顔
-        ctx.fillStyle = '#f1c40f'; 
-        ctx.fillRect(rx - 6, ry - 18, 12, 10);
-        ctx.fillStyle = '#e67e22'; 
-        ctx.fillRect(rx - 4, ry - 10, 8, 6);
-
-        // ユニフォーム
-        ctx.fillStyle = '#2980b9';
-        ctx.fillRect(rx - 8, ry - 4, 16, 12);
-
-        // 腕（白）- フォームを微調整して躍動感をアップ
-        ctx.fillStyle = '#fff';
-        if (animState === 0) {
-            ctx.fillRect(rx - 12, ry - 6, 4, 10); // 大きく振る腕
-            ctx.fillRect(rx + 8, ry - 2, 4, 8);   
-        } else {
-            ctx.fillRect(rx - 10, ry - 2, 4, 8);  
-            ctx.fillRect(rx + 6, ry - 6, 4, 10);  
-        }
-
-        // 足（白パンツ）
-        ctx.fillStyle = '#ecf0f1';
-        if (animState === 0) {
-            ctx.fillRect(rx - 6, ry + 8, 6, 8);  
-            ctx.fillRect(rx + 4, ry + 8, 4, 4); // 後ろ足は短く（蹴り上げている感）
-        } else {
-            ctx.fillRect(rx - 2, ry + 8, 4, 4);  
-            ctx.fillRect(rx + 2, ry + 8, 6, 8);  
-        }
-    }
-
-    function answer(playerChoice) {
-        document.getElementById('btn-out').disabled = true;
-        document.getElementById('btn-safe').disabled = true;
-
-        const resultTextObj = document.getElementById('result-text');
-        
-        if (playerChoice === trueAnswer) {
-            resultTextObj.innerHTML = `<span style="color:#2ecc71;">せいかい！\nほんとうの はんていは「${trueAnswer}」だ！</span>`;
-            score++;
-        } else {
-            resultTextObj.innerHTML = `<span style="color:#e74c3c;">ミスジャッジ！\nほんとうの はんていは「${trueAnswer}」だ！</span>`;
-        }
-
-        document.getElementById('btn-next').style.display = 'block';
-    }
-
-    function nextRound() {
-        currentRound++;
-        if (currentRound >= totalRounds) { showResult(); } else { prepareRound(); }
-    }
-
-    function showResult() {
-        let comment = "";
-        if (score === 3) comment = "めいしんぱん たんじょう！<br>どうたいしりょくは ばつぐんだ！";
-        else if (score === 2) comment = "おしい！<br>あとすこしで １ぐんレベルだ！";
-        else if (score === 1) comment = "まだまだ しゅぎょうが たりないようだ。";
-        else comment = "だいブーイング！<br>すなぼこりに だまされすぎだぞ。";
-
-        document.getElementById('result-message').innerHTML = 
-            `＊ <strong>${playerName}</strong> しんぱん の せいせき ＊<br><br>
-            <span style="color:#e74c3c; font-size:24px;">${totalRounds}きゅう ちゅう ${score}きゅう せいかい</span><br><br>
-            ${comment}`;
-
-        switchScreen('screen-result');
-    }
-
-    async function shareResultImage() {
-        const btn = document.getElementById('btn-share');
-        btn.innerText = "がぞう を つくっています...";
-        btn.disabled = true;
-
-        const shareCanvas = document.createElement('canvas');
-        shareCanvas.width = 400;
-        shareCanvas.height = 300;
-        const sCtx = shareCanvas.getContext('2d');
-        sCtx.imageSmoothingEnabled = false;
-
-        // 背景とウィンドウ枠
-        sCtx.fillStyle = '#000';
-        sCtx.fillRect(0, 0, 400, 300);
-        sCtx.strokeStyle = '#fff';
-        sCtx.lineWidth = 4;
-        sCtx.strokeRect(10, 10, 380, 280);
-        sCtx.strokeRect(16, 16, 368, 268);
-
-        // テキスト描画（はみ出しを修正）
-        sCtx.font = "24px 'DotGothic16', sans-serif";
-        sCtx.fillStyle = '#fff';
-        sCtx.fillText("＊ しんぱん ステータス ＊", 30, 60);
-
-        sCtx.font = "20px 'DotGothic16', sans-serif";
-        sCtx.fillText(`なまえ　：${playerName}`, 30, 110);
-        
-        // 長いテキストを2行に分割
-        sCtx.fillText(`せいせき：`, 30, 150);
-        sCtx.fillText(`  ${totalRounds}きゅう ちゅう ${score}きゅう せいかい`, 30, 180);
-
-        let rank = "";
-        if (score === 3) rank = "めいしんぱん";
-        else if (score === 2) rank = "１ぐん はんていいん";
-        else if (score === 1) rank = "みならい しんぱん";
-        else rank = "２ぐんおち";
-
-        sCtx.fillStyle = '#f39c12';
-        sCtx.fillText(`しょうごう：${rank}`, 30, 230); // Y座標を下に調整
-
-        sCtx.fillStyle = '#ccc';
-        sCtx.font = "16px 'DotGothic16', sans-serif";
-        sCtx.fillText("#一塁塁審ジャッジメント", 30, 275); // Y座標を下に調整
-
-        shareCanvas.toBlob(async (blob) => {
-            const file = new File([blob], "judgement.png", { type: "image/png" });
-            const data = {
-                text: `${playerName}の判定結果！ #一塁塁審ジャッジメント`,
-                files: [file]
-            };
-
-            if (navigator.canShare && navigator.canShare(data)) {
-                try {
-                    await navigator.share(data);
-                } catch (err) {
-                    console.log("シェアがキャンセルされました", err);
-                }
-            } else {
-                alert("お使いのブラウザは画像シェアにひたいおうのため、テキストでシェアします。");
-                const text = `${playerName}は １るいるいしん として はんていに いどみ、${totalRounds}もんちゅう ${score}もん せいかいした！\n#一塁塁審ジャッジメント`;
-                const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
-                window.open(url, '_blank');
-            }
-
-            btn.innerText = "▶ がぞう で シェアする";
-            btn.disabled = false;
-        });
-    }
-
-    function resetGame() { switchScreen('screen-start'); }
-
-    function switchScreen(screenId) {
-        document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
-        document.getElementById(screenId).classList.add('active');
-    }
-</script>
+    <footer>
+        <p>&copy; 2026 Higeball Games. All rights reserved.</p>
+        <p>Built with Antigravity AI. Repository: <a href="https://github.com/higeball/higeball-games" target="_blank" id="footer-repo-link">higeball/higeball-games</a></p>
+    </footer>
 
 </body>
 </html>
