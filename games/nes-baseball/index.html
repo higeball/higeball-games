@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>8-bit ベースボール | Higeball Games</title>
+    <!-- Google Fonts for Retro style -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', monospace;
+            background-color: #111;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        #game-container {
+            position: relative;
+            background-color: #000;
+            border: 4px solid #fff;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+            width: 512px;
+            height: 480px;
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 10;
+        }
+
+        .menu-title {
+            font-size: 24px;
+            color: #00f0ff;
+            text-shadow: 2px 2px #ff007f;
+            margin-bottom: 30px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .menu-btn {
+            font-family: 'Press Start 2P', monospace;
+            background: #000;
+            color: #fff;
+            border: 2px solid #fff;
+            padding: 12px 24px;
+            font-size: 14px;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.2s;
+        }
+
+        .menu-btn:hover {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 0 10px #fff;
+        }
+
+        #controls-info {
+            margin-top: 30px;
+            font-size: 8px;
+            color: #a0a0cf;
+            line-height: 1.8;
+            text-align: center;
+            max-width: 400px;
+        }
+
+        #back-link {
+            margin-top: 20px;
+            color: #ff007f;
+            text-decoration: none;
+            font-size: 10px;
+        }
+
+        #back-link:hover {
+            text-shadow: 0 0 5px #ff007f;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas" width="512" height="480"></canvas>
+        
+        <!-- UI Overlay for Screens -->
+        <div id="ui-overlay">
+            <div class="menu-title" id="screen-title">8-BIT<br>BASEBALL</div>
+            <button class="menu-btn" id="start-btn" onclick="initGame()">PLAY GAME</button>
+            <div id="controls-info">
+                【CONTROLS】<br>
+                BATTER (OFFENSE): Arrow Up/Down to move, Space to Swing<br>
+                PITCHER (DEFENSE): Arrow Left/Right to position, Space to Throw<br>
+                (Hold Left/Right/Up/Down during pitch to Curve/Change Speed)
+            </div>
+            <a href="../../index.html" id="back-link">BACK TO HUB</a>
+        </div>
+    </div>
+
+<script>
+    // --- Audio System (Web Audio API) ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+        }
+
+        init() {
+            if (!this.ctx) {
+                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        playTone(freq, duration, type = 'square', timeOffset = 0) {
+            this.init();
+            if (!this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch(e) { console.error(e); }
+        }
+
+        playNoise(duration, volume = 0.1, timeOffset = 0) {
+            this.init();
+            if (!this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let bufferSize = this.ctx.sampleRate * duration;
+                let buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                let data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+                
+                let noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                
+                let filter = this.ctx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1000;
+                
+                let gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(volume, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                noise.start(now);
+                noise.stop(now + duration);
+            } catch(e) { console.error(e); }
+        }
+
+        playPitch() {
+            this.playTone(880, 0.05, 'square');
+        }
+
+        playHit() {
+            let now = 0;
+            this.playTone(600, 0.15, 'triangle', now);
+            this.playTone(150, 0.15, 'sine', now);
+            this.playNoise(0.1, 0.3, now);
+        }
+
+        playCatch() {
+            this.playNoise(0.06, 0.2);
+        }
+
+        playOut() {
+            this.playTone(392, 0.1, 'sawtooth', 0);
+            this.playTone(293, 0.2, 'sawtooth', 0.1);
+        }
+
+        playSafe() {
+            this.playTone(523, 0.06, 'square', 0);
+            this.playTone(659, 0.06, 'square', 0.06);
+            this.playTone(784, 0.06, 'square', 0.12);
+            this.playTone(1046, 0.15, 'square', 0.18);
+        }
+
+        playHomeRun() {
+            let now = 0;
+            for(let i=0; i<8; i++) {
+                this.playTone(523 + (i*100), 0.08, 'square', now);
+                now += 0.08;
+            }
+            this.playNoise(1.5, 0.15, 0.2);
+        }
+
+        playCheer() {
+            this.playNoise(1.0, 0.1);
+        }
+    }
+
+    const sound = new SoundFX();
+
+    // --- Game Variables ---
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    let gameState = 'MENU'; // MENU, PITCHING, FIELDING, GAMEOVER
+    let playerTeam = 'BLUE'; // BLUE (Batter in 1st Inning), RED (Pitcher in 1st Inning)
+    let score = { BLUE: 0, RED: 0 };
+    let inning = 1;
+    let half = 'TOP'; // TOP (BLUE batting), BOTTOM (RED batting)
+    let outs = 0;
+    let strikes = 0;
+    let balls = 0;
+    let runners = [false, false, false]; // 1B, 2B, 3B
+
+    // Key states
+    const keys = {};
+    window.addEventListener('keydown', e => { keys[e.code] = true; });
+    window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+    // Entities
+    let pitcher = { x: 256, y: 190, dir: 1, state: 'READY', animFrame: 0 };
+    let batter = { x: 240, y: 360, state: 'READY', swingFrame: 0, stanceY: 360 };
+    let catcher = { x: 256, y: 390 };
+    let umpire = { x: 256, y: 410 };
+    let ball = { x: 256, y: 190, vx: 0, vy: 0, active: false, type: 'PITCH', height: 0, bounce: 0 };
+    
+    // Field Entities (For Fielding Screen)
+    let fieldBall = { x: 256, y: 250, vx: 0, vy: 0, z: 0, vz: 0, ground: true };
+    let fieldFielderClosest = null;
+    let fieldRunners = []; // Array of runner objects { baseProgress, speed, fromBase, toBase, x, y, id }
+    let fieldFielderBallHolder = null;
+    
+    // Fielding Screen Fielders Pos
+    let fielders = [
+        { role: 'P', x: 256, y: 250, ox: 256, oy: 250 },
+        { role: 'C', x: 256, y: 400, ox: 256, oy: 400 },
+        { role: '1B', x: 380, y: 280, ox: 380, oy: 280 },
+        { role: '2B', x: 340, y: 170, ox: 340, oy: 170 },
+        { role: '3B', x: 132, y: 280, ox: 132, oy: 280 },
+        { role: 'SS', x: 172, y: 170, ox: 172, oy: 170 },
+        { role: 'LF', x: 90, y: 90, ox: 90, oy: 90 },
+        { role: 'CF', x: 256, y: 60, ox: 256, oy: 60 },
+        { role: 'RF', x: 422, y: 90, ox: 422, oy: 90 }
+    ];
+
+    // Field Bases (X, Y in fielding screen coordinate)
+    // Home is (256, 400), 1B is (380, 276), 2B is (256, 152), 3B is (132, 276)
+    const basesPos = [
+        { x: 256, y: 400 }, // Home (Index 0)
+        { x: 380, y: 276 }, // 1B (Index 1)
+        { x: 256, y: 152 }, // 2B (Index 2)
+        { x: 132, y: 276 }  // 3B (Index 3)
+    ];
+
+    let playResultText = "";
+    let playResultTimer = 0;
+    let computerPitchTimer = 0;
+    let inningTextTimer = 0;
+
+    // Start/Init
+    function initGame() {
+        sound.init();
+        document.getElementById('ui-overlay').style.display = 'none';
+        score = { BLUE: 0, RED: 0 };
+        inning = 1;
+        half = 'TOP';
+        outs = 0;
+        strikes = 0;
+        balls = 0;
+        runners = [false, false, false];
+        
+        resetAtBat();
+        gameState = 'PITCHING';
+        inningTextTimer = 120; // 2 seconds of Inning Intro
+        
+        requestAnimationFrame(gameLoop);
+    }
+
+    function resetAtBat() {
+        pitcher.x = 256;
+        pitcher.y = 190;
+        pitcher.state = 'READY';
+        pitcher.animFrame = 0;
+
+        batter.state = 'READY';
+        batter.swingFrame = 0;
+        batter.stanceY = 360;
+
+        ball.active = false;
+        ball.x = 256;
+        ball.y = 190;
+        ball.vx = 0;
+        ball.vy = 0;
+        ball.height = 0;
+
+        computerPitchTimer = 60 + Math.random() * 60;
+    }
+
+    // Main Loop
+    function gameLoop() {
+        update();
+        render();
+        if (gameState !== 'MENU') {
+            requestAnimationFrame(gameLoop);
+        }
+    }
+
+    // --- Logic ---
+    function update() {
+        if (inningTextTimer > 0) {
+            inningTextTimer--;
+            return;
+        }
+
+        if (playResultTimer > 0) {
+            playResultTimer--;
+            if (playResultTimer === 0) {
+                if (gameState === 'GAMEOVER') {
+                    showGameOverScreen();
+                } else {
+                    resetAtBat();
+                    gameState = 'PITCHING';
+                }
+            }
+            return;
+        }
+
+        if (gameState === 'PITCHING') {
+            updatePitching();
+        } else if (gameState === 'FIELDING') {
+            updateFielding();
+        }
+    }
+
+    function updatePitching() {
+        let isPlayerBatting = (half === 'TOP'); // BLUE Bats in Top of inning (Player)
+
+        // Batter Movement
+        if (isPlayerBatting) {
+            if (keys['ArrowUp'] && batter.stanceY > 345) batter.stanceY -= 1.5;
+            if (keys['ArrowDown'] && batter.stanceY < 375) batter.stanceY += 1.5;
+            
+            // Swing Input
+            if (keys['Space'] && batter.state === 'READY') {
+                batter.state = 'SWING';
+                batter.swingFrame = 0;
+            }
+        } else {
+            // CPU Batter auto positions and swings
+            if (ball.active && ball.vy > 0 && batter.state === 'READY') {
+                // Match ball Y roughly, with minor error
+                let error = (Math.random() - 0.5) * 15;
+                if (batter.stanceY < ball.y + error && batter.stanceY < 375) batter.stanceY += 1;
+                else if (batter.stanceY > ball.y + error && batter.stanceY > 345) batter.stanceY -= 1;
+
+                // Decision to swing based on timing
+                if (ball.y > 310 && ball.y < 350 && Math.random() < 0.25) {
+                    batter.state = 'SWING';
+                    batter.swingFrame = 0;
+                }
+            }
+        }
+
+        // Pitcher Action
+        if (!isPlayerBatting) {
+            // Player is Pitching
+            if (pitcher.state === 'READY') {
+                if (keys['ArrowLeft'] && pitcher.x > 230) pitcher.x -= 1.5;
+                if (keys['ArrowRight'] && pitcher.x < 282) pitcher.x += 1.5;
+
+                if (keys['Space']) {
+                    pitcher.state = 'WINDUP';
+                    pitcher.animFrame = 0;
+                }
+            }
+        } else {
+            // CPU is Pitching
+            if (pitcher.state === 'READY') {
+                computerPitchTimer--;
+                if (computerPitchTimer <= 0) {
+                    pitcher.state = 'WINDUP';
+                    pitcher.animFrame = 0;
+                }
+            }
+        }
+
+        // Windup & Throw animation
+        if (pitcher.state === 'WINDUP') {
+            pitcher.animFrame += 0.15;
+            if (pitcher.animFrame >= 3) {
+                pitcher.state = 'THROWN';
+                ball.active = true;
+                ball.x = pitcher.x;
+                ball.y = pitcher.y + 10;
+                
+                // Ball initial speed
+                let baseSpeed = 4.5;
+                if (isPlayerBatting) {
+                    // CPU pitches
+                    ball.vy = baseSpeed + (Math.random() * 1.5);
+                    ball.vx = (Math.random() - 0.5) * 0.8;
+                } else {
+                    // Player pitches
+                    ball.vy = baseSpeed;
+                    ball.vx = 0;
+                }
+                sound.playPitch();
+            }
+        }
+
+        // Ball movement & curve control
+        if (ball.active) {
+            // Pitcher influence
+            if (!isPlayerBatting) {
+                // Player curves ball in flight
+                if (keys['ArrowLeft']) ball.vx -= 0.08;
+                if (keys['ArrowRight']) ball.vx += 0.08;
+                if (keys['ArrowUp']) ball.vy += 0.08; // Fast ball
+                if (keys['ArrowDown']) ball.vy -= 0.08; // Slow ball
+            } else {
+                // CPU curves randomly
+                if (Math.random() < 0.15) ball.vx += (Math.random() - 0.5) * 0.15;
+            }
+
+            ball.x += ball.vx;
+            ball.y += ball.vy;
+
+            // Batter swing update
+            let swungThisFrame = false;
+            if (batter.state === 'SWING') {
+                batter.swingFrame += 0.35;
+                if (Math.floor(batter.swingFrame) === 1 && batter.swingFrame - 0.35 < 1) {
+                    swungThisFrame = true;
+                }
+                if (batter.swingFrame >= 4) {
+                    batter.state = 'DONE';
+                }
+            }
+
+            // Hit Detection (Must swing exactly when ball crosses batter box Y)
+            if (swungThisFrame && ball.y > 330 && ball.y < 370) {
+                let dist = Math.abs(ball.x - batter.x);
+                if (dist < 20) {
+                    // HIT!
+                    triggerHit(dist, ball.x - batter.x);
+                    return;
+                }
+            }
+
+            // Catcher Catch / Strike/Ball checks
+            if (ball.y >= 390) {
+                ball.active = false;
+                sound.playCatch();
+                
+                // Strike or Ball?
+                let isStrike = (ball.x > 236 && ball.x < 276 && ball.y >= 380 && ball.y <= 405);
+                if (isStrike) {
+                    strikes++;
+                    if (strikes >= 3) {
+                        outs++;
+                        strikes = 0;
+                        balls = 0;
+                        triggerTextPlay("STRIKE 3! OUT!", sound.playOut.bind(sound));
+                        checkInningOver();
+                    } else {
+                        triggerTextPlay("STRIKE!");
+                    }
+                } else {
+                    balls++;
+                    if (balls >= 4) {
+                        walkRunners();
+                        strikes = 0;
+                        balls = 0;
+                        triggerTextPlay("FOUR BALLS!", sound.playSafe.bind(sound));
+                    } else {
+                        triggerTextPlay("BALL!");
+                    }
+                }
+            }
+        }
+    }
+
+    function triggerHit(dist, offset) {
+        sound.playHit();
+        ball.active = false;
+        
+        // Transition to FIELDING screen
+        gameState = 'FIELDING';
+        
+        // Reset fielders to origin positions
+        fielders.forEach(f => {
+            f.x = f.ox;
+            f.y = f.oy;
+        });
+
+        // Ball launch parameters
+        // offset ranges from -20 (left edge of bat) to +20 (right edge of bat)
+        // Adjust launch angle based on swing timing and offset
+        let angle = -Math.PI/2; // straight up
+        angle += (offset / 15) * 0.6; // curve left/right based on bat offset
+        
+        // Batter swing timing adjust
+        let timingDiff = ball.y - batter.stanceY; // negative is early, positive is late
+        angle += (timingDiff / 20) * 0.4;
+
+        let power = 5.5 + (20 - dist) / 5; // closer to center of bat = more power
+        
+        fieldBall.x = 256;
+        fieldBall.y = 400; // Start from Home Base (fielding coordinate)
+        fieldBall.vx = Math.cos(angle) * power;
+        fieldBall.vy = Math.sin(angle) * power;
+        fieldBall.z = 0;
+        fieldBall.vz = 3.5 + Math.random() * 3; // Verticle velocity (pop fly / grounder)
+        fieldBall.ground = false;
+
+        fieldFielderBallHolder = null;
+
+        // Init Runners list
+        fieldRunners = [];
+        
+        // Existing runners on bases
+        // In our simple model, 1B is index 1, 2B is index 2, 3B is index 3
+        if (runners[2]) { // 3B
+            fieldRunners.push({ fromBase: 3, toBase: 0, progress: 0, speed: 0.02, id: '3B' });
+        }
+        if (runners[1]) { // 2B
+            fieldRunners.push({ fromBase: 2, toBase: 3, progress: 0, speed: 0.02, id: '2B' });
+        }
+        if (runners[0]) { // 1B
+            fieldRunners.push({ fromBase: 1, toBase: 2, progress: 0, speed: 0.02, id: '1B' });
+        }
+        
+        // Batter runner
+        fieldRunners.push({ fromBase: 0, toBase: 1, progress: 0, speed: 0.022, id: 'BATTER' });
+    }
+
+    function updateFielding() {
+        // --- Ball Physics ---
+        if (!fieldFielderBallHolder) {
+            fieldBall.x += fieldBall.vx;
+            fieldBall.y += fieldBall.vy;
+            
+            if (!fieldBall.ground) {
+                fieldBall.z += fieldBall.vz;
+                fieldBall.vz -= 0.12; // Gravity
+                
+                if (fieldBall.z <= 0) {
+                    fieldBall.z = 0;
+                    fieldBall.vz = -fieldBall.vz * 0.4; // Bounce
+                    fieldBall.vx *= 0.8;
+                    fieldBall.vy *= 0.8;
+                    
+                    if (Math.abs(fieldBall.vz) < 0.4) {
+                        fieldBall.ground = true;
+                    }
+                }
+            } else {
+                // Ground friction
+                fieldBall.vx *= 0.95;
+                fieldBall.vy *= 0.95;
+            }
+
+            // Boundary limits
+            if (fieldBall.x < 50 || fieldBall.x > 462 || fieldBall.y < 40) {
+                // Out of field or Home Run?
+                let distToHome = Math.hypot(fieldBall.x - 256, fieldBall.y - 400);
+                let angleFromHome = Math.atan2(fieldBall.y - 400, fieldBall.x - 256);
+                
+                // Foul line check (approx 45 degrees left and right from Home)
+                // Left foul line is roughly 135 deg (-3/4 PI), Right is 45 deg (-1/4 PI)
+                let isFoul = (fieldBall.x < 256 - (400 - fieldBall.y) || fieldBall.x > 256 + (400 - fieldBall.y));
+                
+                if (isFoul) {
+                    // FOUL
+                    strikes++;
+                    if (strikes > 2) strikes = 2; // Foul doesn't strike out unless bunt
+                    triggerTextPlay("FOUL BALL", sound.playOut.bind(sound));
+                    return;
+                } else if (distToHome > 320 && fieldBall.z > 0) {
+                    // HOME RUN!
+                    score[half === 'TOP' ? 'BLUE' : 'RED'] += fieldRunners.length;
+                    runners = [false, false, false];
+                    triggerTextPlay("HOME RUN!!", sound.playHomeRun.bind(sound));
+                    return;
+                }
+            }
+        }
+
+        // --- Fielder AI ---
+        let closestFielder = null;
+        let minDist = 9999;
+        
+        fielders.forEach(f => {
+            if (f.role === 'C') return; // Catcher stays home
+            
+            // Find closest to ball
+            let dist = Math.hypot(f.x - fieldBall.x, f.y - fieldBall.y);
+            if (dist < minDist) {
+                minDist = dist;
+                closestFielder = f;
+            }
+
+            // Move fielder towards ball if no one has it
+            if (!fieldFielderBallHolder) {
+                let dx = fieldBall.x - f.x;
+                let dy = fieldBall.y - f.y;
+                let len = Math.hypot(dx, dy);
+                if (len > 5) {
+                    let moveSpeed = (f.role === 'LF' || f.role === 'CF' || f.role === 'RF') ? 1.5 : 1.2;
+                    f.x += (dx / len) * moveSpeed;
+                    f.y += (dy / len) * moveSpeed;
+                }
+            }
+        });
+
+        // Catching Check
+        if (!fieldFielderBallHolder && minDist < 12 && fieldBall.z < 15) {
+            // Ball caught!
+            fieldFielderBallHolder = closestFielder;
+            sound.playCatch();
+            
+            // Check for flyout (catch without bounce)
+            if (!fieldBall.ground && fieldBall.vz < 0) {
+                outs++;
+                strikes = 0;
+                balls = 0;
+                triggerTextPlay("FLY OUT!", sound.playOut.bind(sound));
+                checkInningOver();
+                return;
+            }
+        }
+
+        // Fielder throwing logic
+        if (fieldFielderBallHolder) {
+            // Auto throw to base to get runner out
+            // Target base is whichever runner is closest to their destination
+            let targetBaseIndex = 1;
+            let maxProgress = -1;
+            
+            fieldRunners.forEach(r => {
+                if (r.progress > maxProgress && r.toBase !== 0) {
+                    maxProgress = r.progress;
+                    targetBaseIndex = r.toBase;
+                }
+            });
+
+            // Throw ball to target base
+            let targetBasePos = basesPos[targetBaseIndex];
+            let tx = targetBasePos.x;
+            let ty = targetBasePos.y;
+            
+            // Ball moves from fielder to base
+            fieldFielderBallHolder = null;
+            fieldBall.x = closestFielder.x;
+            fieldBall.y = closestFielder.y;
+            fieldBall.z = 0;
+            fieldBall.ground = true; // throw flat
+            
+            let throwDx = tx - fieldBall.x;
+            let throwDy = ty - fieldBall.y;
+            let throwLen = Math.hypot(throwDx, throwDy);
+            
+            fieldBall.vx = (throwDx / throwLen) * 6; // Fast throw speed
+            fieldBall.vy = (throwDy / throwLen) * 6;
+        }
+
+        // --- Runners Progress ---
+        let playEnded = false;
+        let scoreTriggered = false;
+        let outTriggered = false;
+        
+        for (let i = fieldRunners.length - 1; i >= 0; i--) {
+            let r = fieldRunners[i];
+            r.progress += r.speed;
+            
+            let fromBasePos = basesPos[r.fromBase];
+            let toBasePos = basesPos[r.toBase];
+            
+            r.x = fromBasePos.x + (toBasePos.x - fromBasePos.x) * r.progress;
+            r.y = fromBasePos.y + (toBasePos.y - fromBasePos.y) * r.progress;
+
+            // Check if runner reached base
+            if (r.progress >= 1.0) {
+                if (r.toBase === 0) {
+                    // Home In!
+                    score[half === 'TOP' ? 'BLUE' : 'RED']++;
+                    fieldRunners.splice(i, 1);
+                    sound.playCheer();
+                    scoreTriggered = true;
+                    continue;
+                } else {
+                    // Reached intermediate base
+                    r.fromBase = r.toBase;
+                    r.toBase = (r.fromBase + 1) % 4;
+                    r.progress = 0;
+                    
+                    // Stop running if there's no force or hit momentum
+                    // For simplicity, CPU/Player stops at base
+                    // Transfer to base array
+                }
+            }
+
+            // Check Tag/Force Out
+            // If ball reaches target base before runner
+            let distBallToBase = Math.hypot(fieldBall.x - toBasePos.x, fieldBall.y - toBasePos.y);
+            if (distBallToBase < 10) {
+                // Ball is at base! Is runner close?
+                let distRunnerToBase = Math.hypot(r.x - toBasePos.x, r.y - toBasePos.y);
+                // If ball is waiting and runner is incoming
+                if (distRunnerToBase > 5 && distRunnerToBase < 40) {
+                    // OUT!
+                    outs++;
+                    fieldRunners.splice(i, 1);
+                    outTriggered = true;
+                    sound.playOut();
+                    break;
+                }
+            }
+        }
+
+        // Determine if play ended
+        // Play ends when:
+        // 1. All runners stopped / finished (no runners left in fieldRunners)
+        // 2. Ball is at home/pitcher hands and no runner is moving
+        // Or simple timer / out trigger
+        let isBallStopped = Math.hypot(fieldBall.vx, fieldBall.vy) < 0.2;
+        if (fieldRunners.length === 0 || (isBallStopped && fieldBall.y > 150 && fieldBall.y < 260)) {
+            playEnded = true;
+        }
+
+        if (outTriggered && outs >= 3) {
+            checkInningOver();
+            return;
+        }
+
+        if (playEnded) {
+            // Apply runner positions back to global `runners` state
+            runners = [false, false, false];
+            fieldRunners.forEach(r => {
+                // Determine current base of active runner
+                let base = r.fromBase;
+                if (base >= 1 && base <= 3) {
+                    runners[base - 1] = true;
+                }
+            });
+
+            if (outTriggered) {
+                triggerTextPlay("OUT!!", sound.playOut.bind(sound));
+            } else {
+                triggerTextPlay("SAFE!!", sound.playSafe.bind(sound));
+            }
+        }
+    }
+
+    function walkRunners() {
+        // Walk batter to 1st, advance others if forced
+        if (!runners[0]) {
+            runners[0] = true;
+        } else if (!runners[1]) {
+            runners[1] = true;
+        } else if (!runners[2]) {
+            runners[2] = true;
+        } else {
+            // Score run
+            score[half === 'TOP' ? 'BLUE' : 'RED']++;
+            sound.playCheer();
+        }
+    }
+
+    function triggerTextPlay(txt, soundCall = null) {
+        playResultText = txt;
+        playResultTimer = 90; // 1.5 seconds
+        if (soundCall) soundCall();
+        else sound.playTone(440, 0.08);
+    }
+
+    function checkInningOver() {
+        if (outs >= 3) {
+            // Switch half
+            outs = 0;
+            strikes = 0;
+            balls = 0;
+            runners = [false, false, false];
+
+            if (half === 'TOP') {
+                half = 'BOTTOM';
+                triggerTextPlay("3 OUT! CHANGE!", sound.playOut.bind(sound));
+                inningTextTimer = 120;
+            } else {
+                // Bottom of inning over. Advance inning
+                if (inning >= 3) {
+                    // Game Over
+                    gameState = 'GAMEOVER';
+                    playResultText = "GAME OVER";
+                    playResultTimer = 180;
+                } else {
+                    inning++;
+                    half = 'TOP';
+                    triggerTextPlay(`3 OUT! INNING ${inning}!`, sound.playOut.bind(sound));
+                    inningTextTimer = 120;
+                }
+            }
+        }
+    }
+
+    function showGameOverScreen() {
+        let title = document.getElementById('screen-title');
+        let btn = document.getElementById('start-btn');
+        let overlay = document.getElementById('ui-overlay');
+        
+        let pScore = score.BLUE;
+        let cScore = score.RED;
+        
+        let resultMsg = "";
+        if (pScore > cScore) resultMsg = `YOU WIN!<br>${pScore} - ${cScore}`;
+        else if (pScore < cScore) resultMsg = `YOU LOSE<br>${pScore} - ${cScore}`;
+        else resultMsg = `DRAW GAME<br>${pScore} - ${cScore}`;
+
+        title.innerHTML = `GAME SET!<br><br>${resultMsg}`;
+        btn.innerText = "PLAY AGAIN";
+        overlay.style.display = 'flex';
+        gameState = 'MENU';
+    }
+
+
+    // --- Rendering ---
+    function render() {
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        if (inningTextTimer > 0) {
+            renderInningIntro();
+            return;
+        }
+
+        if (gameState === 'PITCHING' || playResultTimer > 0 && gameState !== 'FIELDING') {
+            renderPitchingScreen();
+        } else if (gameState === 'FIELDING') {
+            renderFieldingScreen();
+        }
+
+        renderScoreboard();
+    }
+
+    function renderInningIntro() {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.font = '20px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        
+        let team = (half === 'TOP') ? "BLUE BAT" : "RED BAT";
+        ctx.fillText(`${inning} INNING`, 256, 200);
+        ctx.fillText(team, 256, 240);
+        
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = '#ff007f';
+        ctx.fillText("READY...", 256, 320);
+    }
+
+    function renderScoreboard() {
+        // NES Style top header scoreboard
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, 60);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(4, 4, canvas.width - 8, 52);
+
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+
+        // Display Scores
+        ctx.fillText(`1P(B): ${score.BLUE}`, 20, 24);
+        ctx.fillText(`CP(R): ${score.RED}`, 20, 44);
+
+        // Display Inning
+        let side = (half === 'TOP') ? '▲' : '▼';
+        ctx.fillText(`ING: ${inning}${side}`, 170, 34);
+
+        // Display Count
+        ctx.fillText(`B:`, 300, 24);
+        for(let i=0; i<3; i++) {
+            ctx.fillStyle = (i < balls) ? '#00f0ff' : '#444';
+            ctx.fillRect(325 + (i*16), 14, 10, 10);
+        }
+
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`S:`, 300, 44);
+        for(let i=0; i<2; i++) {
+            ctx.fillStyle = (i < strikes) ? '#ff007f' : '#444';
+            ctx.fillRect(325 + (i*16), 34, 10, 10);
+        }
+
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`O:`, 400, 34);
+        for(let i=0; i<2; i++) {
+            ctx.fillStyle = (i < outs) ? '#ff007f' : '#444';
+            ctx.fillRect(425 + (i*16), 24, 10, 10);
+        }
+    }
+
+    function renderPitchingScreen() {
+        // --- 1. Background Field ---
+        // Green Grass
+        ctx.fillStyle = '#227A2A';
+        ctx.fillRect(0, 60, canvas.width, canvas.height - 60);
+
+        // Dirt areas (Batter area, Mound)
+        ctx.fillStyle = '#C08A55';
+        // Pitcher Mound
+        ctx.beginPath();
+        ctx.ellipse(256, 200, 35, 15, 0, 0, Math.PI*2);
+        ctx.fill();
+        // Batter Box area
+        ctx.fillRect(200, 330, 112, 100);
+
+        // Lines (Homeplate & Boxes)
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 3;
+        // Batter boxes
+        ctx.strokeRect(210, 340, 25, 60); // Left box
+        ctx.strokeRect(277, 340, 25, 60); // Right box
+        // Home Plate
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.moveTo(256, 385);
+        ctx.lineTo(264, 392);
+        ctx.lineTo(264, 400);
+        ctx.lineTo(248, 400);
+        ctx.lineTo(248, 392);
+        ctx.closePath();
+        ctx.fill();
+
+        // --- 2. Runners Diamond Map ---
+        // Small HUD diamond showing runner status
+        let mapX = 40, mapY = 120, size = 15;
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(mapX, mapY - size); // 2B
+        ctx.lineTo(mapX + size, mapY); // 1B
+        ctx.lineTo(mapX, mapY + size); // Home
+        ctx.lineTo(mapX - size, mapY); // 3B
+        ctx.closePath();
+        ctx.stroke();
+        
+        // Active Runners (Glow colored)
+        if (runners[0]) { // 1B
+            ctx.fillStyle = '#00f0ff';
+            ctx.fillRect(mapX + size - 3, mapY - 3, 6, 6);
+        }
+        if (runners[1]) { // 2B
+            ctx.fillStyle = '#00f0ff';
+            ctx.fillRect(mapX - 3, mapY - size - 3, 6, 6);
+        }
+        if (runners[2]) { // 3B
+            ctx.fillStyle = '#00f0ff';
+            ctx.fillRect(mapX - size - 3, mapY - 3, 6, 6);
+        }
+
+        // --- 3. Characters ---
+        // Catcher
+        ctx.fillStyle = '#f39c12';
+        ctx.fillRect(catcher.x - 8, catcher.y - 12, 16, 20); // body
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(catcher.x - 4, catcher.y - 18, 8, 6); // head
+
+        // Umpire
+        ctx.fillStyle = '#555';
+        ctx.fillRect(umpire.x - 10, umpire.y - 12, 20, 22);
+
+        // Pitcher (RED Team)
+        ctx.fillStyle = '#ff0000'; // RED
+        let pYOffset = 0;
+        if (pitcher.state === 'WINDUP') {
+            pYOffset = Math.floor(pitcher.animFrame) % 2 === 0 ? -4 : 0;
+        }
+        ctx.fillRect(pitcher.x - 8, pitcher.y - 12 + pYOffset, 16, 22); // body
+        ctx.fillStyle = '#ffddaa'; // skin
+        ctx.fillRect(pitcher.x - 4, pitcher.y - 18 + pYOffset, 8, 6); // head
+        ctx.fillStyle = '#fff'; // cap line
+        ctx.fillRect(pitcher.x - 6, pitcher.y - 20 + pYOffset, 10, 2);
+
+        // Batter (BLUE Team)
+        ctx.fillStyle = '#00f0ff'; // BLUE
+        ctx.fillRect(batter.x - 8, batter.stanceY - 12, 16, 22); // body
+        ctx.fillStyle = '#ffddaa'; // skin
+        ctx.fillRect(batter.x - 4, batter.stanceY - 18, 8, 6); // head
+        ctx.fillStyle = '#fff'; // helmet
+        ctx.fillRect(batter.x - 5, batter.stanceY - 20, 10, 2);
+
+        // Bat rendering based on swing frame
+        if (batter.state === 'SWING') {
+            ctx.strokeStyle = '#f1c40f'; // Gold bat
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            let frame = Math.floor(batter.swingFrame);
+            if (frame === 0) {
+                // Cocked back
+                ctx.moveTo(batter.x - 6, batter.stanceY - 12);
+                ctx.lineTo(batter.x - 18, batter.stanceY - 22);
+            } else if (frame === 1) {
+                // Mid swing (horizontal)
+                ctx.moveTo(batter.x - 2, batter.stanceY - 8);
+                ctx.lineTo(batter.x + 22, batter.stanceY - 8);
+            } else if (frame === 2) {
+                // Forward
+                ctx.moveTo(batter.x + 2, batter.stanceY - 6);
+                ctx.lineTo(batter.x + 18, batter.stanceY + 8);
+            } else {
+                // Follow through
+                ctx.moveTo(batter.x - 2, batter.stanceY - 4);
+                ctx.lineTo(batter.x - 12, batter.stanceY + 12);
+            }
+            ctx.stroke();
+        } else if (batter.state === 'READY') {
+            // Normal standing bat
+            ctx.strokeStyle = '#f1c40f';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(batter.x - 6, batter.stanceY - 12);
+            ctx.lineTo(batter.x - 18, batter.stanceY - 25);
+            ctx.stroke();
+        }
+
+        // --- 4. Ball ---
+        if (ball.active) {
+            // Ball Shadow
+            ctx.fillStyle = 'rgba(0,0,0,0.2)';
+            ctx.fillRect(Math.floor(ball.x) - 2, Math.floor(ball.y) + 4, 6, 2);
+            
+            // Ball body
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) - 3, 6, 6);
+        }
+
+        // --- 5. Text Overlay (Strike/Ball alerts) ---
+        if (playResultTimer > 0 && playResultText !== "") {
+            ctx.font = '16px "Press Start 2P"';
+            ctx.fillStyle = '#ff007f';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#000';
+            ctx.shadowBlur = 4;
+            ctx.fillText(playResultText, 256, 280);
+            ctx.shadowBlur = 0; // reset
+        }
+    }
+
+    function renderFieldingScreen() {
+        // --- 1. FIELD GRASS & DIRT ---
+        ctx.fillStyle = '#227A2A';
+        ctx.fillRect(0, 60, canvas.width, canvas.height - 60);
+
+        // Infield dirt diamond outline
+        ctx.fillStyle = '#C08A55';
+        ctx.beginPath();
+        ctx.moveTo(256, 130); // 2B area
+        ctx.lineTo(395, 276); // 1B area
+        ctx.lineTo(256, 420); // Home area
+        ctx.lineTo(117, 276); // 3B area
+        ctx.closePath();
+        ctx.fill();
+
+        // Baseline Paths (White lines)
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(basesPos[0].x, basesPos[0].y); // Home
+        ctx.lineTo(basesPos[1].x, basesPos[1].y); // 1B
+        ctx.lineTo(basesPos[2].x, basesPos[2].y); // 2B
+        ctx.lineTo(basesPos[3].x, basesPos[3].y); // 3B
+        ctx.closePath();
+        ctx.stroke();
+
+        // Bases (White squares)
+        ctx.fillStyle = '#fff';
+        for(let i=0; i<4; i++) {
+            ctx.fillRect(basesPos[i].x - 6, basesPos[i].y - 6, 12, 12);
+        }
+
+        // --- 2. PLAYERS ---
+        // Fielders (RED Team)
+        ctx.fillStyle = '#ff0000'; // RED
+        fielders.forEach(f => {
+            // Draw fielder body
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(f.x - 6, f.y - 10, 12, 16);
+            ctx.fillStyle = '#ffddaa';
+            ctx.fillRect(f.x - 3, f.y - 14, 6, 4); // Head
+            
+            // Fielder Label text
+            ctx.fillStyle = '#fff';
+            ctx.font = '6px "Press Start 2P"';
+            ctx.fillText(f.role, f.x - 6, f.y - 16);
+        });
+
+        // Runners (BLUE Team)
+        fieldRunners.forEach(r => {
+            ctx.fillStyle = '#00f0ff'; // BLUE
+            ctx.fillRect(r.x - 6, r.y - 10, 12, 16);
+            ctx.fillStyle = '#ffddaa';
+            ctx.fillRect(r.x - 3, r.y - 14, 6, 4); // Head
+        });
+
+        // --- 3. BALL & SHADOW ---
+        // Shadow (z-height offset)
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(fieldBall.x - 3, fieldBall.y + 6, 6, 2);
+        
+        // Ball
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(fieldBall.x - 3, fieldBall.y - 3 - fieldBall.z, 6, 6);
+
+        // --- 4. PLAY ALERTS ---
+        if (playResultTimer > 0 && playResultText !== "") {
+            ctx.font = '16px "Press Start 2P"';
+            ctx.fillStyle = '#ff007f';
+            ctx.textAlign = 'center';
+            ctx.fillText(playResultText, 256, 240);
+        }
+    }
+</script>
+
+</body>
+</html>
