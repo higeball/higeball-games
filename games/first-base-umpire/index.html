@@ -179,7 +179,7 @@
             letter-spacing: 0.5px;
         }
 
-        /* Select / Start rubber buttons (elgarged area) */
+        /* Select / Start rubber buttons */
         .deco-center {
             display: flex;
             flex-direction: row;
@@ -343,7 +343,7 @@
 
     <div id="game-container">
         <!-- Game Screen -->
-        <canvas id="gameCanvas" width="320" height="200"></canvas>
+        <canvas id="gameCanvas" width="320" height="240"></canvas>
         
         <!-- HUD overlay in play mode -->
         <div id="quiz-hud" style="display: none;">
@@ -471,11 +471,18 @@
     }
     const sound = new SoundFX();
 
-    // --- Game Variables ---
+    // --- Game Variables & Rounds ---
+    // 1st Base Position on screen (320 x 240)
+    const BASE_X = 240, BASE_Y = 110;
+    const RUNNER_START_X = -20, RUNNER_START_Y = 220;
+    const BALL_START_X = 60, BALL_START_Y = -10;
+
     const roundsData = [
-        { runnerName: "スズキタカノリ", speedDesc: "ふつう", runnerBaseFrames: 100, dustMaxRadius: 24 },
-        { runnerName: "ヒデノリ", speedDesc: "はやい", runnerBaseFrames: 80, dustMaxRadius: 32 },
-        { runnerName: "シュウトウ", speedDesc: "シンソク！！", runnerBaseFrames: 30, dustMaxRadius: 40 }
+        { runnerName: "スズキタカノリ", speedDesc: "ふつうのそうしゃ", runnerFrames: 110, ballFrames: 105, dustMax: 24 },
+        { runnerName: "ヒデノリ", speedDesc: "はしるのが はやい！", runnerFrames: 85, ballFrames: 90, dustMax: 32 },
+        { runnerName: "シュウトウ", speedDesc: "しんそくのそうしゃ！", runnerBaseFrames: 50, runnerFrames: 50, ballFrames: 53, dustMax: 40 },
+        { runnerName: "ピッチャーゴロ", speedDesc: "ゆるいそうこう", runnerFrames: 130, ballFrames: 120, dustMax: 20 },
+        { runnerName: "ギリギリのしょうぶ", speedDesc: "いっしゅんのきわどさ！", runnerFrames: 95, ballFrames: 96, dustMax: 35 }
     ];
 
     let currentRound = 0;
@@ -491,14 +498,11 @@
     let isAnimating = false;
     let judgmentFixed = false;
     let frameCount = 0; 
-    let ballArrivalFrame = 0; 
+    let ballArrivalFrame = 0;
+    let runnerArrivalFrame = 0;
     
-    const BASE_X = 250, BASE_Y = 100;
-    const RUNNER_START_X = -10, RUNNER_START_Y = 210;
-    const BALL_START_X = 80, BALL_START_Y = -20;
-    
-    let runner = { x: 0, y: 0, speedX: 0, speedY: 0 };
-    let ball = { x: 0, y: 0, speedX: 0, speedY: 0 };
+    let runnerX = RUNNER_START_X, runnerY = RUNNER_START_Y;
+    let ballX = BALL_START_X, ballY = BALL_START_Y;
     let trueAnswer = ""; 
     let dustRadius = 0;  
     let roundDustMax = 0; 
@@ -559,7 +563,6 @@
 
     // Master Action dispatcher
     function handleAction(actionType) {
-        // Only allow inputs when screen overlays are gone (meaning game is active)
         const inStartScreen = (document.getElementById('screen-start').style.display !== 'none' && document.getElementById('ui-overlay').style.display !== 'none');
         const inResultScreen = (document.getElementById('screen-result').style.display !== 'none' && document.getElementById('ui-overlay').style.display !== 'none');
         
@@ -600,7 +603,6 @@
 
         currentRound = 0; score = 0;
         
-        // Switch overlay screens
         document.getElementById('ui-overlay').style.display = 'none';
         document.getElementById('screen-start').style.display = 'none';
         document.getElementById('quiz-hud').style.display = 'flex';
@@ -617,15 +619,26 @@
         }
         isAnimating = false;
         frameCount = 0;
+        roundOutcomeText = "";
 
         const data = roundsData[currentRound];
         document.getElementById('round-title').innerText = `だい ${currentRound + 1} きゅう`;
         document.getElementById('runner-info').innerText = `${data.runnerName} (${data.speedDesc})`;
+
+        runnerArrivalFrame = data.runnerFrames;
+        ballArrivalFrame = data.ballFrames;
+        roundDustMax = data.dustMax;
         
-        runner.x = RUNNER_START_X; runner.y = RUNNER_START_Y;
-        ball.x = BALL_START_X; ball.y = BALL_START_Y;
+        // Decide true answer
+        if (ballArrivalFrame < runnerArrivalFrame) {
+            trueAnswer = "アウト";
+        } else {
+            trueAnswer = "セーフ";
+        }
+
+        runnerX = RUNNER_START_X; runnerY = RUNNER_START_Y;
+        ballX = BALL_START_X; ballY = BALL_START_Y;
         dustRadius = 0;
-        roundDustMax = data.dustMaxRadius;
         judgmentFixed = false;
 
         drawField();
@@ -633,24 +646,7 @@
 
     function playAnimation() {
         if (isAnimating || judgmentFixed) return; 
-        sound.playSelect();
-
-        const data = roundsData[currentRound];
-        const runnerFrames = data.runnerBaseFrames;
-        
-        ballArrivalFrame = Math.floor(runnerFrames + (Math.random() * 6 - 3)); 
-
-        if (runnerFrames < ballArrivalFrame) {
-            trueAnswer = "セーフ";
-        } else {
-            trueAnswer = "アウト";
-        }
-
-        runner.speedX = (BASE_X - runner.x) / runnerFrames;
-        runner.speedY = (BASE_Y - runner.y) / runnerFrames;
-        ball.speedX = (BASE_X - ball.x) / ballArrivalFrame;
-        ball.speedY = (BASE_Y - ball.y) / ballArrivalFrame;
-
+        sound.playTone(880, 0.05); // pitch start
         isAnimating = true;
         update();
     }
@@ -659,43 +655,44 @@
         if (!isAnimating) return;
         frameCount++;
 
-        runner.x += runner.speedX; runner.y += runner.speedY;
-        
-        if (frameCount < ballArrivalFrame) {
-            ball.x += ball.speedX; ball.y += ball.speedY;
+        // Update runner position
+        if (frameCount < runnerArrivalFrame) {
+            runnerX = RUNNER_START_X + (BASE_X - RUNNER_START_X) * (frameCount / runnerArrivalFrame);
+            runnerY = RUNNER_START_Y + (BASE_Y - RUNNER_START_Y) * (frameCount / runnerArrivalFrame);
         } else {
-            ball.x = BASE_X; ball.y = BASE_Y;
+            // Runner runs past the base
+            let overFrame = frameCount - runnerArrivalFrame;
+            runnerX = BASE_X + overFrame * 2.2;
+            runnerY = BASE_Y + overFrame * -1.0;
         }
 
-        const distRunner = Math.hypot(BASE_X - runner.x, BASE_Y - runner.y);
-        const distBall = Math.hypot(BASE_X - ball.x, BASE_Y - ball.y);
-
-        if (!judgmentFixed) {
-            if (distRunner < 40 || distBall < 40) {
-                dustRadius = Math.min(dustRadius + 1.5, roundDustMax);
-            }
-            
-            const runnerArrived = frameCount >= roundsData[currentRound].runnerBaseFrames;
-            const ballArrived = frameCount >= ballArrivalFrame;
-
-            if (runnerArrived || ballArrived) {
-                judgmentFixed = true;
-                // Wait for player decision via A/B button
-            }
+        // Update ball position
+        if (frameCount < ballArrivalFrame) {
+            ballX = BALL_START_X + (BASE_X - BALL_START_X) * (frameCount / ballArrivalFrame);
+            ballY = BALL_START_Y + (BASE_Y - BALL_START_Y) * (frameCount / ballArrivalFrame);
+        } else {
+            ballX = BASE_X;
+            ballY = BASE_Y;
         }
 
-        if (runner.x > canvas.width + 20) {
+        // Dust cloud effect when runner is close to base
+        if (frameCount >= runnerArrivalFrame - 15) {
+            let p = Math.min((frameCount - (runnerArrivalFrame - 15)) / 15, 1.0);
+            dustRadius = p * roundDustMax;
+        }
+
+        // Stop animation a little after both arrive
+        let maxArrival = Math.max(runnerArrivalFrame, ballArrivalFrame);
+        if (frameCount >= maxArrival + 15) {
             isAnimating = false;
-            drawField(); 
-            if (!judgmentFixed) {
-                judgmentFixed = true;
-                trueAnswer = "セーフ"; 
-            }
-            return;
+            judgmentFixed = true; // Wait for decision
         }
 
         drawField();
-        animId = requestAnimationFrame(update);
+
+        if (isAnimating) {
+            animId = requestAnimationFrame(update);
+        }
     }
 
     function drawField() {
@@ -703,12 +700,13 @@
         ctx.fillStyle = '#227A2A'; 
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Clay dirt around first base line
         ctx.fillStyle = '#C08A55'; 
         ctx.beginPath();
         ctx.moveTo(340, -10);  
         ctx.lineTo(-20, 150);  
-        ctx.lineTo(-20, 220);
-        ctx.lineTo(340, 220);
+        ctx.lineTo(-20, 240);
+        ctx.lineTo(340, 240);
         ctx.fill();
 
         // --- 2. Firstbase line ---
@@ -731,16 +729,16 @@
             ctx.fillRect(BASE_X - r/2, BASE_Y - r, r, r*2);
         }
 
-        // --- 5. Ball ---
+        // --- 5. Ball & Shadow ---
         ctx.fillStyle = 'rgba(0,0,0,0.3)'; 
-        ctx.fillRect(Math.floor(ball.x) - 4, Math.floor(ball.y) + 6, 8, 3);
+        ctx.fillRect(Math.floor(ballX) - 4, Math.floor(ballY) + 6, 8, 3);
         ctx.fillStyle = '#fff';
-        ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) - 3, 6, 6);
+        ctx.fillRect(Math.floor(ballX) - 3, Math.floor(ballY) - 3, 6, 6);
         ctx.fillStyle = '#999'; 
-        ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) + 3, 6, 2);
+        ctx.fillRect(Math.floor(ballX) - 3, Math.floor(ballY) + 3, 6, 2);
 
         // --- 6. Runner ---
-        drawRunner(Math.floor(runner.x), Math.floor(runner.y));
+        drawRunner(Math.floor(runnerX), Math.floor(runnerY));
 
         // --- 7. Scanlines ---
         ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
@@ -750,19 +748,23 @@
     }
 
     function drawRunner(rx, ry) {
+        // Shadow
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.fillRect(rx - 8, ry + 14, 16, 4);
 
         const animState = Math.floor(frameCount / 4) % 2; 
 
+        // helmet/head
         ctx.fillStyle = '#f1c40f'; 
         ctx.fillRect(rx - 6, ry - 18, 12, 10);
         ctx.fillStyle = '#e67e22'; 
         ctx.fillRect(rx - 4, ry - 10, 8, 6);
 
+        // body uniform
         ctx.fillStyle = '#2980b9';
         ctx.fillRect(rx - 8, ry - 4, 16, 12);
 
+        // arms
         ctx.fillStyle = '#fff';
         if (animState === 0) {
             ctx.fillRect(rx - 12, ry - 6, 4, 10); 
@@ -772,6 +774,7 @@
             ctx.fillRect(rx + 6, ry - 6, 4, 10);  
         }
 
+        // legs
         ctx.fillStyle = '#ecf0f1';
         if (animState === 0) {
             ctx.fillRect(rx - 6, ry + 8, 6, 8);  
@@ -796,32 +799,69 @@
             roundOutcomeText = "ミスジャッジ！";
         }
         
-        // Trigger draw text outcome overlay
         drawOutcomeOverlay(roundOutcomeText, trueAnswer);
     }
 
     function drawOutcomeOverlay(resultText, correctAnswer) {
         drawField();
         
-        // Dim field background slightly
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        // Dim field background
+        ctx.fillStyle = 'rgba(0,0,0,0.6)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Draw dynamic timeline analysis chart (similar style to plate umpire)
         ctx.font = "14px 'DotGothic16'";
         ctx.fillStyle = resultText.includes("せいかい") ? "#2ecc71" : "#e74c3c";
         ctx.textAlign = "center";
-        ctx.fillText(resultText, 160, 90);
+        ctx.fillText(resultText, 160, 45);
         
         ctx.fillStyle = "#fff";
-        ctx.fillText(`ただしいはんてい: ${correctAnswer}`, 160, 120);
+        ctx.fillText(`判定: ${correctAnswer}`, 160, 70);
+
+        // Render timeline bar chart
+        // Draw center border box
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(40, 95, 240, 80);
+        ctx.fillStyle = 'rgba(255,255,255,0.05)';
+        ctx.fillRect(40, 95, 240, 80);
+
+        ctx.font = "10px 'DotGothic16'";
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'left';
+        ctx.fillText("タイムライン（到達フレーム）", 50, 112);
+
+        // Draw progress bar chart
+        let maxVal = Math.max(ballArrivalFrame, runnerArrivalFrame) + 15;
+        let barW = 120;
         
+        // Ball bar
+        ctx.fillStyle = '#999';
+        ctx.fillText("ボール到達:", 50, 135);
+        let ballFillW = (ballArrivalFrame / maxVal) * barW;
+        ctx.fillStyle = '#ff007f'; // pink
+        ctx.fillRect(115, 127, ballFillW, 8);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`${ballArrivalFrame}F`, 120 + ballFillW, 135);
+
+        // Runner bar
+        ctx.fillStyle = '#999';
+        ctx.fillText("そうしゃ着:", 50, 158);
+        let runnerFillW = (runnerArrivalFrame / maxVal) * barW;
+        ctx.fillStyle = '#00f0ff'; // blue
+        ctx.fillRect(115, 150, runnerFillW, 8);
+        ctx.fillStyle = '#fff';
+        ctx.fillText(`${runnerArrivalFrame}F`, 120 + runnerFillW, 158);
+
+        // Outcome verdict at bottom of chart
         ctx.font = "9px 'Press Start 2P'";
         ctx.fillStyle = "#f1c40f";
-        ctx.fillText("START: NEXT ROUND", 160, 160);
+        ctx.textAlign = 'center';
+        ctx.fillText("START: NEXT ROUND", 160, 195);
     }
 
     function nextRound() {
-        if (roundOutcomeText === "") return; // must answer first
+        if (roundOutcomeText === "") return;
         sound.playSelect();
         roundOutcomeText = "";
         
@@ -842,13 +882,13 @@
         document.getElementById('screen-result').style.display = 'flex';
 
         let comment = "";
-        if (score === 3) comment = "めいしんぱん たんじょう！<br>どうたいしりょくは ばつぐんだ！";
-        else if (score === 2) comment = "おしい！<br>あとすこしで １ぐんレベルだ！";
-        else if (score === 1) comment = "まだまだ しゅぎょうが たりないようだ。";
+        if (score === 5) comment = "めいしんぱん たんじょう！<br>どうたいしりょくは プロやきゅうのしんぱん レベル！";
+        else if (score >= 3) comment = "おしい！<br>あとすこしで １ぐんのしんぱん レベルだ！";
+        else if (score >= 1) comment = "まだまだ しゅぎょうが たりないようだ。";
         else comment = "だいブーイング！<br>すなぼこりに だまされすぎだぞ。";
 
         document.getElementById('result-message').innerHTML = 
-            `＊ <strong>${playerName}</strong> しんぱん の せいせき ＊<br><br>
+            `＊ <strong>${playerName}</strong> 審判の成績 ＊<br><br>
             <span style="color:#e74c3c; font-size:24px;">${totalRounds}きゅう ちゅう ${score}きゅう せいかい</span><br><br>
             ${comment}`;
     }
@@ -873,7 +913,7 @@
 
         sCtx.font = "24px 'DotGothic16', sans-serif";
         sCtx.fillStyle = '#fff';
-        sCtx.fillText("＊ しんぱん ステータス ＊", 30, 60);
+        sCtx.fillText("＊ 一塁塁審 ステータス ＊", 30, 60);
 
         sCtx.font = "20px 'DotGothic16', sans-serif";
         sCtx.fillText(`なまえ　：${playerName}`, 30, 110);
@@ -881,9 +921,9 @@
         sCtx.fillText(`  ${totalRounds}きゅう ちゅう ${score}きゅう せいかい`, 30, 180);
 
         let rank = "";
-        if (score === 3) rank = "めいしんぱん";
-        else if (score === 2) rank = "１ぐん はんていいん";
-        else if (score === 1) rank = "みならい しんぱん";
+        if (score === 5) rank = "伝説の名塁審";
+        else if (score >= 3) rank = "１ぐん 審判員";
+        else if (score >= 1) rank = "みならい 審判";
         else rank = "２ぐんおち";
 
         sCtx.fillStyle = '#f39c12';
