@@ -33,6 +33,9 @@
             min-height: 100vh;
             overflow: hidden;
             user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
             touch-action: none; /* Prevent browser pinch and scroll */
             overscroll-behavior: none;
         }
@@ -56,16 +59,16 @@
             background-color: #000;
         }
 
-        /* Virtual Controller Styling (Famicom-like design) */
+        /* Virtual Controller Styling (Famicom-like design, enlarged) */
         #virtual-controller {
             width: 100%;
-            height: 160px;
+            height: 190px;
             background-color: var(--fc-red);
             border-top: 4px solid #fff;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px 25px;
+            padding: 15px 20px;
             position: relative;
             box-sizing: border-box;
             background-image: 
@@ -76,11 +79,11 @@
             background-position: 0 0, 0 20px;
         }
 
-        /* D-PAD (Cross Key) */
+        /* D-PAD (Cross Key, enlarged) */
         .dpad-container {
             position: relative;
-            width: 110px;
-            height: 110px;
+            width: 130px;
+            height: 130px;
         }
 
         .dpad {
@@ -88,8 +91,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            width: 90px;
-            height: 90px;
+            width: 110px;
+            height: 110px;
         }
 
         .dpad-btn {
@@ -113,43 +116,27 @@
             color: #fff;
         }
 
-        #btn-up {
-            top: 0; left: 30px; width: 30px; height: 32px;
-            border-radius: 4px 4px 0 0;
-            border-bottom: none;
-        }
-        #btn-down {
-            bottom: 0; left: 30px; width: 30px; height: 32px;
-            border-radius: 0 0 4px 4px;
-            border-top: none;
-        }
-        #btn-left {
-            top: 30px; left: 0; width: 32px; height: 30px;
-            border-radius: 4px 0 0 4px;
-            border-right: none;
-        }
-        #btn-right {
-            top: 30px; right: 0; width: 32px; height: 30px;
-            border-radius: 0 4px 4px 0;
-            border-left: none;
-        }
+        #btn-up { top: 0; left: 38px; width: 34px; height: 40px; border-radius: 4px 4px 0 0; border-bottom: none; }
+        #btn-down { bottom: 0; left: 38px; width: 34px; height: 40px; border-radius: 0 0 4px 4px; border-top: none; }
+        #btn-left { top: 38px; left: 0; width: 40px; height: 34px; border-radius: 4px 0 0 4px; border-right: none; }
+        #btn-right { top: 38px; right: 0; width: 40px; height: 34px; border-radius: 0 4px 4px 0; border-left: none; }
 
         .dpad-center {
             position: absolute;
-            top: 30px;
-            left: 30px;
-            width: 30px;
-            height: 30px;
+            top: 38px;
+            left: 38px;
+            width: 34px;
+            height: 34px;
             background-color: var(--fc-dark);
             border: none;
             z-index: 2;
         }
 
-        /* Action Buttons (A/B style) */
+        /* Action Buttons (A/B style, enlarged) */
         .action-container {
             display: flex;
             align-items: center;
-            gap: 20px;
+            gap: 15px;
         }
 
         .btn-group {
@@ -160,8 +147,8 @@
         }
 
         .action-btn {
-            width: 50px;
-            height: 50px;
+            width: 62px;
+            height: 62px;
             background-color: #a3180c;
             border: 3px solid var(--fc-dark);
             border-radius: 50%;
@@ -172,7 +159,7 @@
             align-items: center;
             color: #fff;
             font-family: 'Press Start 2P', monospace;
-            font-size: 16px;
+            font-size: 20px;
             font-weight: bold;
             text-shadow: 1px 1px #000;
             touch-action: none;
@@ -191,21 +178,43 @@
             letter-spacing: 0.5px;
         }
 
-        /* Central rubber decoration */
+        /* Rubber SELECT / START buttons */
         .deco-center {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            position: absolute;
+            left: 50%;
+            bottom: 20px;
+            transform: translateX(-50%);
+        }
+
+        .rubber-btn-group {
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            gap: 5px;
+            gap: 4px;
         }
-        .deco-stripes {
-            width: 40px;
-            height: 8px;
-            background: repeating-linear-gradient(90deg, var(--fc-dark), var(--fc-dark) 4px, #555 4px, #555 8px);
-            border-radius: 2px;
+
+        .rubber-btn {
+            width: 32px;
+            height: 10px;
+            background-color: #555;
+            border: 2px solid var(--fc-dark);
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 2px 2px rgba(0,0,0,0.4);
+            touch-action: none;
         }
-        .deco-text {
+
+        .rubber-btn:active, .rubber-btn.active {
+            background-color: #222;
+            box-shadow: none;
+        }
+
+        .rubber-label {
             font-size: 6px;
             color: var(--fc-dark);
             font-weight: bold;
@@ -226,6 +235,15 @@
             z-index: 10;
         }
 
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            padding: 20px;
+        }
+
         .menu-title {
             font-size: 20px;
             color: #00f0ff;
@@ -235,16 +253,33 @@
             line-height: 1.6;
         }
 
+        input[type="text"] {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            padding: 12px;
+            width: 80%;
+            max-width: 300px;
+            background-color: #000;
+            color: #fff;
+            border: 3px solid #fff;
+            margin-bottom: 20px;
+            text-align: center;
+            outline: none;
+        }
+
         .menu-btn {
             font-family: 'Press Start 2P', monospace;
             background: #000;
             color: #fff;
             border: 2px solid #fff;
             padding: 12px 24px;
-            font-size: 12px;
+            font-size: 11px;
             cursor: pointer;
             margin: 8px;
             transition: all 0.2s;
+            width: 80%;
+            max-width: 300px;
+            text-align: center;
             touch-action: manipulation;
         }
 
@@ -260,7 +295,7 @@
             color: #a0a0cf;
             line-height: 1.8;
             text-align: center;
-            max-width: 320px;
+            max-width: 340px;
             padding: 0 10px;
         }
 
@@ -281,21 +316,34 @@
 <body>
 
     <div id="game-container">
-        <!-- Canvas size will resize responsively -->
+        <!-- Game Screen -->
         <canvas id="gameCanvas" width="512" height="480"></canvas>
         
         <!-- UI Overlay for Screens -->
         <div id="ui-overlay">
-            <div class="menu-title" id="screen-title">8-BIT<br>BASEBALL</div>
-            <button class="menu-btn" id="start-btn" onclick="initGame()">PLAY GAME</button>
-            <div id="controls-info">
-                【CONTROLS】<br>
-                Use the Virtual Controller below or Keyboard:<br>
-                BATTER (OFFENSE): Up/Down to move, A to Swing<br>
-                PITCHER (DEFENSE): Left/Right to position, A to Throw<br>
-                (Hold directions during pitch to Curve/Change Speed)
+            <!-- START SCREEN -->
+            <div id="screen-start" class="menu-screen">
+                <div class="menu-title">8-BIT<br>BASEBALL</div>
+                <input type="text" id="nickname" placeholder="なまえをいれてね" maxlength="10">
+                <button class="menu-btn" onclick="startGame()">PLAY GAME</button>
+                <div id="controls-info">
+                    【CONTROLS】<br>
+                    Use the Virtual Controller below or Keyboard:<br>
+                    BATTER (OFFENSE): Up/Down to move, A-BUTTON to Swing<br>
+                    PITCHER (DEFENSE): Left/Right to position, A-BUTTON to Throw<br>
+                    (Hold directions during pitch to Curve/Change Speed)<br>
+                    START / SELECT to select option
+                </div>
+                <a href="../../index.html" id="back-link">BACK TO HUB</a>
             </div>
-            <a href="../../index.html" id="back-link">BACK TO HUB</a>
+
+            <!-- RESULT SCREEN -->
+            <div id="screen-result" class="menu-screen" style="display:none;">
+                <div class="menu-title" id="result-title">GAME SET</div>
+                <div id="result-message" style="margin: 20px 0; font-size: 8px; line-height: 1.8; text-align: left; color: #fff; width: 80%;"></div>
+                <button class="menu-btn" id="btn-share" onclick="shareResultImage()">SHARE RESULT</button>
+                <button class="menu-btn" onclick="resetToStart()">PLAY AGAIN</button>
+            </div>
         </div>
 
         <!-- Virtual Famicom Controller -->
@@ -311,10 +359,16 @@
                 </div>
             </div>
 
-            <!-- Central rubber & branding deco -->
+            <!-- SELECT / START rubber button decoration -->
             <div class="deco-center">
-                <div class="deco-stripes"></div>
-                <div class="deco-text">II-PLAYER</div>
+                <div class="rubber-btn-group">
+                    <div class="rubber-btn" id="btn-select"></div>
+                    <div class="rubber-label">SELECT</div>
+                </div>
+                <div class="rubber-btn-group">
+                    <div class="rubber-btn" id="btn-start"></div>
+                    <div class="rubber-label">START</div>
+                </div>
             </div>
 
             <!-- Action Buttons (A / B) -->
@@ -350,7 +404,7 @@
                         this.failed = true;
                     }
                 } catch(e) {
-                    console.warn("AudioContext init failed (could be due to browser security or lack of support):", e);
+                    console.warn("AudioContext init failed:", e);
                     this.failed = true;
                 }
             }
@@ -410,33 +464,24 @@
             } catch(e) { console.error(e); }
         }
 
-        playPitch() {
-            this.playTone(880, 0.05, 'square');
-        }
-
+        playPitch() { this.playTone(880, 0.05, 'square'); }
         playHit() {
             let now = 0;
             this.playTone(600, 0.15, 'triangle', now);
             this.playTone(150, 0.15, 'sine', now);
             this.playNoise(0.1, 0.3, now);
         }
-
-        playCatch() {
-            this.playNoise(0.06, 0.2);
-        }
-
+        playCatch() { this.playNoise(0.06, 0.2); }
         playOut() {
             this.playTone(392, 0.1, 'sawtooth', 0);
             this.playTone(293, 0.2, 'sawtooth', 0.1);
         }
-
         playSafe() {
             this.playTone(523, 0.06, 'square', 0);
             this.playTone(659, 0.06, 'square', 0.06);
             this.playTone(784, 0.06, 'square', 0.12);
             this.playTone(1046, 0.15, 'square', 0.18);
         }
-
         playHomeRun() {
             let now = 0;
             for(let i=0; i<8; i++) {
@@ -445,10 +490,7 @@
             }
             this.playNoise(1.5, 0.15, 0.2);
         }
-
-        playCheer() {
-            this.playNoise(1.0, 0.1);
-        }
+        playCheer() { this.playNoise(1.0, 0.1); }
     }
 
     const sound = new SoundFX();
@@ -459,21 +501,21 @@
     ctx.imageSmoothingEnabled = false;
 
     let gameState = 'MENU'; // MENU, PITCHING, FIELDING, GAMEOVER
-    let playerTeam = 'BLUE'; // BLUE (Batter in 1st Inning), RED (Pitcher in 1st Inning)
+    let playerTeam = 'BLUE';
     let score = { BLUE: 0, RED: 0 };
     let inning = 1;
     let half = 'TOP'; // TOP (BLUE batting), BOTTOM (RED batting)
     let outs = 0;
     let strikes = 0;
     let balls = 0;
-    let runners = [false, false, false]; // 1B, 2B, 3B
+    let runners = [false, false, false];
 
     // Key states
     const keys = {};
     window.addEventListener('keydown', e => { keys[e.code] = true; });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
 
-    // Setup Virtual Controller Touch/Mouse Events
+    // Setup Virtual Controller
     function setupVirtualController() {
         const mappings = {
             'btn-up': 'ArrowUp',
@@ -481,7 +523,9 @@
             'btn-left': 'ArrowLeft',
             'btn-right': 'ArrowRight',
             'btn-a': 'Space',
-            'btn-b': 'Escape' // B Button can be mapped to something if needed later
+            'btn-b': 'Escape',
+            'btn-select': 'ShiftLeft',
+            'btn-start': 'Enter'
         };
 
         for (const [btnId, keyName] of Object.entries(mappings)) {
@@ -492,6 +536,11 @@
                 e.preventDefault();
                 keys[keyName] = true;
                 btn.classList.add('active');
+                
+                // If in start or result screens, trigger logic on press
+                if (btnId === 'btn-start') {
+                    handleStartPress();
+                }
             };
 
             const endPress = (e) => {
@@ -500,15 +549,23 @@
                 btn.classList.remove('active');
             };
 
-            // Touch events
             btn.addEventListener('touchstart', startPress, { passive: false });
             btn.addEventListener('touchend', endPress, { passive: false });
             btn.addEventListener('touchcancel', endPress, { passive: false });
 
-            // Mouse events for fallback
             btn.addEventListener('mousedown', startPress);
             btn.addEventListener('mouseup', endPress);
             btn.addEventListener('mouseleave', endPress);
+        }
+    }
+
+    function handleStartPress() {
+        const inStartScreen = (document.getElementById('screen-start').style.display !== 'none' && document.getElementById('ui-overlay').style.display !== 'none');
+        const inResultScreen = (document.getElementById('screen-result').style.display !== 'none' && document.getElementById('ui-overlay').style.display !== 'none');
+        if (inStartScreen) {
+            startGame();
+        } else if (inResultScreen) {
+            resetToStart();
         }
     }
 
@@ -519,13 +576,11 @@
     let umpire = { x: 256, y: 410 };
     let ball = { x: 256, y: 190, vx: 0, vy: 0, active: false, type: 'PITCH', height: 0, bounce: 0 };
     
-    // Field Entities (For Fielding Screen)
     let fieldBall = { x: 256, y: 250, vx: 0, vy: 0, z: 0, vz: 0, ground: true };
     let fieldFielderClosest = null;
-    let fieldRunners = []; // Array of runner objects { baseProgress, speed, fromBase, toBase, x, y, id }
+    let fieldRunners = [];
     let fieldFielderBallHolder = null;
     
-    // Fielding Screen Fielders Pos
     let fielders = [
         { role: 'P', x: 256, y: 250, ox: 256, oy: 250 },
         { role: 'C', x: 256, y: 400, ox: 256, oy: 400 },
@@ -538,21 +593,46 @@
         { role: 'RF', x: 422, y: 90, ox: 422, oy: 90 }
     ];
 
-    // Field Bases (X, Y in fielding screen coordinate)
     const basesPos = [
-        { x: 256, y: 400 }, // Home (Index 0)
-        { x: 380, y: 276 }, // 1B (Index 1)
-        { x: 256, y: 152 }, // 2B (Index 2)
-        { x: 132, y: 276 }  // 3B (Index 3)
+        { x: 256, y: 400 }, // Home
+        { x: 380, y: 276 }, // 1B
+        { x: 256, y: 152 }, // 2B
+        { x: 132, y: 276 }  // 3B
     ];
 
+    let playerName = "";
     let playResultText = "";
     let playResultTimer = 0;
     let computerPitchTimer = 0;
     let inningTextTimer = 0;
 
-    // Start/Init
-    function initGame() {
+    window.addEventListener('load', () => {
+        const savedName = localStorage.getItem('umpire_nickname_v2'); // Share name with Umpire game
+        if (savedName) document.getElementById('nickname').value = savedName;
+        setupVirtualController();
+        renderMenuPlaceholder();
+    });
+
+    function renderMenuPlaceholder() {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.font = '24px "Press Start 2P"';
+        ctx.fillStyle = '#00f0ff';
+        ctx.textAlign = 'center';
+        ctx.fillText("8-BIT", 256, 180);
+        ctx.fillText("BASEBALL", 256, 230);
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.fillText("INPUT NAME AND PRESS PLAY", 256, 320);
+    }
+
+    function startGame() {
+        const nameInput = document.getElementById('nickname').value.trim();
+        if (!nameInput) { alert("なまえをいれてね！"); return; }
+        
+        playerName = nameInput;
+        localStorage.setItem('umpire_nickname_v2', playerName);
+
         sound.init();
         document.getElementById('ui-overlay').style.display = 'none';
         score = { BLUE: 0, RED: 0 };
@@ -563,10 +643,9 @@
         balls = 0;
         runners = [false, false, false];
         
-        setupVirtualController();
         resetAtBat();
         gameState = 'PITCHING';
-        inningTextTimer = 120; // 2 seconds of Inning Intro
+        inningTextTimer = 120;
         
         requestAnimationFrame(gameLoop);
     }
@@ -591,7 +670,6 @@
         computerPitchTimer = 60 + Math.random() * 60;
     }
 
-    // Main Loop
     function gameLoop() {
         update();
         render();
@@ -600,7 +678,6 @@
         }
     }
 
-    // --- Logic ---
     function update() {
         if (inningTextTimer > 0) {
             inningTextTimer--;
@@ -628,20 +705,17 @@
     }
 
     function updatePitching() {
-        let isPlayerBatting = (half === 'TOP'); // BLUE Bats in Top of inning (Player)
+        let isPlayerBatting = (half === 'TOP');
 
-        // Batter Movement
         if (isPlayerBatting) {
             if (keys['ArrowUp'] && batter.stanceY > 345) batter.stanceY -= 1.5;
             if (keys['ArrowDown'] && batter.stanceY < 375) batter.stanceY += 1.5;
             
-            // Swing Input
             if (keys['Space'] && batter.state === 'READY') {
                 batter.state = 'SWING';
                 batter.swingFrame = 0;
             }
         } else {
-            // CPU Batter auto positions and swings
             if (ball.active && ball.vy > 0 && batter.state === 'READY') {
                 let error = (Math.random() - 0.5) * 15;
                 if (batter.stanceY < ball.y + error && batter.stanceY < 375) batter.stanceY += 1;
@@ -654,9 +728,7 @@
             }
         }
 
-        // Pitcher Action
         if (!isPlayerBatting) {
-            // Player is Pitching
             if (pitcher.state === 'READY') {
                 if (keys['ArrowLeft'] && pitcher.x > 230) pitcher.x -= 1.5;
                 if (keys['ArrowRight'] && pitcher.x < 282) pitcher.x += 1.5;
@@ -667,7 +739,6 @@
                 }
             }
         } else {
-            // CPU is Pitching
             if (pitcher.state === 'READY') {
                 computerPitchTimer--;
                 if (computerPitchTimer <= 0) {
@@ -677,7 +748,6 @@
             }
         }
 
-        // Windup & Throw
         if (pitcher.state === 'WINDUP') {
             pitcher.animFrame += 0.15;
             if (pitcher.animFrame >= 3) {
@@ -698,7 +768,6 @@
             }
         }
 
-        // Ball movement & curve control
         if (ball.active) {
             if (!isPlayerBatting) {
                 if (keys['ArrowLeft']) ball.vx -= 0.08;
@@ -1027,24 +1096,107 @@
     }
 
     function showGameOverScreen() {
-        let title = document.getElementById('screen-title');
-        let btn = document.getElementById('start-btn');
-        let overlay = document.getElementById('ui-overlay');
+        gameState = 'MENU';
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+
+        let pScore = score.BLUE;
+        let cScore = score.RED;
+        let resultMsg = "";
+        let comment = "";
+        
+        if (pScore > cScore) {
+            resultMsg = "YOU WIN!";
+            comment = "めいかんとく たんじょう！<br>みごとな しょうりだ！";
+        } else if (pScore < cScore) {
+            resultMsg = "YOU LOSE";
+            comment = "ざんねん！<br>つぎは かてるように がんばろう！";
+        } else {
+            resultMsg = "DRAW GAME";
+            comment = "ひきわけ！<br>いい しあいだったぞ！";
+        }
+
+        document.getElementById('result-title').innerHTML = resultMsg;
+        document.getElementById('result-message').innerHTML = 
+            `＊ <strong>${playerName}</strong> 監督の成績 ＊<br><br>
+            スコア: 1P(BLUE) ${pScore} - ${cScore} CP(RED)<br><br>
+            ${comment}`;
+    }
+
+    async function shareResultImage() {
+        const btn = document.getElementById('btn-share');
+        btn.innerText = "CREATING...";
+        btn.disabled = true;
+
+        const shareCanvas = document.createElement('canvas');
+        shareCanvas.width = 400;
+        shareCanvas.height = 300;
+        const sCtx = shareCanvas.getContext('2d');
+        sCtx.imageSmoothingEnabled = false;
+
+        sCtx.fillStyle = '#000';
+        sCtx.fillRect(0, 0, 400, 300);
+        sCtx.strokeStyle = '#fff';
+        sCtx.lineWidth = 4;
+        sCtx.strokeRect(10, 10, 380, 280);
+        sCtx.strokeRect(16, 16, 368, 268);
+
+        sCtx.font = "20px 'Press Start 2P', sans-serif";
+        sCtx.fillStyle = '#fff';
+        sCtx.fillText("8-BIT BASEBALL", 30, 60);
+
+        sCtx.font = "14px 'Press Start 2P', sans-serif";
+        sCtx.fillText(`NAME : ${playerName}`, 30, 110);
         
         let pScore = score.BLUE;
         let cScore = score.RED;
-        
-        let resultMsg = "";
-        if (pScore > cScore) resultMsg = `YOU WIN!<br>${pScore} - ${cScore}`;
-        else if (pScore < cScore) resultMsg = `YOU LOSE<br>${pScore} - ${cScore}`;
-        else resultMsg = `DRAW GAME<br>${pScore} - ${cScore}`;
+        sCtx.fillText(`SCORE: 1P ${pScore} - ${cScore} CP`, 30, 160);
 
-        title.innerHTML = `GAME SET!<br><br>${resultMsg}`;
-        btn.innerText = "PLAY AGAIN";
-        overlay.style.display = 'flex';
-        gameState = 'MENU';
+        let rank = "DRAW";
+        if (pScore > cScore) rank = "WINNER";
+        else if (pScore < cScore) rank = "LOSER";
+
+        sCtx.fillStyle = '#f39c12';
+        sCtx.fillText(`RESULT: ${rank}`, 30, 210);
+
+        sCtx.fillStyle = '#ccc';
+        sCtx.fillText("#HigeballGames", 30, 260);
+
+        shareCanvas.toBlob(async (blob) => {
+            const file = new File([blob], "baseball_result.png", { type: "image/png" });
+            const data = {
+                text: `${playerName}の8-bitベースボール対戦結果！ #HigeballGames`,
+                files: [file]
+            };
+
+            if (navigator.canShare && navigator.canShare(data)) {
+                try {
+                    await navigator.share(data);
+                } catch (err) {
+                    console.log("Share canceled", err);
+                }
+            } else {
+                alert("画像シェア非対応のため、テキストでシェアします。");
+                const text = `${playerName}の8-bitベースボール対戦結果！ 1P ${pScore} - ${cScore} CP で ${rank}！ #HigeballGames`;
+                const url = `https://line.me/R/msg/text/?${encodeURIComponent(text)}`;
+                window.open(url, '_blank');
+            }
+
+            btn.innerText = "SHARE RESULT";
+            btn.disabled = false;
+        });
     }
 
+    function resetToStart() {
+        document.getElementById('screen-start').style.display = 'flex';
+        document.getElementById('screen-result').style.display = 'none';
+        
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName) document.getElementById('nickname').value = savedName;
+        
+        renderMenuPlaceholder();
+    }
 
     // --- Rendering ---
     function render() {
@@ -1301,11 +1453,6 @@
             ctx.fillText(playResultText, 256, 240);
         }
     }
-
-    // Run setup on load
-    window.addEventListener('load', () => {
-        setupVirtualController();
-    });
 </script>
 
 </body>
