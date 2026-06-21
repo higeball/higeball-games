@@ -122,17 +122,29 @@
     class SoundFX {
         constructor() {
             this.ctx = null;
+            this.failed = false;
         }
 
         init() {
+            if (this.failed) return;
             if (!this.ctx) {
-                this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) {
+                        this.ctx = new AudioContextClass();
+                    } else {
+                        this.failed = true;
+                    }
+                } catch(e) {
+                    console.warn("AudioContext init failed (could be due to browser security or lack of support):", e);
+                    this.failed = true;
+                }
             }
         }
 
         playTone(freq, duration, type = 'square', timeOffset = 0) {
             this.init();
-            if (!this.ctx) return;
+            if (this.failed || !this.ctx) return;
             try {
                 let now = this.ctx.currentTime + timeOffset;
                 let osc = this.ctx.createOscillator();
@@ -154,7 +166,7 @@
 
         playNoise(duration, volume = 0.1, timeOffset = 0) {
             this.init();
-            if (!this.ctx) return;
+            if (this.failed || !this.ctx) return;
             try {
                 let now = this.ctx.currentTime + timeOffset;
                 let bufferSize = this.ctx.sampleRate * duration;
