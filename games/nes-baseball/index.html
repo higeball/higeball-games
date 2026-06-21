@@ -7,6 +7,19 @@
     <!-- Google Fonts for Retro style -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --fc-red: #8a1c14;
+            --fc-gold: #c5a059;
+            --fc-dark: #1a1a1a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
         body {
             font-family: 'Press Start 2P', monospace;
             background-color: #111;
@@ -20,6 +33,8 @@
             min-height: 100vh;
             overflow: hidden;
             user-select: none;
+            touch-action: none; /* Prevent browser pinch and scroll */
+            overscroll-behavior: none;
         }
 
         #game-container {
@@ -27,15 +42,176 @@
             background-color: #000;
             border: 4px solid #fff;
             box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
-            width: 512px;
-            height: 480px;
+            width: 100%;
+            max-width: 512px;
+            display: flex;
+            flex-direction: column;
         }
 
         canvas {
             display: block;
+            width: 100%;
+            height: auto;
             image-rendering: pixelated;
+            background-color: #000;
         }
 
+        /* Virtual Controller Styling (Famicom-like design) */
+        #virtual-controller {
+            width: 100%;
+            height: 160px;
+            background-color: var(--fc-red);
+            border-top: 4px solid #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px;
+            position: relative;
+            box-sizing: border-box;
+            background-image: 
+                linear-gradient(to bottom, rgba(255,255,255,0.1), transparent),
+                linear-gradient(to right, var(--fc-gold) 0%, var(--fc-gold) 100%);
+            background-size: 100% 100%, 100% 12px;
+            background-repeat: no-repeat;
+            background-position: 0 0, 0 20px;
+        }
+
+        /* D-PAD (Cross Key) */
+        .dpad-container {
+            position: relative;
+            width: 110px;
+            height: 110px;
+        }
+
+        .dpad {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90px;
+            height: 90px;
+        }
+
+        .dpad-btn {
+            position: absolute;
+            background-color: var(--fc-dark);
+            border: 2px solid #555;
+            color: #888;
+            font-size: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: inset 0 0 5px rgba(255,255,255,0.2), 0 4px 5px rgba(0,0,0,0.4);
+            touch-action: none;
+        }
+
+        .dpad-btn:active, .dpad-btn.active {
+            background-color: #000;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+            color: #fff;
+        }
+
+        #btn-up {
+            top: 0; left: 30px; width: 30px; height: 32px;
+            border-radius: 4px 4px 0 0;
+            border-bottom: none;
+        }
+        #btn-down {
+            bottom: 0; left: 30px; width: 30px; height: 32px;
+            border-radius: 0 0 4px 4px;
+            border-top: none;
+        }
+        #btn-left {
+            top: 30px; left: 0; width: 32px; height: 30px;
+            border-radius: 4px 0 0 4px;
+            border-right: none;
+        }
+        #btn-right {
+            top: 30px; right: 0; width: 32px; height: 30px;
+            border-radius: 0 4px 4px 0;
+            border-left: none;
+        }
+
+        .dpad-center {
+            position: absolute;
+            top: 30px;
+            left: 30px;
+            width: 30px;
+            height: 30px;
+            background-color: var(--fc-dark);
+            border: none;
+            z-index: 2;
+        }
+
+        /* Action Buttons (A/B style) */
+        .action-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .action-btn {
+            width: 50px;
+            height: 50px;
+            background-color: #a3180c;
+            border: 3px solid var(--fc-dark);
+            border-radius: 50%;
+            box-shadow: 0 4px 5px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.3);
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 1px 1px #000;
+            touch-action: none;
+        }
+
+        .action-btn:active, .action-btn.active {
+            transform: translateY(2px);
+            box-shadow: 0 2px 2px rgba(0,0,0,0.5), inset 0 4px 5px rgba(0,0,0,0.6);
+            background-color: #801006;
+        }
+
+        .action-label {
+            font-size: 8px;
+            color: var(--fc-dark);
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        /* Central rubber decoration */
+        .deco-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+        .deco-stripes {
+            width: 40px;
+            height: 8px;
+            background: repeating-linear-gradient(90deg, var(--fc-dark), var(--fc-dark) 4px, #555 4px, #555 8px);
+            border-radius: 2px;
+        }
+        .deco-text {
+            font-size: 6px;
+            color: var(--fc-dark);
+            font-weight: bold;
+        }
+
+        /* Screens overlays */
         #ui-overlay {
             position: absolute;
             top: 0;
@@ -46,15 +222,15 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.85);
             z-index: 10;
         }
 
         .menu-title {
-            font-size: 24px;
+            font-size: 20px;
             color: #00f0ff;
             text-shadow: 2px 2px #ff007f;
-            margin-bottom: 30px;
+            margin-bottom: 25px;
             text-align: center;
             line-height: 1.6;
         }
@@ -65,32 +241,36 @@
             color: #fff;
             border: 2px solid #fff;
             padding: 12px 24px;
-            font-size: 14px;
+            font-size: 12px;
             cursor: pointer;
-            margin: 10px;
+            margin: 8px;
             transition: all 0.2s;
+            touch-action: manipulation;
         }
 
-        .menu-btn:hover {
+        .menu-btn:hover, .menu-btn:active {
             background: #fff;
             color: #000;
             box-shadow: 0 0 10px #fff;
         }
 
         #controls-info {
-            margin-top: 30px;
+            margin-top: 20px;
             font-size: 8px;
             color: #a0a0cf;
             line-height: 1.8;
             text-align: center;
-            max-width: 400px;
+            max-width: 320px;
+            padding: 0 10px;
         }
 
         #back-link {
             margin-top: 20px;
             color: #ff007f;
             text-decoration: none;
-            font-size: 10px;
+            font-size: 8px;
+            border-bottom: 1px dotted #ff007f;
+            padding-bottom: 2px;
         }
 
         #back-link:hover {
@@ -101,6 +281,7 @@
 <body>
 
     <div id="game-container">
+        <!-- Canvas size will resize responsively -->
         <canvas id="gameCanvas" width="512" height="480"></canvas>
         
         <!-- UI Overlay for Screens -->
@@ -109,11 +290,44 @@
             <button class="menu-btn" id="start-btn" onclick="initGame()">PLAY GAME</button>
             <div id="controls-info">
                 【CONTROLS】<br>
-                BATTER (OFFENSE): Arrow Up/Down to move, Space to Swing<br>
-                PITCHER (DEFENSE): Arrow Left/Right to position, Space to Throw<br>
-                (Hold Left/Right/Up/Down during pitch to Curve/Change Speed)
+                Use the Virtual Controller below or Keyboard:<br>
+                BATTER (OFFENSE): Up/Down to move, A to Swing<br>
+                PITCHER (DEFENSE): Left/Right to position, A to Throw<br>
+                (Hold directions during pitch to Curve/Change Speed)
             </div>
             <a href="../../index.html" id="back-link">BACK TO HUB</a>
+        </div>
+
+        <!-- Virtual Famicom Controller -->
+        <div id="virtual-controller">
+            <!-- D-PAD -->
+            <div class="dpad-container">
+                <div class="dpad">
+                    <div class="dpad-btn" id="btn-up">▲</div>
+                    <div class="dpad-btn" id="btn-left">◀</div>
+                    <div class="dpad-center"></div>
+                    <div class="dpad-btn" id="btn-right">▶</div>
+                    <div class="dpad-btn" id="btn-down">▼</div>
+                </div>
+            </div>
+
+            <!-- Central rubber & branding deco -->
+            <div class="deco-center">
+                <div class="deco-stripes"></div>
+                <div class="deco-text">II-PLAYER</div>
+            </div>
+
+            <!-- Action Buttons (A / B) -->
+            <div class="action-container">
+                <div class="btn-group">
+                    <button class="action-btn" id="btn-b">B</button>
+                    <span class="action-label">B-BUTTON</span>
+                </div>
+                <div class="btn-group">
+                    <button class="action-btn" id="btn-a">A</button>
+                    <span class="action-label">A-BUTTON</span>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -259,6 +473,45 @@
     window.addEventListener('keydown', e => { keys[e.code] = true; });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
 
+    // Setup Virtual Controller Touch/Mouse Events
+    function setupVirtualController() {
+        const mappings = {
+            'btn-up': 'ArrowUp',
+            'btn-down': 'ArrowDown',
+            'btn-left': 'ArrowLeft',
+            'btn-right': 'ArrowRight',
+            'btn-a': 'Space',
+            'btn-b': 'Escape' // B Button can be mapped to something if needed later
+        };
+
+        for (const [btnId, keyName] of Object.entries(mappings)) {
+            const btn = document.getElementById(btnId);
+            if (!btn) continue;
+
+            const startPress = (e) => {
+                e.preventDefault();
+                keys[keyName] = true;
+                btn.classList.add('active');
+            };
+
+            const endPress = (e) => {
+                e.preventDefault();
+                keys[keyName] = false;
+                btn.classList.remove('active');
+            };
+
+            // Touch events
+            btn.addEventListener('touchstart', startPress, { passive: false });
+            btn.addEventListener('touchend', endPress, { passive: false });
+            btn.addEventListener('touchcancel', endPress, { passive: false });
+
+            // Mouse events for fallback
+            btn.addEventListener('mousedown', startPress);
+            btn.addEventListener('mouseup', endPress);
+            btn.addEventListener('mouseleave', endPress);
+        }
+    }
+
     // Entities
     let pitcher = { x: 256, y: 190, dir: 1, state: 'READY', animFrame: 0 };
     let batter = { x: 240, y: 360, state: 'READY', swingFrame: 0, stanceY: 360 };
@@ -286,7 +539,6 @@
     ];
 
     // Field Bases (X, Y in fielding screen coordinate)
-    // Home is (256, 400), 1B is (380, 276), 2B is (256, 152), 3B is (132, 276)
     const basesPos = [
         { x: 256, y: 400 }, // Home (Index 0)
         { x: 380, y: 276 }, // 1B (Index 1)
@@ -311,6 +563,7 @@
         balls = 0;
         runners = [false, false, false];
         
+        setupVirtualController();
         resetAtBat();
         gameState = 'PITCHING';
         inningTextTimer = 120; // 2 seconds of Inning Intro
@@ -390,12 +643,10 @@
         } else {
             // CPU Batter auto positions and swings
             if (ball.active && ball.vy > 0 && batter.state === 'READY') {
-                // Match ball Y roughly, with minor error
                 let error = (Math.random() - 0.5) * 15;
                 if (batter.stanceY < ball.y + error && batter.stanceY < 375) batter.stanceY += 1;
                 else if (batter.stanceY > ball.y + error && batter.stanceY > 345) batter.stanceY -= 1;
 
-                // Decision to swing based on timing
                 if (ball.y > 310 && ball.y < 350 && Math.random() < 0.25) {
                     batter.state = 'SWING';
                     batter.swingFrame = 0;
@@ -426,7 +677,7 @@
             }
         }
 
-        // Windup & Throw animation
+        // Windup & Throw
         if (pitcher.state === 'WINDUP') {
             pitcher.animFrame += 0.15;
             if (pitcher.animFrame >= 3) {
@@ -435,14 +686,11 @@
                 ball.x = pitcher.x;
                 ball.y = pitcher.y + 10;
                 
-                // Ball initial speed
                 let baseSpeed = 4.5;
                 if (isPlayerBatting) {
-                    // CPU pitches
                     ball.vy = baseSpeed + (Math.random() * 1.5);
                     ball.vx = (Math.random() - 0.5) * 0.8;
                 } else {
-                    // Player pitches
                     ball.vy = baseSpeed;
                     ball.vx = 0;
                 }
@@ -452,22 +700,18 @@
 
         // Ball movement & curve control
         if (ball.active) {
-            // Pitcher influence
             if (!isPlayerBatting) {
-                // Player curves ball in flight
                 if (keys['ArrowLeft']) ball.vx -= 0.08;
                 if (keys['ArrowRight']) ball.vx += 0.08;
-                if (keys['ArrowUp']) ball.vy += 0.08; // Fast ball
-                if (keys['ArrowDown']) ball.vy -= 0.08; // Slow ball
+                if (keys['ArrowUp']) ball.vy += 0.08;
+                if (keys['ArrowDown']) ball.vy -= 0.08;
             } else {
-                // CPU curves randomly
                 if (Math.random() < 0.15) ball.vx += (Math.random() - 0.5) * 0.15;
             }
 
             ball.x += ball.vx;
             ball.y += ball.vy;
 
-            // Batter swing update
             let swungThisFrame = false;
             if (batter.state === 'SWING') {
                 batter.swingFrame += 0.35;
@@ -479,22 +723,18 @@
                 }
             }
 
-            // Hit Detection (Must swing exactly when ball crosses batter box Y)
             if (swungThisFrame && ball.y > 330 && ball.y < 370) {
                 let dist = Math.abs(ball.x - batter.x);
                 if (dist < 20) {
-                    // HIT!
                     triggerHit(dist, ball.x - batter.x);
                     return;
                 }
             }
 
-            // Catcher Catch / Strike/Ball checks
             if (ball.y >= 390) {
                 ball.active = false;
                 sound.playCatch();
                 
-                // Strike or Ball?
                 let isStrike = (ball.x > 236 && ball.x < 276 && ball.y >= 380 && ball.y <= 405);
                 if (isStrike) {
                     strikes++;
@@ -525,70 +765,56 @@
     function triggerHit(dist, offset) {
         sound.playHit();
         ball.active = false;
-        
-        // Transition to FIELDING screen
         gameState = 'FIELDING';
         
-        // Reset fielders to origin positions
         fielders.forEach(f => {
             f.x = f.ox;
             f.y = f.oy;
         });
 
-        // Ball launch parameters
-        // offset ranges from -20 (left edge of bat) to +20 (right edge of bat)
-        // Adjust launch angle based on swing timing and offset
-        let angle = -Math.PI/2; // straight up
-        angle += (offset / 15) * 0.6; // curve left/right based on bat offset
+        let angle = -Math.PI/2;
+        angle += (offset / 15) * 0.6;
         
-        // Batter swing timing adjust
-        let timingDiff = ball.y - batter.stanceY; // negative is early, positive is late
+        let timingDiff = ball.y - batter.stanceY;
         angle += (timingDiff / 20) * 0.4;
 
-        let power = 5.5 + (20 - dist) / 5; // closer to center of bat = more power
+        let power = 5.5 + (20 - dist) / 5;
         
         fieldBall.x = 256;
-        fieldBall.y = 400; // Start from Home Base (fielding coordinate)
+        fieldBall.y = 400;
         fieldBall.vx = Math.cos(angle) * power;
         fieldBall.vy = Math.sin(angle) * power;
         fieldBall.z = 0;
-        fieldBall.vz = 3.5 + Math.random() * 3; // Verticle velocity (pop fly / grounder)
+        fieldBall.vz = 3.5 + Math.random() * 3;
         fieldBall.ground = false;
 
         fieldFielderBallHolder = null;
-
-        // Init Runners list
         fieldRunners = [];
         
-        // Existing runners on bases
-        // In our simple model, 1B is index 1, 2B is index 2, 3B is index 3
-        if (runners[2]) { // 3B
+        if (runners[2]) {
             fieldRunners.push({ fromBase: 3, toBase: 0, progress: 0, speed: 0.02, id: '3B' });
         }
-        if (runners[1]) { // 2B
+        if (runners[1]) {
             fieldRunners.push({ fromBase: 2, toBase: 3, progress: 0, speed: 0.02, id: '2B' });
         }
-        if (runners[0]) { // 1B
+        if (runners[0]) {
             fieldRunners.push({ fromBase: 1, toBase: 2, progress: 0, speed: 0.02, id: '1B' });
         }
-        
-        // Batter runner
         fieldRunners.push({ fromBase: 0, toBase: 1, progress: 0, speed: 0.022, id: 'BATTER' });
     }
 
     function updateFielding() {
-        // --- Ball Physics ---
         if (!fieldFielderBallHolder) {
             fieldBall.x += fieldBall.vx;
             fieldBall.y += fieldBall.vy;
             
             if (!fieldBall.ground) {
                 fieldBall.z += fieldBall.vz;
-                fieldBall.vz -= 0.12; // Gravity
+                fieldBall.vz -= 0.12;
                 
                 if (fieldBall.z <= 0) {
                     fieldBall.z = 0;
-                    fieldBall.vz = -fieldBall.vz * 0.4; // Bounce
+                    fieldBall.vz = -fieldBall.vz * 0.4;
                     fieldBall.vx *= 0.8;
                     fieldBall.vy *= 0.8;
                     
@@ -597,29 +823,20 @@
                     }
                 }
             } else {
-                // Ground friction
                 fieldBall.vx *= 0.95;
                 fieldBall.vy *= 0.95;
             }
 
-            // Boundary limits
             if (fieldBall.x < 50 || fieldBall.x > 462 || fieldBall.y < 40) {
-                // Out of field or Home Run?
                 let distToHome = Math.hypot(fieldBall.x - 256, fieldBall.y - 400);
-                let angleFromHome = Math.atan2(fieldBall.y - 400, fieldBall.x - 256);
-                
-                // Foul line check (approx 45 degrees left and right from Home)
-                // Left foul line is roughly 135 deg (-3/4 PI), Right is 45 deg (-1/4 PI)
                 let isFoul = (fieldBall.x < 256 - (400 - fieldBall.y) || fieldBall.x > 256 + (400 - fieldBall.y));
                 
                 if (isFoul) {
-                    // FOUL
                     strikes++;
-                    if (strikes > 2) strikes = 2; // Foul doesn't strike out unless bunt
+                    if (strikes > 2) strikes = 2;
                     triggerTextPlay("FOUL BALL", sound.playOut.bind(sound));
                     return;
                 } else if (distToHome > 320 && fieldBall.z > 0) {
-                    // HOME RUN!
                     score[half === 'TOP' ? 'BLUE' : 'RED'] += fieldRunners.length;
                     runners = [false, false, false];
                     triggerTextPlay("HOME RUN!!", sound.playHomeRun.bind(sound));
@@ -628,21 +845,18 @@
             }
         }
 
-        // --- Fielder AI ---
         let closestFielder = null;
         let minDist = 9999;
         
         fielders.forEach(f => {
-            if (f.role === 'C') return; // Catcher stays home
+            if (f.role === 'C') return;
             
-            // Find closest to ball
             let dist = Math.hypot(f.x - fieldBall.x, f.y - fieldBall.y);
             if (dist < minDist) {
                 minDist = dist;
                 closestFielder = f;
             }
 
-            // Move fielder towards ball if no one has it
             if (!fieldFielderBallHolder) {
                 let dx = fieldBall.x - f.x;
                 let dy = fieldBall.y - f.y;
@@ -655,13 +869,10 @@
             }
         });
 
-        // Catching Check
         if (!fieldFielderBallHolder && minDist < 12 && fieldBall.z < 15) {
-            // Ball caught!
             fieldFielderBallHolder = closestFielder;
             sound.playCatch();
             
-            // Check for flyout (catch without bounce)
             if (!fieldBall.ground && fieldBall.vz < 0) {
                 outs++;
                 strikes = 0;
@@ -672,10 +883,7 @@
             }
         }
 
-        // Fielder throwing logic
         if (fieldFielderBallHolder) {
-            // Auto throw to base to get runner out
-            // Target base is whichever runner is closest to their destination
             let targetBaseIndex = 1;
             let maxProgress = -1;
             
@@ -686,27 +894,24 @@
                 }
             });
 
-            // Throw ball to target base
             let targetBasePos = basesPos[targetBaseIndex];
             let tx = targetBasePos.x;
             let ty = targetBasePos.y;
             
-            // Ball moves from fielder to base
             fieldFielderBallHolder = null;
             fieldBall.x = closestFielder.x;
             fieldBall.y = closestFielder.y;
             fieldBall.z = 0;
-            fieldBall.ground = true; // throw flat
+            fieldBall.ground = true;
             
             let throwDx = tx - fieldBall.x;
             let throwDy = ty - fieldBall.y;
             let throwLen = Math.hypot(throwDx, throwDy);
             
-            fieldBall.vx = (throwDx / throwLen) * 6; // Fast throw speed
+            fieldBall.vx = (throwDx / throwLen) * 6;
             fieldBall.vy = (throwDy / throwLen) * 6;
         }
 
-        // --- Runners Progress ---
         let playEnded = false;
         let scoreTriggered = false;
         let outTriggered = false;
@@ -721,36 +926,24 @@
             r.x = fromBasePos.x + (toBasePos.x - fromBasePos.x) * r.progress;
             r.y = fromBasePos.y + (toBasePos.y - fromBasePos.y) * r.progress;
 
-            // Check if runner reached base
             if (r.progress >= 1.0) {
                 if (r.toBase === 0) {
-                    // Home In!
                     score[half === 'TOP' ? 'BLUE' : 'RED']++;
                     fieldRunners.splice(i, 1);
                     sound.playCheer();
                     scoreTriggered = true;
                     continue;
                 } else {
-                    // Reached intermediate base
                     r.fromBase = r.toBase;
                     r.toBase = (r.fromBase + 1) % 4;
                     r.progress = 0;
-                    
-                    // Stop running if there's no force or hit momentum
-                    // For simplicity, CPU/Player stops at base
-                    // Transfer to base array
                 }
             }
 
-            // Check Tag/Force Out
-            // If ball reaches target base before runner
             let distBallToBase = Math.hypot(fieldBall.x - toBasePos.x, fieldBall.y - toBasePos.y);
             if (distBallToBase < 10) {
-                // Ball is at base! Is runner close?
                 let distRunnerToBase = Math.hypot(r.x - toBasePos.x, r.y - toBasePos.y);
-                // If ball is waiting and runner is incoming
                 if (distRunnerToBase > 5 && distRunnerToBase < 40) {
-                    // OUT!
                     outs++;
                     fieldRunners.splice(i, 1);
                     outTriggered = true;
@@ -760,11 +953,6 @@
             }
         }
 
-        // Determine if play ended
-        // Play ends when:
-        // 1. All runners stopped / finished (no runners left in fieldRunners)
-        // 2. Ball is at home/pitcher hands and no runner is moving
-        // Or simple timer / out trigger
         let isBallStopped = Math.hypot(fieldBall.vx, fieldBall.vy) < 0.2;
         if (fieldRunners.length === 0 || (isBallStopped && fieldBall.y > 150 && fieldBall.y < 260)) {
             playEnded = true;
@@ -776,10 +964,8 @@
         }
 
         if (playEnded) {
-            // Apply runner positions back to global `runners` state
             runners = [false, false, false];
             fieldRunners.forEach(r => {
-                // Determine current base of active runner
                 let base = r.fromBase;
                 if (base >= 1 && base <= 3) {
                     runners[base - 1] = true;
@@ -795,7 +981,6 @@
     }
 
     function walkRunners() {
-        // Walk batter to 1st, advance others if forced
         if (!runners[0]) {
             runners[0] = true;
         } else if (!runners[1]) {
@@ -803,7 +988,6 @@
         } else if (!runners[2]) {
             runners[2] = true;
         } else {
-            // Score run
             score[half === 'TOP' ? 'BLUE' : 'RED']++;
             sound.playCheer();
         }
@@ -811,14 +995,13 @@
 
     function triggerTextPlay(txt, soundCall = null) {
         playResultText = txt;
-        playResultTimer = 90; // 1.5 seconds
+        playResultTimer = 90;
         if (soundCall) soundCall();
         else sound.playTone(440, 0.08);
     }
 
     function checkInningOver() {
         if (outs >= 3) {
-            // Switch half
             outs = 0;
             strikes = 0;
             balls = 0;
@@ -829,9 +1012,7 @@
                 triggerTextPlay("3 OUT! CHANGE!", sound.playOut.bind(sound));
                 inningTextTimer = 120;
             } else {
-                // Bottom of inning over. Advance inning
                 if (inning >= 3) {
-                    // Game Over
                     gameState = 'GAMEOVER';
                     playResultText = "GAME OVER";
                     playResultTimer = 180;
@@ -902,7 +1083,6 @@
     }
 
     function renderScoreboard() {
-        // NES Style top header scoreboard
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, canvas.width, 60);
         ctx.strokeStyle = '#fff';
@@ -913,15 +1093,12 @@
         ctx.fillStyle = '#fff';
         ctx.textAlign = 'left';
 
-        // Display Scores
         ctx.fillText(`1P(B): ${score.BLUE}`, 20, 24);
         ctx.fillText(`CP(R): ${score.RED}`, 20, 44);
 
-        // Display Inning
         let side = (half === 'TOP') ? '▲' : '▼';
         ctx.fillText(`ING: ${inning}${side}`, 170, 34);
 
-        // Display Count
         ctx.fillText(`B:`, 300, 24);
         for(let i=0; i<3; i++) {
             ctx.fillStyle = (i < balls) ? '#00f0ff' : '#444';
@@ -944,27 +1121,20 @@
     }
 
     function renderPitchingScreen() {
-        // --- 1. Background Field ---
-        // Green Grass
         ctx.fillStyle = '#227A2A';
         ctx.fillRect(0, 60, canvas.width, canvas.height - 60);
 
-        // Dirt areas (Batter area, Mound)
         ctx.fillStyle = '#C08A55';
-        // Pitcher Mound
         ctx.beginPath();
         ctx.ellipse(256, 200, 35, 15, 0, 0, Math.PI*2);
         ctx.fill();
-        // Batter Box area
         ctx.fillRect(200, 330, 112, 100);
 
-        // Lines (Homeplate & Boxes)
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 3;
-        // Batter boxes
-        ctx.strokeRect(210, 340, 25, 60); // Left box
-        ctx.strokeRect(277, 340, 25, 60); // Right box
-        // Home Plate
+        ctx.strokeRect(210, 340, 25, 60);
+        ctx.strokeRect(277, 340, 25, 60);
+        
         ctx.fillStyle = '#fff';
         ctx.beginPath();
         ctx.moveTo(256, 385);
@@ -975,90 +1145,76 @@
         ctx.closePath();
         ctx.fill();
 
-        // --- 2. Runners Diamond Map ---
-        // Small HUD diamond showing runner status
         let mapX = 40, mapY = 120, size = 15;
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.moveTo(mapX, mapY - size); // 2B
-        ctx.lineTo(mapX + size, mapY); // 1B
-        ctx.lineTo(mapX, mapY + size); // Home
-        ctx.lineTo(mapX - size, mapY); // 3B
+        ctx.moveTo(mapX, mapY - size);
+        ctx.lineTo(mapX + size, mapY);
+        ctx.lineTo(mapX, mapY + size);
+        ctx.lineTo(mapX - size, mapY);
         ctx.closePath();
         ctx.stroke();
         
-        // Active Runners (Glow colored)
-        if (runners[0]) { // 1B
+        if (runners[0]) {
             ctx.fillStyle = '#00f0ff';
             ctx.fillRect(mapX + size - 3, mapY - 3, 6, 6);
         }
-        if (runners[1]) { // 2B
+        if (runners[1]) {
             ctx.fillStyle = '#00f0ff';
             ctx.fillRect(mapX - 3, mapY - size - 3, 6, 6);
         }
-        if (runners[2]) { // 3B
+        if (runners[2]) {
             ctx.fillStyle = '#00f0ff';
             ctx.fillRect(mapX - size - 3, mapY - 3, 6, 6);
         }
 
-        // --- 3. Characters ---
-        // Catcher
         ctx.fillStyle = '#f39c12';
-        ctx.fillRect(catcher.x - 8, catcher.y - 12, 16, 20); // body
+        ctx.fillRect(catcher.x - 8, catcher.y - 12, 16, 20);
         ctx.fillStyle = '#fff';
-        ctx.fillRect(catcher.x - 4, catcher.y - 18, 8, 6); // head
+        ctx.fillRect(catcher.x - 4, catcher.y - 18, 8, 6);
 
-        // Umpire
         ctx.fillStyle = '#555';
         ctx.fillRect(umpire.x - 10, umpire.y - 12, 20, 22);
 
-        // Pitcher (RED Team)
-        ctx.fillStyle = '#ff0000'; // RED
+        ctx.fillStyle = '#ff0000';
         let pYOffset = 0;
         if (pitcher.state === 'WINDUP') {
             pYOffset = Math.floor(pitcher.animFrame) % 2 === 0 ? -4 : 0;
         }
-        ctx.fillRect(pitcher.x - 8, pitcher.y - 12 + pYOffset, 16, 22); // body
-        ctx.fillStyle = '#ffddaa'; // skin
-        ctx.fillRect(pitcher.x - 4, pitcher.y - 18 + pYOffset, 8, 6); // head
-        ctx.fillStyle = '#fff'; // cap line
+        ctx.fillRect(pitcher.x - 8, pitcher.y - 12 + pYOffset, 16, 22);
+        ctx.fillStyle = '#ffddaa';
+        ctx.fillRect(pitcher.x - 4, pitcher.y - 18 + pYOffset, 8, 6);
+        ctx.fillStyle = '#fff';
         ctx.fillRect(pitcher.x - 6, pitcher.y - 20 + pYOffset, 10, 2);
 
-        // Batter (BLUE Team)
-        ctx.fillStyle = '#00f0ff'; // BLUE
-        ctx.fillRect(batter.x - 8, batter.stanceY - 12, 16, 22); // body
-        ctx.fillStyle = '#ffddaa'; // skin
-        ctx.fillRect(batter.x - 4, batter.stanceY - 18, 8, 6); // head
-        ctx.fillStyle = '#fff'; // helmet
+        ctx.fillStyle = '#00f0ff';
+        ctx.fillRect(batter.x - 8, batter.stanceY - 12, 16, 22);
+        ctx.fillStyle = '#ffddaa';
+        ctx.fillRect(batter.x - 4, batter.stanceY - 18, 8, 6);
+        ctx.fillStyle = '#fff';
         ctx.fillRect(batter.x - 5, batter.stanceY - 20, 10, 2);
 
-        // Bat rendering based on swing frame
         if (batter.state === 'SWING') {
-            ctx.strokeStyle = '#f1c40f'; // Gold bat
+            ctx.strokeStyle = '#f1c40f';
             ctx.lineWidth = 4;
             ctx.beginPath();
             let frame = Math.floor(batter.swingFrame);
             if (frame === 0) {
-                // Cocked back
                 ctx.moveTo(batter.x - 6, batter.stanceY - 12);
                 ctx.lineTo(batter.x - 18, batter.stanceY - 22);
             } else if (frame === 1) {
-                // Mid swing (horizontal)
                 ctx.moveTo(batter.x - 2, batter.stanceY - 8);
                 ctx.lineTo(batter.x + 22, batter.stanceY - 8);
             } else if (frame === 2) {
-                // Forward
                 ctx.moveTo(batter.x + 2, batter.stanceY - 6);
                 ctx.lineTo(batter.x + 18, batter.stanceY + 8);
             } else {
-                // Follow through
                 ctx.moveTo(batter.x - 2, batter.stanceY - 4);
                 ctx.lineTo(batter.x - 12, batter.stanceY + 12);
             }
             ctx.stroke();
         } else if (batter.state === 'READY') {
-            // Normal standing bat
             ctx.strokeStyle = '#f1c40f';
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -1067,18 +1223,14 @@
             ctx.stroke();
         }
 
-        // --- 4. Ball ---
         if (ball.active) {
-            // Ball Shadow
             ctx.fillStyle = 'rgba(0,0,0,0.2)';
             ctx.fillRect(Math.floor(ball.x) - 2, Math.floor(ball.y) + 4, 6, 2);
             
-            // Ball body
             ctx.fillStyle = '#fff';
             ctx.fillRect(Math.floor(ball.x) - 3, Math.floor(ball.y) - 3, 6, 6);
         }
 
-        // --- 5. Text Overlay (Strike/Ball alerts) ---
         if (playResultTimer > 0 && playResultText !== "") {
             ctx.font = '16px "Press Start 2P"';
             ctx.fillStyle = '#ff007f';
@@ -1086,76 +1238,62 @@
             ctx.shadowColor = '#000';
             ctx.shadowBlur = 4;
             ctx.fillText(playResultText, 256, 280);
-            ctx.shadowBlur = 0; // reset
+            ctx.shadowBlur = 0;
         }
     }
 
     function renderFieldingScreen() {
-        // --- 1. FIELD GRASS & DIRT ---
         ctx.fillStyle = '#227A2A';
         ctx.fillRect(0, 60, canvas.width, canvas.height - 60);
 
-        // Infield dirt diamond outline
         ctx.fillStyle = '#C08A55';
         ctx.beginPath();
-        ctx.moveTo(256, 130); // 2B area
-        ctx.lineTo(395, 276); // 1B area
-        ctx.lineTo(256, 420); // Home area
-        ctx.lineTo(117, 276); // 3B area
+        ctx.moveTo(256, 130);
+        ctx.lineTo(395, 276);
+        ctx.lineTo(256, 420);
+        ctx.lineTo(117, 276);
         ctx.closePath();
         ctx.fill();
 
-        // Baseline Paths (White lines)
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.moveTo(basesPos[0].x, basesPos[0].y); // Home
-        ctx.lineTo(basesPos[1].x, basesPos[1].y); // 1B
-        ctx.lineTo(basesPos[2].x, basesPos[2].y); // 2B
-        ctx.lineTo(basesPos[3].x, basesPos[3].y); // 3B
+        ctx.moveTo(basesPos[0].x, basesPos[0].y);
+        ctx.lineTo(basesPos[1].x, basesPos[1].y);
+        ctx.lineTo(basesPos[2].x, basesPos[2].y);
+        ctx.lineTo(basesPos[3].x, basesPos[3].y);
         ctx.closePath();
         ctx.stroke();
 
-        // Bases (White squares)
         ctx.fillStyle = '#fff';
         for(let i=0; i<4; i++) {
             ctx.fillRect(basesPos[i].x - 6, basesPos[i].y - 6, 12, 12);
         }
 
-        // --- 2. PLAYERS ---
-        // Fielders (RED Team)
-        ctx.fillStyle = '#ff0000'; // RED
         fielders.forEach(f => {
-            // Draw fielder body
             ctx.fillStyle = '#ff0000';
             ctx.fillRect(f.x - 6, f.y - 10, 12, 16);
             ctx.fillStyle = '#ffddaa';
-            ctx.fillRect(f.x - 3, f.y - 14, 6, 4); // Head
+            ctx.fillRect(f.x - 3, f.y - 14, 6, 4);
             
-            // Fielder Label text
             ctx.fillStyle = '#fff';
             ctx.font = '6px "Press Start 2P"';
             ctx.fillText(f.role, f.x - 6, f.y - 16);
         });
 
-        // Runners (BLUE Team)
         fieldRunners.forEach(r => {
-            ctx.fillStyle = '#00f0ff'; // BLUE
+            ctx.fillStyle = '#00f0ff';
             ctx.fillRect(r.x - 6, r.y - 10, 12, 16);
             ctx.fillStyle = '#ffddaa';
-            ctx.fillRect(r.x - 3, r.y - 14, 6, 4); // Head
+            ctx.fillRect(r.x - 3, r.y - 14, 6, 4);
         });
 
-        // --- 3. BALL & SHADOW ---
-        // Shadow (z-height offset)
         ctx.fillStyle = 'rgba(0,0,0,0.3)';
         ctx.fillRect(fieldBall.x - 3, fieldBall.y + 6, 6, 2);
         
-        // Ball
         ctx.fillStyle = '#fff';
         ctx.fillRect(fieldBall.x - 3, fieldBall.y - 3 - fieldBall.z, 6, 6);
 
-        // --- 4. PLAY ALERTS ---
         if (playResultTimer > 0 && playResultText !== "") {
             ctx.font = '16px "Press Start 2P"';
             ctx.fillStyle = '#ff007f';
@@ -1163,6 +1301,11 @@
             ctx.fillText(playResultText, 256, 240);
         }
     }
+
+    // Run setup on load
+    window.addEventListener('load', () => {
+        setupVirtualController();
+    });
 </script>
 
 </body>
