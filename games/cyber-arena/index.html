@@ -515,12 +515,12 @@
     let currentTurnIndex = 0;
     let floatingTexts = [];
 
-    // Monseter Profiles Data
+    // Monster Profiles Data (Aligned horizontally side-by-side)
     const MONSTER_PROFILES = {
-        slime: { id: 'slime', name: 'ネオンスライム', emoji: '💧', hp: 80, maxHp: 80, atk: 12, spd: 18, odds: 4.5, color: '#39ff14', x: 60, y: 70 },
-        dragon: { id: 'dragon', name: 'サイバードラゴン', emoji: '🔥', hp: 160, maxHp: 160, atk: 22, spd: 8, odds: 1.8, color: '#ffaa00', x: 260, y: 70 },
-        golem: { id: 'golem', name: 'メタルグリッド', emoji: '🛡️', hp: 120, maxHp: 120, atk: 16, spd: 12, odds: 2.6, color: '#ff007f', x: 60, y: 150 },
-        phantom: { id: 'phantom', name: 'ファントムボット', emoji: '🤖', hp: 100, maxHp: 100, atk: 18, spd: 14, odds: 3.2, color: '#00f0ff', x: 260, y: 150 }
+        slime: { id: 'slime', name: 'ネオンスライム', emoji: '💧', hp: 80, maxHp: 80, atk: 12, spd: 18, odds: 4.5, color: '#39ff14', x: 45, y: 130 },
+        dragon: { id: 'dragon', name: 'サイバードラゴン', emoji: '🔥', hp: 160, maxHp: 160, atk: 22, spd: 8, odds: 1.8, color: '#ffaa00', x: 120, y: 130 },
+        golem: { id: 'golem', name: 'メタルグリッド', emoji: '🛡️', hp: 120, maxHp: 120, atk: 16, spd: 12, odds: 2.6, color: '#ff007f', x: 195, y: 130 },
+        phantom: { id: 'phantom', name: 'ファントムボット', emoji: '🤖', hp: 100, maxHp: 100, atk: 18, spd: 14, odds: 3.2, color: '#00f0ff', x: 275, y: 130 }
     };
 
     window.onload = () => {
@@ -688,6 +688,8 @@
             s.spd = 24;
             s.color = '#ffd700';
             s.odds = 7.7;
+            s.x = 45;
+            s.y = 130;
         }
 
         addLog(`バトルロイヤル 闘技戦 が はじまった！`, 'log-skill');
@@ -832,8 +834,10 @@
         sound.playAttack();
         addLog(`<strong>${actor.name}</strong> の こうげき！`);
         
-        // Dash animation simulated by changing target coordinates slightly or flash
+        // Dash animation toward target coordinates
         actor.isDashing = true;
+        actor.dashTargetX = target.x;
+        actor.dashTargetY = target.y;
         
         setTimeout(() => {
             actor.isDashing = false;
@@ -985,47 +989,93 @@
         }
     }
 
-    // --- Floating text management on canvas ---
-    function createFloatingText(x, y, text, color) {
-        floatingTexts.push({
-            x: x,
-            y: y,
-            text: text,
-            color: color,
-            timer: 45 // Frames life
-        });
+    function drawStadiumDecor() {
+        // SF Perspective Grid arena floor
+        ctx.fillStyle = '#050414';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.08)';
+        ctx.lineWidth = 1;
+        
+        let horizonY = 75; // ground line
+        for (let y = horizonY; y < canvas.height; y += 15) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+
+        let count = 12;
+        for (let i = 0; i <= count; i++) {
+            let startX = (canvas.width / count) * i;
+            ctx.beginPath();
+            ctx.moveTo(startX, canvas.height);
+            ctx.lineTo(startX * 0.45 + canvas.width * 0.275, horizonY);
+            ctx.stroke();
+        }
+
+        // Horizon line glow
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, horizonY);
+        ctx.lineTo(canvas.width, horizonY);
+        ctx.stroke();
+
+        // Neon Billboard Decor
+        ctx.fillStyle = '#0a091d';
+        ctx.fillRect(40, 10, canvas.width - 80, 42);
+        ctx.strokeStyle = 'rgba(255, 0, 127, 0.3)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(40, 10, canvas.width - 80, 42);
+        
+        ctx.font = 'bold 8px "Press Start 2P"';
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.35)';
+        ctx.textAlign = 'center';
+        ctx.fillText('CYBER COLISEUM', canvas.width/2, 26);
+        ctx.fillText('STAGE 4: NEON GRID', canvas.width/2, 42);
     }
 
     // --- Canvas Rendering Loop ---
     function renderLoop() {
         if (gameState !== 'BATTLE') return;
 
-        // Clear Canvas
-        ctx.fillStyle = '#050414';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Grid Design Decor
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
-        ctx.lineWidth = 1;
-        for (let i = 0; i < canvas.width; i += 20) {
-            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
-        }
-        for (let i = 0; i < canvas.height; i += 20) {
-            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
-        }
+        // Draw background
+        drawStadiumDecor();
 
         // Draw Monsters
         monsters.forEach(m => {
-            if (m.hp <= 0) return; // Hide dead ones
+            if (m.hp <= 0) return;
+
+            let isMyBet = (m.id === selectedMonsterId);
+            
+            // Draw BET neon target ring under feet
+            if (isMyBet) {
+                ctx.save();
+                ctx.translate(m.x, m.y + 16);
+                ctx.strokeStyle = 'rgba(255, 0, 127, 0.4)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(0, 0, 24, 6, 0, 0, Math.PI*2);
+                ctx.stroke();
+                
+                ctx.rotate(Date.now() / 200);
+                ctx.strokeStyle = '#ff007f';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-22, 0); ctx.lineTo(-15, 0);
+                ctx.moveTo(22, 0); ctx.lineTo(15, 0);
+                ctx.stroke();
+                ctx.restore();
+            }
 
             ctx.save();
 
-            // Dash effect offsets
+            // Dash effect offsets (toward target)
             let ox = 0, oy = 0;
-            if (m.isDashing) {
-                // Dash vibration toward center
-                ox = (160 - m.x) * 0.4;
-                oy = (110 - m.y) * 0.4;
+            if (m.isDashing && m.dashTargetX !== undefined) {
+                ox = (m.dashTargetX - m.x) * 0.45;
+                oy = (m.dashTargetY - m.y) * 0.45;
             }
             if (m.shakeTimer > 0) {
                 ox += (Math.random() - 0.5) * 6;
@@ -1041,50 +1091,121 @@
                 m.isSkillGlowing--;
             }
 
-            // Draw Monster Symbol Body (Neon style vectors)
+            // Draw Monster Symbol Body (Upgrade Neon designs)
             ctx.strokeStyle = m.color;
             ctx.lineWidth = 3;
             
             if (m.id === 'slime') {
-                // Vector dropshape
-                ctx.beginPath();
-                ctx.moveTo(0, -15);
-                ctx.bezierCurveTo(15, -10, 18, 12, 0, 15);
-                ctx.bezierCurveTo(-18, 12, -15, -10, 0, -15);
-                ctx.closePath();
-                ctx.stroke();
-            } else if (m.id === 'dragon') {
-                // Triangle Dragon head + Spikes
+                // Bounce scale
+                let sw = Math.sin(Date.now() / 120) * 0.08;
+                ctx.scale(1 + sw, 1 - sw);
+                
+                ctx.fillStyle = slimeIsGolden ? 'rgba(255, 215, 0, 0.2)' : 'rgba(57, 255, 20, 0.15)';
                 ctx.beginPath();
                 ctx.moveTo(0, -18);
-                ctx.lineTo(15, 6);
-                ctx.lineTo(5, 12);
-                ctx.lineTo(-5, 12);
-                ctx.lineTo(-15, 6);
+                ctx.bezierCurveTo(16, -12, 20, 12, 0, 16);
+                ctx.bezierCurveTo(-20, 12, -16, -12, 0, -18);
                 ctx.closePath();
+                ctx.fill();
                 ctx.stroke();
-                // Dragon wings
+
+                // Draw Eyes
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
                 ctx.beginPath();
-                ctx.moveTo(-10, -5); ctx.lineTo(-24, -12); ctx.lineTo(-15, 6);
-                ctx.moveTo(10, -5); ctx.lineTo(24, -12); ctx.lineTo(15, 6);
+                ctx.moveTo(-6, -2); ctx.lineTo(-2, -4);
+                ctx.moveTo(6, -2); ctx.lineTo(2, -4);
+                ctx.stroke();
+            } else if (m.id === 'dragon') {
+                // Wings flap
+                let wingY = Math.sin(Date.now() / 150) * 6;
+                
+                ctx.fillStyle = 'rgba(255, 170, 0, 0.1)';
+                ctx.beginPath();
+                ctx.moveTo(0, -20);
+                ctx.lineTo(12, 4);
+                ctx.lineTo(0, 14);
+                ctx.lineTo(-12, 4);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Eyes
+                ctx.fillStyle = '#ff0000';
+                ctx.beginPath();
+                ctx.arc(-4, -6, 2, 0, Math.PI*2);
+                ctx.arc(4, -6, 2, 0, Math.PI*2);
+                ctx.fill();
+                
+                // Wings
+                ctx.strokeStyle = m.color;
+                ctx.lineWidth = 2.5;
+                ctx.beginPath();
+                ctx.moveTo(-8, -2); ctx.lineTo(-26, -12 + wingY); ctx.lineTo(-16, 6 + wingY); ctx.lineTo(-6, 2);
+                ctx.moveTo(8, -2); ctx.lineTo(26, -12 + wingY); ctx.lineTo(16, 6 + wingY); ctx.lineTo(6, 2);
                 ctx.stroke();
             } else if (m.id === 'golem') {
-                // Hard Metal Shield Grid box
-                ctx.strokeRect(-14, -14, 28, 28);
-                ctx.strokeStyle = '#fff';
-                ctx.strokeRect(-8, -8, 16, 16);
-            } else if (m.id === 'phantom') {
-                // Octagon Bot
+                let hoverY = Math.sin(Date.now() / 200) * 2;
+                ctx.translate(0, hoverY);
+
+                ctx.fillStyle = 'rgba(255, 0, 127, 0.15)';
                 ctx.beginPath();
-                ctx.moveTo(-6, -15);
-                ctx.lineTo(6, -15);
-                ctx.lineTo(15, -6);
-                ctx.lineTo(15, 6);
-                ctx.lineTo(6, 15);
-                ctx.lineTo(-6, 15);
-                ctx.lineTo(-15, 6);
-                ctx.lineTo(-15, -6);
+                ctx.moveTo(-16, -12); ctx.lineTo(16, -12);
+                ctx.lineTo(16, 12); ctx.lineTo(-16, 12);
                 ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Grid detail
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(-10, 0); ctx.lineTo(10, 0);
+                ctx.moveTo(0, -10); ctx.lineTo(0, 10);
+                ctx.stroke();
+
+                // Core pulse
+                let pulse = 2 + Math.abs(Math.sin(Date.now() / 250)) * 4;
+                ctx.fillStyle = '#ff007f';
+                ctx.shadowColor = '#ff007f';
+                ctx.shadowBlur = pulse * 1.5;
+                ctx.beginPath();
+                ctx.arc(0, 0, pulse, 0, Math.PI*2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            } else if (m.id === 'phantom') {
+                let hoverY = Math.sin(Date.now() / 180) * 2.5;
+                ctx.translate(0, hoverY);
+
+                ctx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+                ctx.beginPath();
+                ctx.moveTo(-8, -14); ctx.lineTo(8, -14);
+                ctx.lineTo(14, -6); ctx.lineTo(14, 6);
+                ctx.lineTo(6, 14); ctx.lineTo(-6, 14);
+                ctx.lineTo(-14, 6); ctx.lineTo(-14, -6);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+
+                // Visor
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(-8, -4); ctx.lineTo(8, -4);
+                ctx.stroke();
+
+                // Floating Arms
+                ctx.strokeStyle = m.color;
+                ctx.lineWidth = 2.5;
+                ctx.strokeRect(-22, -2, 6, 6);
+                ctx.strokeRect(16, -2, 6, 6);
+
+                // Jet thruster glow
+                let jetH = 6 + Math.random() * 6;
+                ctx.strokeStyle = '#ff007f';
+                ctx.lineWidth = 3.5;
+                ctx.beginPath();
+                ctx.moveTo(0, 14); ctx.lineTo(0, 14 + jetH);
                 ctx.stroke();
             }
 
@@ -1112,6 +1233,13 @@
             ctx.font = '7px "Press Start 2P"';
             ctx.fillStyle = '#a0a0cf';
             ctx.fillText(`${m.hp}/${m.maxHp}`, m.x, m.y + 34);
+
+            // Blinking BET marker text above My Bet monster
+            if (isMyBet && Math.sin(Date.now() / 120) > 0) {
+                ctx.font = 'bold 8px "Press Start 2P"';
+                ctx.fillStyle = '#ff007f';
+                ctx.fillText('★BET★', m.x, m.y - 36);
+            }
         });
 
         // Update & Render Floating damage text
@@ -1132,9 +1260,6 @@
     }
 
     function drawStaticArena() {
-        ctx.fillStyle = '#050414';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.1)';
         ctx.lineWidth = 1;
         for (let i = 0; i < canvas.width; i += 20) {
             ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
