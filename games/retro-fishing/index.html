@@ -304,7 +304,7 @@
         
         <!-- Touch Controller -->
         <div id="action-zone">
-            <div class="action-button" id="btn-action" onclick="onButtonClicked()">CAST</div>
+            <div class="action-button" id="btn-action">CAST</div>
             <div class="instructions-text" id="instructions">ウキを投げよう！</div>
         </div>
 
@@ -463,6 +463,27 @@
             playerName = savedName;
             document.getElementById('player-name-text').innerText = playerName;
         }
+
+        // Tap delay prevention
+        const btnAction = document.getElementById('btn-action');
+        btnAction.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            onButtonClicked();
+        }, { passive: false });
+        btnAction.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            onButtonClicked();
+        });
+
+        // Key bindings (Space & Enter)
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'Enter') {
+                if (gameState === 'CASTING' || gameState === 'WAITING' || gameState === 'FIGHT') {
+                    e.preventDefault();
+                    onButtonClicked();
+                }
+            }
+        });
 
         window.addEventListener('resize', resizeCanvas);
         requestAnimationFrame(renderLoop);
