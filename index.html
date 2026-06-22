@@ -294,6 +294,196 @@
             display: block;
         }
 
+        /* Shop Modal style */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 100000;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .shop-modal {
+            background: #0d0b1a;
+            border: 2px solid var(--secondary-neon);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: modalFadeIn 0.3s ease-out;
+        }
+
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .shop-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .shop-title {
+            font-family: var(--font-game);
+            font-size: 1.1rem;
+            color: #fff;
+            text-shadow: 0 0 8px var(--secondary-neon);
+        }
+
+        .shop-close-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .shop-points-badge {
+            background: rgba(0, 240, 255, 0.1);
+            border: 1px solid var(--secondary-neon);
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-align: center;
+            margin: 15px 20px 5px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .shop-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .avatar-item {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.2s;
+        }
+
+        .avatar-item.equipped {
+            border-color: var(--primary-neon);
+            background: rgba(255, 0, 127, 0.05);
+        }
+
+        .avatar-item-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar-item-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .avatar-item-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .avatar-item-name {
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .avatar-item-cost {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .avatar-action-btn {
+            border: none;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .btn-equip {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-equipped-label {
+            background: var(--primary-neon);
+            color: #fff;
+            cursor: default;
+            box-shadow: 0 0 8px rgba(255, 0, 127, 0.4);
+        }
+
+        .btn-buy-avatar {
+            background: var(--secondary-neon);
+            color: #000;
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+        }
+
+        .btn-buy-avatar:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Points notification toast */
+        .toast-notify {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: linear-gradient(135deg, var(--primary-neon), #d0006f);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.5);
+            z-index: 100001;
+            pointer-events: none;
+            opacity: 0;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .toast-notify.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
         @keyframes float {
             0% { transform: translateY(0px); }
             50% { transform: translateY(-6px); }
@@ -310,15 +500,33 @@
         
         <!-- Shared User Profile -->
         <div class="profile-container">
-            <div class="profile-title">プレイヤー名</div>
-            <div id="profile-edit-mode" class="profile-edit">
-                <input type="text" id="global-nickname" class="profile-input" placeholder="なまえをいれてね" maxlength="10">
-                <button class="profile-btn" onclick="saveGlobalName()">登録</button>
+            <div class="profile-title">プレイヤー情報</div>
+            
+            <!-- Points Display -->
+            <div class="points-display" id="global-points-container" style="margin-bottom: 10px; font-weight: bold; font-size: 14px; text-shadow: 0 0 5px var(--secondary-neon);">
+                TOTAL POINTS: <span id="global-points-val" style="color: var(--secondary-neon);">0</span> pt
             </div>
-            <div id="profile-display-mode" class="profile-display" style="display: none;">
-                <span id="display-nickname">---</span>
-                <span class="edit-icon" onclick="enableNameEdit()">[変更]</span>
+
+            <!-- Profile Info with Avatar -->
+            <div style="display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 5px;">
+                <div id="current-avatar-icon" onclick="openShop()" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--primary-neon); box-shadow: 0 0 10px var(--primary-neon); display: flex; align-items: center; justify-content: center; font-size: 24px; cursor: pointer; background: rgba(255,255,255,0.05); transition: transform 0.2s; user-select: none;">
+                    👤
+                </div>
+                <div style="text-align: left;">
+                    <div id="profile-edit-mode" class="profile-edit">
+                        <input type="text" id="global-nickname" class="profile-input" placeholder="なまえをいれてね" maxlength="10">
+                        <button class="profile-btn" onclick="saveGlobalName()">登録</button>
+                    </div>
+                    <div id="profile-display-mode" class="profile-display" style="display: none;">
+                        <span id="display-nickname" style="font-size: 16px;">---</span>
+                        <span class="edit-icon" onclick="enableNameEdit()">[変更]</span>
+                    </div>
+                </div>
             </div>
+
+            <button onclick="openShop()" class="profile-btn" style="margin-top: 12px; width: 100%; background: linear-gradient(135deg, var(--secondary-neon), #00b0df); color: #000; border: none; padding: 8px 12px; font-size: 12px; font-weight: bold; border-radius: 6px; cursor: pointer; box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);">
+                🛍️ アバターショップ
+            </button>
         </div>
     </header>
 
@@ -403,13 +611,187 @@
         <iframe id="game-iframe" src="about:blank"></iframe>
     </div>
 
+    <!-- Shop Modal -->
+    <div id="shop-modal-overlay" class="modal-overlay" onclick="if(event.target === this) closeShop()">
+        <div class="shop-modal">
+            <div class="shop-header">
+                <h3 class="shop-title">AVATAR SHOP</h3>
+                <button class="shop-close-btn" onclick="closeShop()">&times;</button>
+            </div>
+            <div class="shop-points-badge">
+                所持ポイント: <span id="shop-points-val" style="color: var(--secondary-neon);">0</span> pt
+            </div>
+            <div id="shop-avatar-list" class="shop-content">
+                <!-- Loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
 <script>
-    // --- Name Synchronization Management ---
+    // --- Name Synchronization & Points Management ---
     const STORAGE_KEY = 'umpire_nickname_v2';
+    const POINTS_KEY = 'higeball_points';
+    const AVATAR_KEY = 'higeball_avatar';
+    const OWNED_AVATARS_KEY = 'higeball_owned_avatars';
+
+    const AVATARS = [
+        { id: 'default', name: 'ルーキー', emoji: '👤', cost: 0, color: '#a0a0cf' },
+        { id: 'batter', name: 'スラッガー', emoji: '🏏', cost: 300, color: '#ff007f' },
+        { id: 'runner', name: 'スピードスター', emoji: '🏃', cost: 500, color: '#00f0ff' },
+        { id: 'stacker', name: 'アーキテクト', emoji: '🧱', cost: 800, color: '#ffaa00' },
+        { id: 'snake', name: 'スネーク', emoji: '🐍', cost: 1000, color: '#39ff14' },
+        { id: 'defender', name: 'ガーディアン', emoji: '🛡️', cost: 1200, color: '#7f00ff' },
+        { id: 'cat', name: 'サイバーキャット', emoji: '🐱', cost: 1500, color: '#ff00ff' },
+        { id: 'robot', name: 'ドロイド', emoji: '🤖', cost: 2000, color: '#00ffaa' },
+        { id: 'alien', name: 'エイリアン', emoji: '👽', cost: 3000, color: '#ff0055' },
+        { id: 'phoenix', name: 'フェニックス', emoji: '🔥', cost: 5000, color: '#ffaa00' }
+    ];
 
     window.addEventListener('load', () => {
         refreshProfileUI();
+        document.getElementById('global-points-val').innerText = getPoints();
+        updateAvatarUI();
     });
+
+    function getPoints() {
+        return parseInt(localStorage.getItem(POINTS_KEY) || '0', 10);
+    }
+
+    function addPoints(pts) {
+        if (typeof pts !== 'number' || isNaN(pts) || pts <= 0) return;
+        const currentPoints = getPoints();
+        const nextPoints = currentPoints + pts;
+        localStorage.setItem(POINTS_KEY, nextPoints);
+        
+        document.getElementById('global-points-val').innerText = nextPoints;
+        showToast(`+${pts} pt 獲得！`);
+    }
+    // Expose globally for iframe child windows
+    window.addPoints = addPoints;
+
+    function showToast(text) {
+        let toast = document.getElementById('toast-notification');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.id = 'toast-notification';
+            toast.className = 'toast-notify';
+            document.body.appendChild(toast);
+        }
+        toast.innerHTML = `🌟 ${text}`;
+        toast.classList.add('show');
+        
+        setTimeout(() => {
+            toast.classList.remove('show');
+        }, 2500);
+    }
+
+    function getOwnedAvatars() {
+        const ownedStr = localStorage.getItem(OWNED_AVATARS_KEY);
+        if (!ownedStr) {
+            return ['default'];
+        }
+        try {
+            return JSON.parse(ownedStr);
+        } catch(e) {
+            return ['default'];
+        }
+    }
+
+    function getCurrentAvatar() {
+        return localStorage.getItem(AVATAR_KEY) || 'default';
+    }
+
+    function updateAvatarUI() {
+        const currentId = getCurrentAvatar();
+        const avatar = AVATARS.find(a => a.id === currentId) || AVATARS[0];
+        const iconDiv = document.getElementById('current-avatar-icon');
+        if (iconDiv) {
+            iconDiv.innerText = avatar.emoji;
+            iconDiv.style.borderColor = avatar.color;
+            iconDiv.style.boxShadow = `0 0 10px ${avatar.color}`;
+        }
+    }
+
+    function openShop() {
+        document.getElementById('shop-modal-overlay').style.display = 'flex';
+        renderShopList();
+    }
+
+    function closeShop() {
+        document.getElementById('shop-modal-overlay').style.display = 'none';
+        updateAvatarUI();
+    }
+
+    function renderShopList() {
+        const points = getPoints();
+        const owned = getOwnedAvatars();
+        const currentId = getCurrentAvatar();
+        
+        document.getElementById('shop-points-val').innerText = points;
+        
+        const listContainer = document.getElementById('shop-avatar-list');
+        listContainer.innerHTML = '';
+        
+        AVATARS.forEach(avatar => {
+            const isOwned = owned.includes(avatar.id);
+            const isEquipped = avatar.id === currentId;
+            
+            const item = document.createElement('div');
+            item.className = `avatar-item ${isEquipped ? 'equipped' : ''}`;
+            
+            let actionBtnHtml = '';
+            if (isEquipped) {
+                actionBtnHtml = `<span class="avatar-action-btn btn-equipped-label">装備中</span>`;
+            } else if (isOwned) {
+                actionBtnHtml = `<button class="avatar-action-btn btn-equip" onclick="equipAvatar('${avatar.id}')">装備</button>`;
+            } else {
+                const canBuy = points >= avatar.cost;
+                actionBtnHtml = `<button class="avatar-action-btn btn-buy-avatar" ${canBuy ? '' : 'disabled'} onclick="buyAvatar('${avatar.id}', ${avatar.cost})">${avatar.cost} pt</button>`;
+            }
+            
+            item.innerHTML = `
+                <div class="avatar-item-left">
+                    <div class="avatar-item-icon" style="border: 2px solid ${avatar.color}; box-shadow: 0 0 6px ${avatar.color};">
+                        ${avatar.emoji}
+                    </div>
+                    <div class="avatar-item-info">
+                        <span class="avatar-item-name">${avatar.name}</span>
+                        <span class="avatar-item-cost">${avatar.cost > 0 ? `${avatar.cost} pt` : '初期アバター'}</span>
+                    </div>
+                </div>
+                <div class="avatar-item-right">
+                    ${actionBtnHtml}
+                </div>
+            `;
+            
+            listContainer.appendChild(item);
+        });
+    }
+
+    function equipAvatar(id) {
+        localStorage.setItem(AVATAR_KEY, id);
+        renderShopList();
+        updateAvatarUI();
+    }
+
+    function buyAvatar(id, cost) {
+        const points = getPoints();
+        if (points < cost) return;
+        
+        const owned = getOwnedAvatars();
+        if (owned.includes(id)) return;
+        
+        owned.push(id);
+        localStorage.setItem(OWNED_AVATARS_KEY, JSON.stringify(owned));
+        localStorage.setItem(POINTS_KEY, points - cost);
+        
+        localStorage.setItem(AVATAR_KEY, id);
+        
+        showToast("アバターを交換しました！");
+        document.getElementById('global-points-val').innerText = points - cost;
+        renderShopList();
+        updateAvatarUI();
+    }
 
     function refreshProfileUI() {
         const savedName = localStorage.getItem(STORAGE_KEY);
@@ -457,21 +839,20 @@
         const overlay = document.getElementById('game-overlay');
         const iframe = document.getElementById('game-iframe');
 
-        // Load game into iframe (keeps web-app context on iOS!)
         iframe.src = url;
         overlay.style.display = 'block';
     }
 
-    // Callback called from iframe game to go back home
     window.closeGame = function() {
         const overlay = document.getElementById('game-overlay');
         const iframe = document.getElementById('game-iframe');
         
         overlay.style.display = 'none';
-        iframe.src = 'about:blank'; // Free memory
+        iframe.src = 'about:blank';
         
-        // Refresh name in case it changed in the game
         refreshProfileUI();
+        document.getElementById('global-points-val').innerText = getPoints();
+        updateAvatarUI();
     };
 </script>
 

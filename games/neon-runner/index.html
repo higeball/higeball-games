@@ -456,9 +456,15 @@
         document.getElementById('screen-start').style.display = 'none';
         document.getElementById('screen-result').style.display = 'flex';
 
+        let earnedPoints = Math.floor(distance);
+        if (window.parent && typeof window.parent.addPoints === 'function') {
+            window.parent.addPoints(earnedPoints);
+        }
+
         document.getElementById('result-message').innerHTML = 
             `＊ <strong>${playerName}</strong> 選手の記録 ＊<br><br>
             走破距離: <span style="color:var(--primary); font-size:16px;">${Math.floor(distance)}m</span><br>
+            獲得ポイント: <span style="color:#ffdd00; font-size:14px; font-weight:700;">+${earnedPoints} pt</span><br>
             ハイスコア: <span style="color:var(--secondary); font-size:14px; font-weight:700;">${highscore}m</span>`;
     }
 
