@@ -1426,8 +1426,8 @@
         tCtx.fillRect(barX + barW * 0.47, barY, barW * 0.06, barH);
 
         // Floating Target Indicator label
-        tCtx.font = "bold 11px Outfit";
-        tCtx.fillStyle = 'var(--primary)';
+        tCtx.font = "bold 11px 'Outfit', sans-serif";
+        tCtx.fillStyle = '#ff007f';
         tCtx.fillText("PERFECT", barX + barW * 0.47 - 12, barY - 10);
 
         // Draw current cursor position
@@ -2039,9 +2039,9 @@
         }
 
         // Draw Stage Floor line
-        bCtx.strokeStyle = 'var(--secondary)';
+        bCtx.strokeStyle = '#00f0ff';
         bCtx.lineWidth = 3;
-        bCtx.shadowColor = 'var(--secondary)';
+        bCtx.shadowColor = '#00f0ff';
         bCtx.shadowBlur = 8;
         bCtx.beginPath();
         bCtx.moveTo(10, 150);
@@ -2060,7 +2060,7 @@
             ft.y -= 1.2;
             ft.timer -= 1;
 
-            bCtx.font = "bold 15px var(--font-game)";
+            bCtx.font = "bold 15px 'Press Start 2P', cursive";
             bCtx.fillStyle = ft.color;
             bCtx.shadowColor = ft.color;
             bCtx.shadowBlur = 6;
@@ -2091,17 +2091,17 @@
         }
 
         // Draw Glow shadow
-        bCtx.shadowColor = 'var(--secondary)';
+        bCtx.shadowColor = '#00f0ff';
         bCtx.shadowBlur = 12;
 
         // Render emoji avatar
-        bCtx.font = "40px Noto Sans JP";
+        bCtx.font = "40px 'Noto Sans JP', sans-serif";
         bCtx.textAlign = 'center';
         bCtx.fillText(emoji, x + shakeX, y + yOffset - 5);
         bCtx.shadowBlur = 0; // reset
 
         // Name
-        bCtx.font = "bold 10px var(--font-sans)";
+        bCtx.font = "bold 10px 'Outfit', 'Noto Sans JP', sans-serif";
         bCtx.fillStyle = '#fff';
         bCtx.fillText(name, x, y - 55);
 
@@ -2115,12 +2115,12 @@
         const hpPct = currentHp / maxHp;
         const fillW = hpBarW * hpPct;
         if (hpPct > 0) {
-            bCtx.fillStyle = hpPct > 0.4 ? 'var(--tertiary)' : 'var(--primary)';
+            bCtx.fillStyle = hpPct > 0.4 ? '#39ff14' : '#ff007f';
             bCtx.fillRect(x - hpBarW / 2, y - 50, fillW, hpBarH);
         }
 
         // HP numbers
-        bCtx.font = "bold 9px var(--font-game)";
+        bCtx.font = "bold 9px 'Press Start 2P', cursive";
         bCtx.fillStyle = '#fff';
         bCtx.fillText(`${currentHp}/${maxHp}`, x, y - 38);
 
