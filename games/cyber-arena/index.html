@@ -505,6 +505,7 @@
     let betAmount = 50;
     let playerName = "ゲスト";
     let slimeIsGolden = false;
+    let roundCount = 0;
 
     // Battle Simulator States
     let gameState = 'MENU'; // MENU, BATTLE, RESULT
@@ -514,6 +515,21 @@
     let battleTimer = null;
     let currentTurnIndex = 0;
     let floatingTexts = [];
+    let activeTimeouts = [];
+
+    function safeSetTimeout(callback, delay) {
+        const id = setTimeout(() => {
+            activeTimeouts = activeTimeouts.filter(t => t !== id);
+            callback();
+        }, delay);
+        activeTimeouts.push(id);
+        return id;
+    }
+
+    function clearAllTimeouts() {
+        activeTimeouts.forEach(id => clearTimeout(id));
+        activeTimeouts = [];
+    }
 
     // Monster Profiles Data (Aligned horizontally side-by-side)
     const MONSTER_PROFILES = {
@@ -606,6 +622,7 @@
     }
 
     function goHome() {
+        clearAllTimeouts();
         if (window.parent && typeof window.parent.closeGame === 'function') {
             window.parent.closeGame();
         } else {
@@ -645,6 +662,7 @@
     }
 
     function startArenaBattle() {
+        clearAllTimeouts();
         // Point deduction
         let deductionSuccess = false;
         if (window.parent && typeof window.parent.spendPoints === 'function') {
@@ -667,6 +685,7 @@
         document.getElementById('ui-overlay').style.display = 'none';
         clearLog();
         floatingTexts = [];
+        roundCount = 0;
 
         // Deep Copy monsters details
         monsters = [
@@ -702,14 +721,19 @@
         requestAnimationFrame(renderLoop);
         
         // Start Turn Process
-        setTimeout(processBattleTurn, 1000);
+        safeSetTimeout(processBattleTurn, 1000);
     }
 
     function skipBattle() {
         if (gameState !== 'BATTLE') return;
+        clearAllTimeouts();
         
+        let maxLoops = 200; // Hard loop cap to prevent freezes during infinite healing ties
+        let loops = 0;
+
         // Instant battle solver
-        while (getAliveMonsters().length > 1) {
+        while (getAliveMonsters().length > 1 && loops < maxLoops) {
+            loops++;
             let alive = getAliveMonsters();
             
             // Sort by Speed
@@ -728,12 +752,21 @@
                     // Skill Trigger
                     executeSkillInstant(actor, targets, target);
                 } else {
-                    // Regular Attack
+                      // Regular Attack
                     executeAttackInstant(actor, target);
                 }
             }
         }
         
+        // If hard cap hit, force eliminate lower HP ones to select winner
+        let finalAlive = getAliveMonsters();
+        if (finalAlive.length > 1) {
+            finalAlive.sort((a, b) => b.hp - a.hp);
+            for (let i = 1; i < finalAlive.length; i++) {
+                finalAlive[i].hp = 0;
+            }
+        }
+
         // Instant End Game
         endGameProcess();
     }
@@ -777,6 +810,19 @@
             return;
         }
 
+        // Stalemate sudden-death protection
+        roundCount++;
+        if (roundCount > 50) {
+            addLog(`⚠️ 50ラウンド経過！時間切れのため判定に入ります。`, 'log-skill');
+            // Force kill everyone except the highest HP monster
+            alive.sort((a, b) => b.hp - a.hp);
+            for (let i = 1; i < alive.length; i++) {
+                alive[i].hp = 0;
+            }
+            safeSetTimeout(endGameProcess, 1000);
+            return;
+        }
+
         // Setup turns order (Sorted by Speed + randomness)
         alive.sort((a, b) => (b.spd + Math.random()*5) - (a.spd + Math.random()*5));
         
@@ -796,7 +842,7 @@
 
         if (currentTurnIndex >= aliveQueue.length) {
             // End of round, wait for next round
-            setTimeout(processBattleTurn, 1000 / speedMultiplier);
+            safeSetTimeout(processBattleTurn, 1000 / speedMultiplier);
             return;
         }
 
@@ -820,17 +866,22 @@
         if (rand < 0.3) {
             // Use Skill!
             triggerSkillAnim(actor, targets, target, () => {
-                setTimeout(() => executeNextActorTurn(aliveQueue), 800 / speedMultiplier);
+                safeSetTimeout(() => {
+                    if (gameState === 'BATTLE') executeNextActorTurn(aliveQueue);
+                }, 800 / speedMultiplier);
             });
         } else {
             // Standard attack
             triggerAttackAnim(actor, target, () => {
-                setTimeout(() => executeNextActorTurn(aliveQueue), 800 / speedMultiplier);
+                safeSetTimeout(() => {
+                    if (gameState === 'BATTLE') executeNextActorTurn(aliveQueue);
+                }, 800 / speedMultiplier);
             });
         }
     }
 
     function triggerAttackAnim(actor, target, callback) {
+        if (gameState !== 'BATTLE') return;
         sound.playAttack();
         addLog(`<strong>${actor.name}</strong> の こうげき！`);
         
@@ -839,7 +890,11 @@
         actor.dashTargetX = target.x;
         actor.dashTargetY = target.y;
         
-        setTimeout(() => {
+        safeSetTimeout(() => {
+            if (gameState !== 'BATTLE') {
+                actor.isDashing = false;
+                return;
+            }
             actor.isDashing = false;
             
             // Check Evasion (Slime bonus)
@@ -875,11 +930,13 @@
     }
 
     function triggerSkillAnim(actor, targets, target, callback) {
+        if (gameState !== 'BATTLE') return;
         sound.playSkill();
         addLog(`★ <strong>${actor.name}</strong> の スキル発動！`, 'log-skill');
         actor.isSkillGlowing = 15;
 
-        setTimeout(() => {
+        safeSetTimeout(() => {
+            if (gameState !== 'BATTLE') return;
             if (actor.id === 'dragon') {
                 // CYBER DRAGON: Flame Breath
                 addLog(`➔ <strong>れんごくの火炎</strong> を はきだした！`, 'log-skill');
@@ -901,7 +958,9 @@
                 // PHANTOM BOT: Double Slash
                 addLog(`➔ <strong>アクセラレート</strong>！ 2連続攻撃！`, 'log-skill');
                 triggerAttackAnim(actor, target, () => {
-                    setTimeout(() => {
+                    if (gameState !== 'BATTLE') return;
+                    safeSetTimeout(() => {
+                        if (gameState !== 'BATTLE') return;
                         if (target.hp > 0) {
                             triggerAttackAnim(actor, target, callback);
                         } else {
@@ -928,6 +987,7 @@
     }
 
     function endGameProcess() {
+        clearAllTimeouts();
         gameState = 'RESULT';
         
         let alive = getAliveMonsters();
@@ -1281,6 +1341,7 @@
     }
 
     function resetGame() {
+        clearAllTimeouts();
         gameState = 'MENU';
         document.getElementById('screen-start').style.display = 'flex';
         document.getElementById('screen-result').style.display = 'none';
