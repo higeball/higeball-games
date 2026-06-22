@@ -237,6 +237,7 @@
             <!-- START SCREEN -->
             <div id="screen-start" class="menu-screen">
                 <div class="game-title">NEON<br>RUNNER</div>
+                <div id="player-display" style="display: none; font-size: 16px; margin-bottom: 20px; font-weight: bold; color: var(--secondary);">PLAYER: <span id="player-name-text"></span></div>
                 <input type="text" id="nickname" placeholder="なまえをいれてね" maxlength="10">
                 <button class="menu-btn" onclick="startGame()">ゲームスタート</button>
                 <div id="controls-info">
@@ -246,7 +247,7 @@
                     ・空中の障害物 ➔ SLIDE で下をくぐる<br>
                     ※PCキーボード（Aキー: スライド / Dキー: ジャンプ）も対応
                 </div>
-                <a href="../../index.html" id="back-link">BACK TO HUB</a>
+                <a href="#" onclick="goHome(); return false;" id="back-link">BACK TO HUB</a>
             </div>
 
             <!-- RESULT SCREEN -->
@@ -255,6 +256,7 @@
                 <div id="result-message" style="margin: 15px 0; font-size: 14px; line-height: 1.8; color: #fff; width: 100%; text-align: left;"></div>
                 <button class="menu-btn" id="btn-share" onclick="shareResultImage()">▶ 結果を画像でシェアする</button>
                 <button class="menu-btn" onclick="resetGame()" style="background: linear-gradient(135deg, var(--secondary), #00b0df); box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);">▶ もう一度走る</button>
+                <button class="menu-btn" onclick="goHome()" style="background: linear-gradient(135deg, #a0a0cf, #7070a0); box-shadow: 0 4px 15px rgba(160, 160, 207, 0.4); margin-top: 10px;">▶ ホームに戻る</button>
             </div>
         </div>
     </div>
@@ -326,8 +328,33 @@
     document.getElementById('zone-right').addEventListener('touchstart', (e) => { e.preventDefault(); triggerJump(); });
     document.getElementById('zone-right').addEventListener('mousedown', () => triggerJump());
 
+    window.onload = () => {
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName && savedName.trim() !== "") {
+            document.getElementById('nickname').style.display = 'none';
+            document.getElementById('player-name-text').innerText = savedName;
+            document.getElementById('player-display').style.display = 'block';
+            document.getElementById('nickname').value = savedName;
+        }
+        drawStaticStadium();
+    };
+
+    function goHome() {
+        if (window.parent && typeof window.parent.closeGame === 'function') {
+            window.parent.closeGame();
+        } else {
+            window.location.href = '../../index.html';
+        }
+    }
+
     function startGame() {
-        const nameInput = document.getElementById('nickname').value.trim();
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        let nameInput = "";
+        if (savedName && savedName.trim() !== "") {
+            nameInput = savedName;
+        } else {
+            nameInput = document.getElementById('nickname').value.trim();
+        }
         if (!nameInput) { alert("なまえをいれてね！"); return; }
         playerName = nameInput;
         localStorage.setItem('umpire_nickname_v2', playerName);
@@ -529,8 +556,19 @@
         document.getElementById('screen-start').style.display = 'flex';
         document.getElementById('screen-result').style.display = 'none';
         document.getElementById('ui-overlay').style.display = 'flex';
+        
         const savedName = localStorage.getItem('umpire_nickname_v2');
-        if (savedName) document.getElementById('nickname').value = savedName;
+        if (savedName && savedName.trim() !== "") {
+            document.getElementById('nickname').style.display = 'none';
+            document.getElementById('player-name-text').innerText = savedName;
+            document.getElementById('player-display').style.display = 'block';
+            document.getElementById('nickname').value = savedName;
+        } else {
+            document.getElementById('nickname').style.display = 'block';
+            document.getElementById('player-display').style.display = 'none';
+            document.getElementById('nickname').value = '';
+        }
+        
         drawStaticStadium();
     }
 

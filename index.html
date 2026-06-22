@@ -2,8 +2,14 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="スマホに最適化された直感的なブラウザゲーム集。第一弾「ネオン ホームランダービー」配信中！">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="スマホに最適化された直感的なブラウザゲーム集。PWA対応。">
+    
+    <!-- iOS Web App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Higeball Games">
+    
     <title>Higeball Games | スマホ向けブラウザゲーム集</title>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
@@ -40,7 +46,7 @@
 
         header {
             text-align: center;
-            padding: 50px 20px 30px;
+            padding: 40px 20px 20px;
         }
 
         .logo-container {
@@ -68,14 +74,70 @@
                 0 0 10px var(--secondary-neon);
         }
 
-        .subtitle {
-            font-size: 0.95rem;
+        /* Profile/Name Input Box style */
+        .profile-container {
+            max-width: 320px;
+            margin: 15px auto;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .profile-title {
+            font-size: 11px;
             color: var(--text-muted);
-            letter-spacing: 0.5px;
-            font-weight: 300;
-            max-width: 500px;
-            margin: 0 auto;
-            line-height: 1.6;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+
+        .profile-edit {
+            display: flex;
+            gap: 8px;
+        }
+
+        .profile-input {
+            flex: 1;
+            font-family: var(--font-sans);
+            font-size: 14px;
+            font-weight: bold;
+            padding: 8px 12px;
+            background: #060510;
+            color: #fff;
+            border: 2px solid var(--secondary-neon);
+            border-radius: 6px;
+            outline: none;
+            text-align: center;
+        }
+
+        .profile-btn {
+            background: var(--secondary-neon);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            font-size: 13px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .profile-display {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .edit-icon {
+            font-size: 12px;
+            color: var(--secondary-neon);
+            cursor: pointer;
+            text-decoration: underline;
         }
 
         main {
@@ -121,18 +183,6 @@
             pointer-events: none;
         }
 
-        /* Responsive hover for desktop, scale-down active for mobile */
-        @media (hover: hover) {
-            .game-card:hover {
-                transform: translateY(-5px);
-                box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(0, 240, 255, 0.15);
-                border-color: rgba(0, 240, 255, 0.2);
-            }
-            .game-card:hover::after {
-                opacity: 0.6;
-            }
-        }
-
         .game-card:active {
             transform: scale(0.98);
         }
@@ -164,11 +214,6 @@
             padding: 5px 12px;
             border-radius: 6px;
             box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
-        }
-
-        .game-badge.coming-soon {
-            border-color: var(--primary-neon);
-            color: var(--primary-neon);
         }
 
         .game-info {
@@ -203,18 +248,12 @@
             border-radius: 8px;
             font-size: 1rem;
             box-shadow: 0 4px 15px rgba(255, 0, 127, 0.3);
-            transition: opacity 0.2s;
+            border: none;
+            cursor: pointer;
         }
 
         .btn-play:active {
             opacity: 0.9;
-        }
-
-        .btn-disabled {
-            background: #252335;
-            color: #5d5a7d;
-            box-shadow: none;
-            cursor: not-allowed;
         }
 
         footer {
@@ -236,6 +275,25 @@
             text-decoration: none;
         }
 
+        /* Game Overlay Mode for iOS WebApp (prevents address bar redirection) */
+        #game-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            z-index: 999999;
+        }
+
+        #game-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
         @keyframes float {
             0% { transform: translateY(0px); }
             50% { transform: translateY(-6px); }
@@ -249,14 +307,26 @@
         <div class="logo-container">
             <h1>Higeball <span>Games</span></h1>
         </div>
-        <p class="subtitle">スマートフォンに最適化された、直感的に楽しめるカジュアルゲーム集。</p>
+        
+        <!-- Shared User Profile -->
+        <div class="profile-container">
+            <div class="profile-title">プレイヤー名</div>
+            <div id="profile-edit-mode" class="profile-edit">
+                <input type="text" id="global-nickname" class="profile-input" placeholder="なまえをいれてね" maxlength="10">
+                <button class="profile-btn" onclick="saveGlobalName()">登録</button>
+            </div>
+            <div id="profile-display-mode" class="profile-display" style="display: none;">
+                <span id="display-nickname">---</span>
+                <span class="edit-icon" onclick="enableNameEdit()">[変更]</span>
+            </div>
+        </div>
     </header>
 
     <main>
         <div class="games-grid">
             
             <!-- Game Card 1: ネオン ホームランダービー -->
-            <div class="game-card" id="card-homerun-derby">
+            <div class="game-card">
                 <div class="thumbnail-container">
                     <img src="assets/images/homerun_derby.jpg" alt="ネオン ホームランダービー">
                     <span class="game-badge">PLAYABLE</span>
@@ -264,12 +334,12 @@
                 <div class="game-info">
                     <h3 class="game-title">ネオン ホームランダービー</h3>
                     <p class="game-description">タイミングを合わせて画面の左右をタップするだけの簡単バッティングゲーム。インコース・アウトコースの変化球を見極めて、夜空へ特大ホームランを放ちましょう！</p>
-                    <a href="games/homerun-derby/index.html" class="btn-play">ゲームを始める</a>
+                    <button onclick="openGame('games/homerun-derby/index.html')" class="btn-play">ゲームを始める</button>
                 </div>
             </div>
 
             <!-- Game Card 2: ネオン ランナー -->
-            <div class="game-card" id="card-neon-runner">
+            <div class="game-card">
                 <div class="thumbnail-container">
                     <img src="assets/images/neon_runner.jpg" alt="ネオン ランナー">
                     <span class="game-badge">PLAYABLE</span>
@@ -277,12 +347,12 @@
                 <div class="game-info">
                     <h3 class="game-title">ネオン ランナー</h3>
                     <p class="game-description">自動で走り続けるキャラクターを操作する障害物走。画面の左側でスライディング（くぐる）、右側でジャンプ（跳ぶ）して、障害物を避けながらハイスコアを目指せ！</p>
-                    <a href="games/neon-runner/index.html" class="btn-play">ゲームを始める</a>
+                    <button onclick="openGame('games/neon-runner/index.html')" class="btn-play">ゲームを始める</button>
                 </div>
             </div>
 
             <!-- Game Card 3: ネオン ブロックタワー -->
-            <div class="game-card" id="card-neon-stacker">
+            <div class="game-card">
                 <div class="thumbnail-container">
                     <img src="assets/images/neon_stacker.jpg" alt="ネオン ブロックタワー">
                     <span class="game-badge">PLAYABLE</span>
@@ -290,12 +360,12 @@
                 <div class="game-info">
                     <h3 class="game-title">ネオン ブロックタワー</h3>
                     <p class="game-description">左右にスライドするブロックをタイミングよくタップして積み上げるゲーム。ぴったり（Perfect）重ねてタワーを高く伸ばそう！</p>
-                    <a href="games/neon-stacker/index.html" class="btn-play">ゲームを始める</a>
+                    <button onclick="openGame('games/neon-stacker/index.html')" class="btn-play">ゲームを始める</button>
                 </div>
             </div>
 
             <!-- Game Card 4: ネオン スネーク -->
-            <div class="game-card" id="card-neon-snake">
+            <div class="game-card">
                 <div class="thumbnail-container">
                     <img src="assets/images/neon_snake.jpg" alt="ネオン スネーク">
                     <span class="game-badge">PLAYABLE</span>
@@ -303,12 +373,12 @@
                 <div class="game-info">
                     <h3 class="game-title">ネオン スネーク</h3>
                     <p class="game-description">エサを食べて長くなるヘビを操作する伝統のゲーム。画面を上下左右にスワイプ（フリック）して方向を変え、自分の体や壁にぶつからないようにエサを集めよう！</p>
-                    <a href="games/neon-snake/index.html" class="btn-play">ゲームを始める</a>
+                    <button onclick="openGame('games/neon-snake/index.html')" class="btn-play">ゲームを始める</button>
                 </div>
             </div>
 
             <!-- Game Card 5: ネオン ディフェンダー -->
-            <div class="game-card" id="card-neon-defender">
+            <div class="game-card">
                 <div class="thumbnail-container">
                     <img src="assets/images/neon_defender.jpg" alt="ネオン ディフェンダー">
                     <span class="game-badge">PLAYABLE</span>
@@ -316,19 +386,7 @@
                 <div class="game-info">
                     <h3 class="game-title">ネオン ディフェンダー</h3>
                     <p class="game-description">上空から降る隕石を直接タップして撃ち落とす迎撃ゲーム。タップした位置で爆風が発生し、複数の隕石を誘爆（コンボ）させて一掃する爽快アクション！</p>
-                    <a href="games/neon-defender/index.html" class="btn-play">ゲームを始める</a>
-                </div>
-            </div>
-
-            <!-- Game Card 6: Coming Soon -->
-            <div class="game-card" id="card-coming-soon">
-                <div class="thumbnail-container">
-                    <span class="game-badge coming-soon">NEXT GAME</span>
-                </div>
-                <div class="game-info">
-                    <h3 class="game-title">次のゲーム 開発中</h3>
-                    <p class="game-description">スマホでの手軽さと楽しさに特化した、新しい簡単カジュアルゲームを追加予定です。お楽しみに！</p>
-                    <a href="#" class="btn-play btn-disabled" onclick="return false;">開発中</a>
+                    <button onclick="openGame('games/neon-defender/index.html')" class="btn-play">ゲームを始める</button>
                 </div>
             </div>
 
@@ -339,6 +397,83 @@
         <p>&copy; 2026 Higeball Games.</p>
         <p>Built with Antigravity AI.<br>Repository: <a href="https://github.com/higeball/higeball-games" target="_blank">higeball/higeball-games</a></p>
     </footer>
+
+    <!-- Fullscreen Game Iframe for iOS WebApp Capability -->
+    <div id="game-overlay">
+        <iframe id="game-iframe" src="about:blank"></iframe>
+    </div>
+
+<script>
+    // --- Name Synchronization Management ---
+    const STORAGE_KEY = 'umpire_nickname_v2';
+
+    window.addEventListener('load', () => {
+        refreshProfileUI();
+    });
+
+    function refreshProfileUI() {
+        const savedName = localStorage.getItem(STORAGE_KEY);
+        const editMode = document.getElementById('profile-edit-mode');
+        const displayMode = document.getElementById('profile-display-mode');
+        const displayNickname = document.getElementById('display-nickname');
+        const inputField = document.getElementById('global-nickname');
+
+        if (savedName && savedName.trim() !== "") {
+            displayNickname.innerText = savedName;
+            inputField.value = savedName;
+            editMode.style.display = 'none';
+            displayMode.style.display = 'flex';
+        } else {
+            editMode.style.display = 'flex';
+            displayMode.style.display = 'none';
+        }
+    }
+
+    function saveGlobalName() {
+        const inputVal = document.getElementById('global-nickname').value.trim();
+        if (!inputVal) {
+            alert("なまえを入力してください");
+            return;
+        }
+        localStorage.setItem(STORAGE_KEY, inputVal);
+        refreshProfileUI();
+    }
+
+    function enableNameEdit() {
+        document.getElementById('profile-edit-mode').style.display = 'flex';
+        document.getElementById('profile-display-mode').style.display = 'none';
+        document.getElementById('global-nickname').focus();
+    }
+
+    // --- Iframe Game Opener ---
+    function openGame(url) {
+        const currentName = localStorage.getItem(STORAGE_KEY);
+        if (!currentName || currentName.trim() === "") {
+            alert("先にプレイヤー名を登録してください");
+            document.getElementById('global-nickname').focus();
+            return;
+        }
+
+        const overlay = document.getElementById('game-overlay');
+        const iframe = document.getElementById('game-iframe');
+
+        // Load game into iframe (keeps web-app context on iOS!)
+        iframe.src = url;
+        overlay.style.display = 'block';
+    }
+
+    // Callback called from iframe game to go back home
+    window.closeGame = function() {
+        const overlay = document.getElementById('game-overlay');
+        const iframe = document.getElementById('game-iframe');
+        
+        overlay.style.display = 'none';
+        iframe.src = 'about:blank'; // Free memory
+        
+        // Refresh name in case it changed in the game
+        refreshProfileUI();
+    };
+</script>
 
 </body>
 </html>
