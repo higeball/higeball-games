@@ -421,6 +421,8 @@
     let playerName = "";
     let ballIsGolden = false;
     let flyBallIsGolden = false;
+    let hasCollectionChance = false;
+    let goldenBallSpawned = false;
 
     // Pitch variables
     let ballX = 160, ballY = 80, ballZ = 0; // Z goes from 0 (Pitcher) to 1.2 (Catch)
@@ -505,6 +507,9 @@
         pitchCount = 0;
         homeRuns = 0;
         maxDistance = 0;
+        
+        hasCollectionChance = Math.random() < 0.33; // ~30% chance for collection opportunity per game
+        goldenBallSpawned = false;
 
         prepareNewPitch();
         requestAnimationFrame(gameLoop);
@@ -525,7 +530,13 @@
         batterSwingSide = null;
         batterSwingFrame = 0;
         hitTimingResult = "";
-        ballIsGolden = Math.random() < 0.15; // 15% chance for a golden ball
+        
+        if (hasCollectionChance && !goldenBallSpawned && Math.random() < 0.20) {
+            ballIsGolden = true;
+            goldenBallSpawned = true;
+        } else {
+            ballIsGolden = false;
+        }
 
         // Randomize pitch
         // Decide Course (Left=130 or Right=190)

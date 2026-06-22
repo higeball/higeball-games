@@ -262,6 +262,8 @@
     let playerName = "";
     let score = 0;
     let highscore = 0;
+    let hasCollectionChance = false;
+    let rainbowSpawned = false;
 
     // Grid size parameters (300 width / 15px per cell = 20 columns, 360 height / 15px = 24 rows)
     const gridSize = 15;
@@ -387,6 +389,9 @@
         dir = { x: 1, y: 0 };
         nextDir = { x: 1, y: 0 };
         
+        hasCollectionChance = Math.random() < 0.33;
+        rainbowSpawned = false;
+        
         // Init snake at center
         snake = [
             { x: 10, y: 12 },
@@ -418,7 +423,13 @@
                 }
             }
         }
-        food.isRainbow = Math.random() < 0.15; // 15% chance to spawn a rainbow apple
+        
+        if (hasCollectionChance && !rainbowSpawned && Math.random() < 0.12) {
+            food.isRainbow = true;
+            rainbowSpawned = true;
+        } else {
+            food.isRainbow = false;
+        }
     }
 
     function gameStep() {

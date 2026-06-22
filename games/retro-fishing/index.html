@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>レトロフィッシング | Higeball Games</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff007f; /* Neon Pink */
+            --secondary: #00f0ff; /* Neon Cyan */
+            --tertiary: #39ff14; /* Neon Green */
+            --quaternary: #ffaa00; /* Neon Orange */
+            --dark: #0a0a16;
+            --text: #f1f1f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: relative;
+            background-color: var(--dark);
+            border: 4px solid var(--secondary);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 720px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Screen overlays */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: rgba(10, 10, 22, 0.95);
+            z-index: 10;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            margin: auto 0;
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 0 0 8px var(--secondary), 0 0 15px var(--secondary);
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .game-title span {
+            color: var(--primary);
+            text-shadow: 0 0 8px var(--primary), 0 0 15px var(--primary);
+        }
+
+        .info-box {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .info-title {
+            font-size: 11px;
+            color: #a0a0cf;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .points-display {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .menu-btn {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--secondary), #00b0df);
+            color: #000;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px 0;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);
+            text-align: center;
+            transition: transform 0.1s;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.98);
+        }
+
+        .menu-btn.alt-style {
+            background: linear-gradient(135deg, var(--primary), #d0006f);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.3);
+        }
+
+        #back-link {
+            margin-top: 15px;
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 12px;
+            border-bottom: 1px dotted var(--secondary);
+            padding-bottom: 2px;
+        }
+
+        /* Canvas Game Arena */
+        canvas {
+            display: block;
+            width: 100%;
+            flex: 1;
+            background-color: #050414;
+        }
+
+        /* Reeling / Cast Touch Zone */
+        #action-zone {
+            height: 150px;
+            background: #0d0b20;
+            border-top: 2px solid rgba(0, 240, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+            position: relative;
+        }
+
+        .action-button {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, var(--secondary) 0%, #00b0df 100%);
+            border: 4px solid #fff;
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
+            color: #000;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 11px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            text-align: center;
+            transition: transform 0.05s;
+        }
+
+        .action-button:active {
+            transform: scale(0.92);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+
+        .action-button.reeling {
+            background: radial-gradient(circle, var(--primary) 0%, #d0006f 100%);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.8);
+            color: #fff;
+        }
+
+        .instructions-text {
+            font-size: 11px;
+            color: #a0a0cf;
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        /* Top HUD Bar */
+        .hud-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px 15px;
+            background: linear-gradient(to bottom, rgba(5, 4, 20, 0.8), rgba(5, 4, 20, 0));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 8px;
+            color: #fff;
+        }
+
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Fishing Log Modal */
+        .log-modal {
+            background: #0f0e26;
+            border: 2px solid var(--secondary);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 380px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .log-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 12px;
+        }
+
+        .log-item-name {
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .log-item-size {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 9px;
+            color: var(--tertiary);
+        }
+
+        #alert-overlay {
+            position: absolute;
+            top: 30%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 32px;
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+            pointer-events: none;
+            z-index: 4;
+            display: none;
+            animation: pulseAlert 0.2s ease-in-out infinite alternate;
+        }
+
+        @keyframes pulseAlert {
+            from { transform: translate(-50%, -50%) scale(0.9); }
+            to { transform: translate(-50%, -50%) scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Top HUD Bar -->
+        <div class="hud-bar">
+            <div class="hud-item"><span style="color: var(--secondary);">POINTS:</span> <span id="hud-pts">0</span> pt</div>
+            <div class="hud-item"><span id="hud-status" style="color: var(--quaternary); text-transform: uppercase;">READY</span></div>
+        </div>
+
+        <!-- HIT Alert Overlay -->
+        <div id="alert-overlay">! HIT !</div>
+
+        <!-- Interactive Arena Canvas -->
+        <canvas id="arenaCanvas"></canvas>
+        
+        <!-- Touch Controller -->
+        <div id="action-zone">
+            <div class="action-button" id="btn-action" onmousedown="onActionDown()" onmouseup="onActionUp()" ontouchstart="e => { e.preventDefault(); onActionDown(); }" ontouchend="e => { e.preventDefault(); onActionUp(); }">CAST</div>
+            <div class="instructions-text" id="instructions">ウキを投げよう！</div>
+        </div>
+
+        <!-- UI Screen Overlay -->
+        <div id="ui-overlay">
+            <!-- START SCREEN -->
+            <div id="screen-start" class="menu-screen">
+                <div class="game-title">RETRO<br><span>FISHING</span></div>
+                <div id="player-display" style="font-size: 14px; margin-bottom: 15px; font-weight: bold; color: var(--secondary);">PLAYER: <span id="player-name-text">---</span></div>
+                
+                <div class="info-box">
+                    <div class="info-title">所持ポイント</div>
+                    <div class="points-display">
+                        所持: <span id="current-points-lbl" style="color: var(--secondary); font-weight: 800;">0</span> pt
+                    </div>
+                    <p style="font-size: 9px; color: #a0a0cf; margin-top: 5px;">※1キャストごとに <strong>10 pt</strong> 消費します。</p>
+                </div>
+
+                <button class="menu-btn" onclick="startGame()">フィッシングを始める</button>
+                <button class="menu-btn alt-style" onclick="openLogScreen()">釣り図鑑 (FISHING LOG)</button>
+                <a href="#" onclick="goHome(); return false;" id="back-link">BACK TO HUB</a>
+            </div>
+
+            <!-- LOG VIEW SCREEN -->
+            <div id="screen-log" class="menu-screen" style="display:none;">
+                <div class="game-title">FISHING<span> LOG</span></div>
+                
+                <div class="log-modal" id="log-list-container">
+                    <!-- Log entries loaded dynamically -->
+                </div>
+
+                <button class="menu-btn" onclick="closeLogScreen()">▶ メニューに戻る</button>
+            </div>
+
+            <!-- RESULT SCREEN -->
+            <div id="screen-result" class="menu-screen" style="display:none;">
+                <div class="game-title" id="result-title">GET FISH!</div>
+                <div id="result-message" style="margin: 15px 0; font-size: 14px; line-height: 1.8; color: #fff; text-align: center;"></div>
+                <button class="menu-btn" onclick="resetGame()">▶ もう一度釣る</button>
+                <button class="menu-btn alt-style" onclick="openLogScreen()">▶ 釣り図鑑を見る</button>
+                <button class="menu-btn" onclick="goHome()" style="background: linear-gradient(135deg, #a0a0cf, #7070a0); color:#000; box-shadow: none; margin-top:5px;">▶ ホームに戻る</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Audio System ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+            this.failed = false;
+        }
+        init() {
+            if (this.failed) return;
+            if (!this.ctx) {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) this.ctx = new AudioContextClass();
+                    else this.failed = true;
+                } catch(e) { this.failed = true; }
+            }
+        }
+        playTone(freq, duration, type = 'square', timeOffset = 0) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch(e){}
+        }
+        playCast() { this.playTone(300, 0.1, 'sine'); this.playTone(600, 0.15, 'sine', 0.05); }
+        playSplash() { this.playTone(150, 0.25, 'sawtooth'); }
+        playHitAlert() { this.playTone(880, 0.08, 'square'); this.playTone(880, 0.08, 'square', 0.1); }
+        playReel() { this.playTone(400, 0.03, 'triangle'); }
+        playLineBreak() { this.playTone(100, 0.4, 'sawtooth'); }
+        playVictory() {
+            this.playTone(523, 0.08, 'square');
+            this.playTone(659, 0.08, 'square', 0.08);
+            this.playTone(784, 0.08, 'square', 0.16);
+            this.playTone(1046, 0.3, 'square', 0.24);
+        }
+    }
+    const sound = new SoundFX();
+
+    const canvas = document.getElementById('arenaCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Game States
+    let gameState = 'MENU'; // MENU, LOG, CASTING, WAITING, FIGHT, RESULT
+    let playerPoints = 0;
+    let playerName = "ゲスト";
+    let isActionPressed = false;
+    let hasCollectionChance = false;
+    let legendaryFishSpawned = false;
+
+    // Casting & Reel Stats
+    let bobber = { x: 160, y: 220, z: 0, scale: 1, active: false, timer: 0 };
+    let fishShadow = { x: 0, y: 0, tx: 0, ty: 0, r: 8, active: false, state: 'swim', timer: 0 };
+    let reelTension = 50; // 0 to 100
+    let reelDistance = 0; // 0 to 100 (100 is caught)
+    let caughtFish = null;
+    let isLegendary = false;
+
+    // Fish Database
+    const FISH_DATABASE = [
+        { id: 'fish-medaka', name: 'ネオンメダカ', rarity: 'コモン', emoji: '🐟', minSize: 3, maxSize: 8, points: 15, odds: 0.4 },
+        { id: 'fish-gold', name: 'サイバーファンテール', rarity: 'コモン', emoji: '🐠', minSize: 10, maxSize: 25, points: 25, odds: 0.3 },
+        { id: 'fish-bass', name: 'シンセバス', rarity: 'アンコモン', emoji: '🐡', minSize: 20, maxSize: 50, points: 50, odds: 0.18 },
+        { id: 'fish-salmon', name: 'ホログラムサーモン', rarity: 'レア', emoji: '🐬', minSize: 40, maxSize: 90, points: 100, odds: 0.08 },
+        { id: 'fish-tuna', name: 'グリッドツナ', rarity: 'エピック', emoji: '🦈', minSize: 80, maxSize: 180, points: 180, odds: 0.035 },
+        { id: 'fish-shark', name: 'レーザーホオジロザメ', rarity: 'レジェンド', emoji: '🐳', minSize: 150, maxSize: 350, points: 300, odds: 0.005 },
+        { id: 'fish-legend', name: 'ディープネオン・リヴァイアサン', rarity: 'ウルトラレア', emoji: '👑', minSize: 400, maxSize: 999, points: 500, odds: 0 } // Golden fish triggered uniquely
+    ];
+
+    let activeTimeouts = [];
+
+    function safeSetTimeout(callback, delay) {
+        let id;
+        id = setTimeout(() => {
+            activeTimeouts = activeTimeouts.filter(t => t !== id);
+            callback();
+        }, delay);
+        activeTimeouts.push(id);
+        return id;
+    }
+
+    function clearAllTimeouts() {
+        activeTimeouts.forEach(id => clearTimeout(id));
+        activeTimeouts = [];
+    }
+
+    window.onload = () => {
+        sound.init();
+        resizeCanvas();
+        loadPoints();
+        
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName && savedName.trim() !== "") {
+            playerName = savedName;
+            document.getElementById('player-name-text').innerText = playerName;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        requestAnimationFrame(renderLoop);
+    };
+
+    function resizeCanvas() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+    }
+
+    function loadPoints() {
+        if (window.parent && typeof window.parent.getPoints === 'function') {
+            playerPoints = window.parent.getPoints();
+        } else {
+            playerPoints = parseInt(localStorage.getItem('higeball_points') || '100', 10);
+        }
+        document.getElementById('current-points-lbl').innerText = playerPoints;
+        document.getElementById('hud-pts').innerText = playerPoints;
+    }
+
+    function startGame() {
+        if (playerPoints < 10) {
+            alert('ポイントが不足しています！他のゲームで獲得してください。');
+            return;
+        }
+
+        let spendSuccess = false;
+        if (window.parent && typeof window.parent.spendPoints === 'function') {
+            spendSuccess = window.parent.spendPoints(10);
+        } else {
+            playerPoints -= 10;
+            localStorage.setItem('higeball_points', playerPoints);
+            spendSuccess = true;
+        }
+
+        if (spendSuccess) {
+            clearAllTimeouts();
+            loadPoints();
+            document.getElementById('ui-overlay').style.display = 'none';
+            
+            hasCollectionChance = Math.random() < 0.33; // ~30% collection golden opportunity
+            legendaryFishSpawned = false;
+            
+            resetCastingState();
+        }
+    }
+
+    function resetCastingState() {
+        gameState = 'CASTING';
+        bobber.active = false;
+        fishShadow.active = false;
+        
+        document.getElementById('hud-status').innerText = 'CASTING';
+        document.getElementById('hud-status').style.color = 'var(--secondary)';
+        
+        const btn = document.getElementById('btn-action');
+        btn.innerText = 'CAST';
+        btn.className = 'action-button';
+        
+        document.getElementById('instructions').innerText = 'ウキを投げる位置を決めてタップ！';
+    }
+
+    function onActionDown() {
+        if (gameState === 'CASTING') {
+            triggerCast();
+        } else if (gameState === 'WAITING') {
+            // Check timing Hook!
+            triggerHook();
+        } else if (gameState === 'FIGHT') {
+            isActionPressed = true;
+        }
+    }
+
+    function onActionUp() {
+        isActionPressed = false;
+    }
+
+    function triggerCast() {
+        gameState = 'WAITING';
+        sound.playCast();
+        
+        document.getElementById('hud-status').innerText = 'WAITING';
+        document.getElementById('hud-status').style.color = 'var(--quaternary)';
+        
+        bobber.active = true;
+        bobber.x = canvas.width / 2;
+        bobber.y = canvas.height * 0.4;
+        bobber.scale = 1.0;
+        bobber.timer = 0;
+        
+        document.getElementById('btn-action').innerText = 'HOOK!';
+        document.getElementById('instructions').innerText = '魚が食いつく（!マークが出る）まで待とう！';
+
+        // Prepare fish shadow spawn after 2-5 seconds
+        safeSetTimeout(spawnFishShadow, 2000 + Math.random() * 3000);
+    }
+
+    function spawnFishShadow() {
+        if (gameState !== 'WAITING') return;
+
+        fishShadow.active = true;
+        // spawn far
+        let rAngle = Math.random() * Math.PI * 2;
+        fishShadow.x = bobber.x + Math.cos(rAngle) * 80;
+        fishShadow.y = bobber.y + Math.sin(rAngle) * 80;
+        fishShadow.state = 'swim';
+        fishShadow.timer = 0;
+        
+        isLegendary = hasCollectionChance && !legendaryFishSpawned && Math.random() < 0.6; // Higher spawn chance if game roll allows
+        if (isLegendary) {
+            legendaryFishSpawned = true;
+        }
+    }
+
+    function triggerHook() {
+        // Evaluate Hit Window
+        if (fishShadow.active && fishShadow.state === 'bite') {
+            // Hook Success! Start fight
+            startFightPhase();
+        } else {
+            // Hook fail
+            document.getElementById('alert-overlay').style.display = 'none';
+            sound.playLineBreak();
+            alert('魚に逃げられてしまいました！');
+            resetCastingState();
+        }
+    }
+
+    function startFightPhase() {
+        gameState = 'FIGHT';
+        document.getElementById('alert-overlay').style.display = 'none';
+        sound.playSplash();
+        
+        document.getElementById('hud-status').innerText = 'FIGHTING';
+        document.getElementById('hud-status').style.color = 'var(--primary)';
+        
+        const btn = document.getElementById('btn-action');
+        btn.innerText = 'REEL';
+        btn.className = 'action-button reeling';
+        
+        document.getElementById('instructions').innerText = '長押し/タップでリールを巻き、緑ゾーンを維持しろ！';
+
+        // Select fish entity
+        if (isLegendary) {
+            caughtFish = FISH_DATABASE.find(f => f.id === 'fish-legend');
+        } else {
+            let r = Math.random();
+            let sum = 0;
+            // Roll from non-legendary list
+            let database = FISH_DATABASE.filter(f => f.id !== 'fish-legend');
+            for (let f of database) {
+                sum += f.odds;
+                if (r <= sum) {
+                    caughtFish = f;
+                    break;
+                }
+            }
+            if (!caughtFish) caughtFish = database[0];
+        }
+
+        // Initialize reel stats
+        reelTension = 50;
+        reelDistance = 0;
+    }
+
+    function gameFightStep() {
+        if (gameState !== 'FIGHT') return;
+
+        // Apply reeling force
+        let reelForce = isActionPressed ? 2.5 : -1.8;
+        
+        // Random fish struggle force based on rarity
+        let struggle = 0;
+        if (caughtFish.rarity === 'レジェンド' || caughtFish.rarity === 'ウルトラレア') {
+            struggle = (Math.sin(Date.now() / 150) * 2.8) + (Math.random() - 0.5) * 1.5;
+        } else if (caughtFish.rarity === 'エピック' || caughtFish.rarity === 'レア') {
+            struggle = (Math.sin(Date.now() / 200) * 1.8) + (Math.random() - 0.5) * 1.0;
+        } else {
+            struggle = (Math.sin(Date.now() / 300) * 1.0) + (Math.random() - 0.5) * 0.5;
+        }
+
+        reelTension = Math.min(100, Math.max(0, reelTension + reelForce + struggle));
+
+        // Reeling progress evaluation (Green zone is between 35 and 75 tension)
+        if (reelTension >= 35 && reelTension <= 75) {
+            reelDistance += 0.35; // reeling in
+            if (isActionPressed && Math.random() < 0.2) sound.playReel();
+        } else {
+            // Slowly slipping back
+            reelDistance = Math.max(0, reelDistance - 0.15);
+        }
+
+        // Victory Check
+        if (reelDistance >= 100) {
+            fishCaughtSuccess();
+        }
+
+        // Defeat Check (Tension limits)
+        if (reelTension >= 100) {
+            fightFailed('LINE BREAK (糸が切れました)');
+        } else if (reelTension <= 0) {
+            fightFailed('HOOK OUT (針が外れました)');
+        }
+    }
+
+    function fishCaughtSuccess() {
+        gameState = 'RESULT';
+        sound.playVictory();
+        
+        // Random size calculation
+        let size = caughtFish.minSize + Math.floor(Math.random() * (caughtFish.maxSize - caughtFish.minSize));
+        
+        // Log & save local fishing diary records
+        let fishingLog = [];
+        try {
+            fishingLog = JSON.parse(localStorage.getItem('higeball_fishing_log') || '[]');
+        } catch(e){}
+        
+        let existingRecord = fishingLog.find(r => r.id === caughtFish.id);
+        let newRecordSet = false;
+        if (existingRecord) {
+            if (size > existingRecord.maxSize) {
+                existingRecord.maxSize = size;
+                newRecordSet = true;
+            }
+        } else {
+            fishingLog.push({ id: caughtFish.id, name: caughtFish.name, maxSize: size, emoji: caughtFish.emoji });
+            newRecordSet = true;
+        }
+        localStorage.setItem('higeball_fishing_log', JSON.stringify(fishingLog));
+
+        // Add Points to hub
+        let pts = caughtFish.points + Math.floor(size * 0.1);
+        if (window.parent && typeof window.parent.addPoints === 'function') {
+            window.parent.addPoints(pts);
+        } else {
+            playerPoints += pts;
+            localStorage.setItem('higeball_points', playerPoints);
+        }
+
+        // Collection Trigger
+        let unlockText = "";
+        if (caughtFish.id === 'fish-legend') {
+            unlockText = `<br><span style="color:var(--quaternary); font-weight:bold;">👑 伝説の主のウロコ コレクションをアンロック！</span>`;
+            if (window.parent && typeof window.parent.unlockCollection === 'function') {
+                window.parent.unlockCollection('col-fishing');
+            }
+        }
+
+        // Show UI Result Overlay
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+
+        const title = document.getElementById('result-title');
+        title.innerHTML = `🎣 つりあげ成功！`;
+        title.style.color = 'var(--tertiary)';
+        title.style.textShadow = '0 0 10px var(--tertiary)';
+
+        const msg = document.getElementById('result-message');
+        msg.innerHTML = `
+            やった！ <strong>${caughtFish.emoji} ${caughtFish.name}</strong> を釣り上げた！<br><br>
+            大きさ: <strong style="color:var(--secondary); font-size:18px;">${size} cm</strong> ${newRecordSet ? '<span style="color:var(--quaternary); font-size:9px;">[自己ベスト!]</span>' : ''}<br>
+            レア度: ${caughtFish.rarity}<br>
+            獲得ポイント: <span style="color:var(--tertiary); font-size:16px; font-weight:bold;">+${pts} pt</span>
+            ${unlockText}
+        `;
+    }
+
+    function fightFailed(reason) {
+        gameState = 'RESULT';
+        sound.playLineBreak();
+
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+
+        const title = document.getElementById('result-title');
+        title.innerText = `にげられた…`;
+        title.style.color = 'var(--primary)';
+        title.style.textShadow = '0 0 10px var(--primary)';
+
+        const msg = document.getElementById('result-message');
+        msg.innerHTML = `
+            残念！ 魚に逃げられてしまった！<br>
+            原因: <strong>${reason}</strong><br><br>
+            リールのゲージが緑ゾーンをキープできるように、<br>
+            タップを上手く連打して調整しましょう。
+        `;
+    }
+
+    function openLogScreen() {
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('screen-log').style.display = 'flex';
+        
+        renderFishingLog();
+    }
+
+    function closeLogScreen() {
+        document.getElementById('screen-log').style.display = 'none';
+        document.getElementById('screen-start').style.display = 'flex';
+        loadPoints();
+    }
+
+    function renderFishingLog() {
+        let fishingLog = [];
+        try {
+            fishingLog = JSON.parse(localStorage.getItem('higeball_fishing_log') || '[]');
+        } catch(e){}
+
+        const container = document.getElementById('log-list-container');
+        container.innerHTML = "";
+
+        FISH_DATABASE.forEach(f => {
+            let record = fishingLog.find(r => r.id === f.id);
+            const div = document.createElement('div');
+            div.className = 'log-item';
+            
+            if (record) {
+                div.innerHTML = `
+                    <span class="log-item-name">${f.emoji} ${f.name} (${f.rarity})</span>
+                    <span class="log-item-size">最大: ${record.maxSize} cm</span>
+                `;
+            } else {
+                div.innerHTML = `
+                    <span class="log-item-name" style="color: rgba(255,255,255,0.2);">❔ 未遭遇の魚</span>
+                    <span class="log-item-size" style="color: rgba(255,255,255,0.2);">--- cm</span>
+                `;
+            }
+            container.appendChild(div);
+        });
+    }
+
+    function goHome() {
+        clearAllTimeouts();
+        if (window.parent && typeof window.parent.closeGame === 'function') {
+            window.parent.closeGame();
+        } else {
+            window.location.href = '../../index.html';
+        }
+    }
+
+    function resetGame() {
+        clearAllTimeouts();
+        gameState = 'MENU';
+        document.getElementById('screen-start').style.display = 'flex';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('ui-overlay').style.display = 'flex';
+        loadPoints();
+    }
+
+    // --- Canvas Rendering Loops ---
+    function renderLoop() {
+        ctx.fillStyle = '#050414';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Neon sky grid lines (Horizontal Synthwave lines)
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < canvas.width; i += 25) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+        }
+        for (let i = 0; i < canvas.height; i += 25) {
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        // Draw Water Area
+        let waterY = canvas.height * 0.28;
+        ctx.fillStyle = 'rgba(0, 240, 255, 0.08)';
+        ctx.fillRect(0, waterY, canvas.width, canvas.height - waterY);
+        
+        ctx.strokeStyle = 'var(--secondary)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(0, waterY);
+        ctx.lineTo(canvas.width, waterY);
+        ctx.stroke();
+
+        // Game state rendering logic
+        if (gameState === 'CASTING' || gameState === 'WAITING' || gameState === 'FIGHT') {
+            // Draw dock/wooden deck where angler stands
+            ctx.fillStyle = '#0d0b20';
+            ctx.fillRect(0, canvas.height - 40, canvas.width, 40);
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(0, canvas.height - 40, canvas.width, 40);
+
+            // Stand symbol (circle indicator)
+            ctx.fillStyle = 'var(--secondary)';
+            ctx.beginPath();
+            ctx.arc(canvas.width/2, canvas.height - 25, 12, 0, Math.PI*2);
+            ctx.fill();
+
+            // Bobber drawing
+            if (bobber.active) {
+                // Bobber ripple animation
+                let ripple = Math.abs(Math.sin(Date.now() / 300)) * 12;
+                ctx.strokeStyle = 'rgba(0, 240, 255, 0.25)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(bobber.x, bobber.y, 8 + ripple, 0, Math.PI*2);
+                ctx.stroke();
+
+                // Bobber float
+                let floatY = Math.sin(Date.now() / 200) * 1.5;
+                ctx.fillStyle = '#ff007f';
+                ctx.beginPath();
+                ctx.arc(bobber.x, bobber.y + floatY, 6, 0, Math.PI*2);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+            }
+
+            // Update & Draw Fish Shadow
+            if (fishShadow.active) {
+                updateFishShadow();
+                
+                // Draw fish shadow shape
+                ctx.fillStyle = isLegendary ? 'rgba(255, 215, 0, 0.3)' : 'rgba(0, 240, 255, 0.15)';
+                ctx.beginPath();
+                ctx.arc(fishShadow.x, fishShadow.y, fishShadow.r, 0, Math.PI*2);
+                ctx.fill();
+                
+                // glowing particles if legendary
+                if (isLegendary && Math.random() < 0.4) {
+                    ctx.fillStyle = '#ffd700';
+                    ctx.fillRect(fishShadow.x + (Math.random()-0.5)*15, fishShadow.y + (Math.random()-0.5)*15, 2, 2);
+                }
+
+                // If bite state, show ! mark
+                if (fishShadow.state === 'bite' && Math.sin(Date.now() / 80) > 0) {
+                    ctx.font = 'bold 20px "Press Start 2P"';
+                    ctx.fillStyle = 'var(--primary)';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('!', bobber.x, bobber.y - 20);
+                }
+            }
+
+            // Reeling Fight Screen Overlay details
+            if (gameState === 'FIGHT') {
+                gameFightStep();
+                drawFightHud();
+            }
+        }
+
+        requestAnimationFrame(renderLoop);
+    }
+
+    function updateFishShadow() {
+        if (!fishShadow.active) return;
+
+        fishShadow.timer++;
+
+        if (fishShadow.state === 'swim') {
+            // swim toward bobber slowly
+            let dx = bobber.x - fishShadow.x;
+            let dy = bobber.y - fishShadow.y;
+            let dist = Math.hypot(dx, dy);
+
+            if (dist > 8) {
+                fishShadow.x += (dx / dist) * 0.8;
+                fishShadow.y += (dy / dist) * 0.8;
+            } else {
+                // Arrived, prepare bite chance
+                fishShadow.state = 'nibble';
+                fishShadow.timer = 0;
+            }
+        } 
+        else if (fishShadow.state === 'nibble') {
+            // Nibbling: Bobber ripples, wait for bite
+            if (fishShadow.timer > 100) {
+                // Bite!
+                fishShadow.state = 'bite';
+                fishShadow.timer = 0;
+                sound.playHitAlert();
+                document.getElementById('alert-overlay').style.display = 'block';
+            }
+        } 
+        else if (fishShadow.state === 'bite') {
+            // Bite: limit window to tap (600ms to 900ms depending on speed multiplier)
+            let limit = isLegendary ? 50 : 80;
+            if (fishShadow.timer > limit) {
+                // Escape!
+                document.getElementById('alert-overlay').style.display = 'none';
+                fishShadow.active = false;
+                bobber.active = false;
+                sound.playLineBreak();
+                alert('魚に逃げられてしまいました！');
+                resetCastingState();
+            }
+        }
+    }
+
+    function drawFightHud() {
+        // Draw Tension gauge bar
+        let gaugeW = 180;
+        let gaugeH = 14;
+        let gx = (canvas.width - gaugeW) / 2;
+        let gy = canvas.height * 0.2;
+
+        // Background
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(gx, gy, gaugeW, gaugeH);
+
+        // Safe zone (35% to 75%)
+        ctx.fillStyle = 'rgba(57, 255, 20, 0.2)';
+        ctx.fillRect(gx + gaugeW * 0.35, gy, gaugeW * 0.4, gaugeH);
+        
+        ctx.strokeStyle = 'var(--tertiary)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(gx + gaugeW * 0.35, gy, gaugeW * 0.4, gaugeH);
+
+        // Tension indicator pin
+        let px = gx + gaugeW * (reelTension / 100);
+        ctx.fillStyle = '#fff';
+        ctx.shadowColor = '#fff';
+        ctx.shadowBlur = 8;
+        ctx.fillRect(px - 2, gy - 2, 4, gaugeH + 4);
+        ctx.shadowBlur = 0;
+
+        ctx.font = '7px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.fillText('TENSION', canvas.width/2, gy - 8);
+
+        // Reel Distance Progress Bar (bottom HUD)
+        let prgW = 200;
+        let prgH = 6;
+        let px2 = (canvas.width - prgW) / 2;
+        let py2 = canvas.height * 0.65;
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.fillRect(px2, py2, prgW, prgH);
+        ctx.fillStyle = 'var(--secondary)';
+        ctx.fillRect(px2, py2, prgW * (reelDistance / 100), prgH);
+        
+        ctx.strokeStyle = 'var(--secondary)';
+        ctx.strokeRect(px2, py2, prgW, prgH);
+
+        ctx.font = '7px "Press Start 2P"';
+        ctx.fillStyle = 'var(--secondary)';
+        ctx.fillText(`PULL IN: ${Math.floor(reelDistance)}%`, canvas.width/2, py2 + 16);
+    }
+</script>
+
+</body>
+</html>

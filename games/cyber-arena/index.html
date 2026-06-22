@@ -518,7 +518,8 @@
     let activeTimeouts = [];
 
     function safeSetTimeout(callback, delay) {
-        const id = setTimeout(() => {
+        let id;
+        id = setTimeout(() => {
             activeTimeouts = activeTimeouts.filter(t => t !== id);
             callback();
         }, delay);

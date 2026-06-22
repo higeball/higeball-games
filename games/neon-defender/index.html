@@ -287,6 +287,8 @@
     let score = 0;
     let highscore = 0;
     let baseLife = 3;
+    let hasCollectionChance = false;
+    let ufoSpawned = false;
 
     // Entities
     let meteors = [];
@@ -358,6 +360,9 @@
         explosions = [];
         ufos = [];
         spawnTimer = 0;
+        
+        hasCollectionChance = Math.random() < 0.33;
+        ufoSpawned = false;
 
         sound.init();
         requestAnimationFrame(gameLoop);
@@ -423,8 +428,9 @@
         // 2. Spawn Meteors or UFOs
         spawnTimer--;
         if (spawnTimer <= 0) {
-            let isUfo = Math.random() < 0.12;
+            let isUfo = hasCollectionChance && !ufoSpawned && Math.random() < 0.10;
             if (isUfo && ufos.length === 0) {
+                ufoSpawned = true;
                 let fromLeft = Math.random() < 0.5;
                 ufos.push({
                     x: fromLeft ? -20 : canvas.width + 20,

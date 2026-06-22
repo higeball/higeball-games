@@ -315,6 +315,8 @@
     let obstacles = [];
     let speed = 4.0;
     let spawnTimer = 0;
+    let hasCollectionChance = false;
+    let starSpawned = false;
 
     const keys = {};
     window.addEventListener('keydown', e => {
@@ -370,6 +372,9 @@
         runner.isJumping = false;
         runner.isSliding = false;
         runner.h = 36;
+        
+        hasCollectionChance = Math.random() < 0.33;
+        starSpawned = false;
 
         sound.init();
         requestAnimationFrame(gameLoop);
@@ -425,8 +430,9 @@
         // Spawn obstacles or Star
         spawnTimer--;
         if (spawnTimer <= 0) {
-            let isStar = Math.random() < 0.15; // 15% chance to spawn a star item
+            let isStar = hasCollectionChance && !starSpawned && Math.random() < 0.10;
             if (isStar) {
+                starSpawned = true;
                 obstacles.push({ x: 340, y: runner.groundY - 30, w: 16, h: 16, type: 'star' });
             } else {
                 let type = Math.random() < 0.5 ? 'low' : 'high'; // low needs JUMP, high needs SLIDE

@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>サイバー相撲 勝ち抜き戦 | Higeball Games</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff007f; /* Neon Pink */
+            --secondary: #00f0ff; /* Neon Cyan */
+            --tertiary: #39ff14; /* Neon Green */
+            --quaternary: #ffaa00; /* Neon Orange */
+            --dark: #0a0a16;
+            --text: #f1f1f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+
+        #game-container {
+            position: relative;
+            background-color: var(--dark);
+            border: 4px solid var(--primary);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.4);
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 720px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Screen overlays */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: rgba(10, 10, 22, 0.95);
+            z-index: 10;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            margin: auto 0;
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 20px;
+            color: #fff;
+            text-shadow: 0 0 8px var(--primary), 0 0 15px var(--primary);
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .game-title span {
+            color: var(--secondary);
+            text-shadow: 0 0 8px var(--secondary), 0 0 15px var(--secondary);
+        }
+
+        .info-box {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .info-title {
+            font-size: 11px;
+            color: #a0a0cf;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .points-display {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .menu-btn {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #d0006f);
+            color: #fff;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 8px 0;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(255, 0, 127, 0.4);
+            text-align: center;
+            transition: transform 0.1s;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.98);
+        }
+
+        .menu-btn.secondary-style {
+            background: linear-gradient(135deg, var(--secondary), #00b0df);
+            color: #000;
+            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.3);
+        }
+
+        #back-link {
+            margin-top: 15px;
+            color: var(--secondary);
+            text-decoration: none;
+            font-size: 12px;
+            border-bottom: 1px dotted var(--secondary);
+            padding-bottom: 2px;
+        }
+
+        /* Game Arena Canvas */
+        canvas {
+            display: block;
+            width: 100%;
+            flex: 1;
+            background-color: #050414;
+        }
+
+        /* Touch Controls Area */
+        .controls-container {
+            height: 140px;
+            background: #0d0b20;
+            border-top: 2px solid rgba(255, 0, 127, 0.2);
+            display: grid;
+            grid-template-columns: 1fr 1.2fr 1fr;
+            gap: 10px;
+            padding: 12px;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-family: 'Noto Sans JP', sans-serif;
+            font-weight: bold;
+            transition: all 0.1s;
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .control-btn.btn-push {
+            border-color: var(--secondary);
+            box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1);
+        }
+        .control-btn.btn-push:active {
+            background: rgba(0, 240, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+        }
+
+        .control-btn.btn-tsuppari {
+            border-color: var(--primary);
+            box-shadow: inset 0 0 10px rgba(255, 0, 127, 0.1);
+        }
+        .control-btn.btn-tsuppari:active {
+            background: rgba(255, 0, 127, 0.2);
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.4);
+        }
+
+        .control-btn.btn-inasu {
+            border-color: var(--quaternary);
+            box-shadow: inset 0 0 10px rgba(255, 170, 0, 0.1);
+        }
+        .control-btn.btn-inasu:active {
+            background: rgba(255, 170, 0, 0.2);
+            box-shadow: 0 0 15px rgba(255, 170, 0, 0.4);
+        }
+
+        .btn-label {
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .btn-desc {
+            font-size: 8px;
+            color: #a0a0cf;
+            text-transform: uppercase;
+        }
+
+        /* Top HUD Bar */
+        .hud-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 10px 15px;
+            background: linear-gradient(to bottom, rgba(5, 4, 20, 0.8), rgba(5, 4, 20, 0));
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 5;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 8px;
+            color: #fff;
+        }
+
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .payout-table {
+            font-size: 11px;
+            color: #b0b0df;
+            text-align: left;
+            margin: 15px 0;
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .payout-table th, .payout-table td {
+            padding: 6px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .payout-table tr.current-win {
+            background: rgba(57, 255, 20, 0.12);
+            color: var(--tertiary);
+            font-weight: bold;
+            border: 1px solid var(--tertiary);
+        }
+
+        /* Notification text overlay */
+        #msg-overlay {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Press Start 2P', cursive;
+            font-size: 24px;
+            color: #fff;
+            text-shadow: 0 0 10px var(--primary), 0 0 20px var(--primary);
+            pointer-events: none;
+            z-index: 4;
+            display: none;
+            text-align: center;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Top HUD Bar -->
+        <div class="hud-bar">
+            <div class="hud-item"><span style="color: var(--secondary);">WIN:</span> <span id="hud-wins">0</span></div>
+            <div class="hud-item"><span style="color: var(--tertiary);">PAYOUT:</span> <span id="hud-payout">0</span> pt</div>
+        </div>
+
+        <!-- Notification Overlay -->
+        <div id="msg-overlay">READY</div>
+
+        <!-- Interactive Arena Canvas -->
+        <canvas id="arenaCanvas"></canvas>
+        
+        <!-- Touch Controls -->
+        <div class="controls-container">
+            <div class="control-btn btn-inasu" onclick="performAction('inasu')">
+                <span class="btn-label">いなす</span>
+                <span class="btn-desc">Evade</span>
+            </div>
+            <div class="control-btn btn-push" onclick="performAction('push')">
+                <span class="btn-label">おす</span>
+                <span class="btn-desc">Push</span>
+            </div>
+            <div class="control-btn btn-tsuppari" onclick="performAction('tsuppari')">
+                <span class="btn-label">つっぱり</span>
+                <span class="btn-desc">Strike</span>
+            </div>
+        </div>
+
+        <!-- UI Screen Overlay -->
+        <div id="ui-overlay">
+            <!-- START / BET SCREEN -->
+            <div id="screen-start" class="menu-screen">
+                <div class="game-title">CYBER SUMO<br><span>NEON SHOWDOWN</span></div>
+                <div id="player-display" style="font-size: 14px; margin-bottom: 15px; font-weight: bold; color: var(--secondary);">PLAYER: <span id="player-name-text">---</span></div>
+                
+                <div class="info-box">
+                    <div class="info-title">所持ポイント</div>
+                    <div class="points-display">
+                        所持: <span id="current-points-lbl" style="color: var(--secondary); font-weight: 800;">0</span> pt
+                    </div>
+                </div>
+
+                <div class="info-box" style="text-align: left;">
+                    <div class="info-title" style="text-align: center;">勝ち抜き配当ルール</div>
+                    <p style="font-size: 11px; color: #a0a0cf; margin-bottom: 8px; text-align: center;">エントリー料金: <strong style="color: #fff;">50 pt</strong></p>
+                    <table class="payout-table">
+                        <thead>
+                            <tr><th>勝ち抜き数</th><th>払戻ポイント</th></tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>1人抜き</td><td>30 pt</td></tr>
+                            <tr><td>2人抜き</td><td>70 pt (黒字!)</td></tr>
+                            <tr><td>3人抜き</td><td>120 pt</td></tr>
+                            <tr><td>4人抜き</td><td>200 pt</td></tr>
+                            <tr><td>5人抜き (完全制覇)</td><td>400 pt!</td></tr>
+                        </tbody>
+                    </table>
+                    <p style="font-size: 10px; color: var(--primary); text-align: center;">※敗北すると配当は 0 pt に没収されます。<br>各勝利後に「勝ち逃げ」して配当を確定できます。</p>
+                </div>
+
+                <button class="menu-btn" id="btn-start" onclick="entrySumoBattle()">バトルエントリー (50pt)</button>
+                <a href="#" onclick="goHome(); return false;" id="back-link">BACK TO HUB</a>
+            </div>
+
+            <!-- ROUND CLEAR / OUTCOME SCREEN -->
+            <div id="screen-round" class="menu-screen" style="display:none;">
+                <div class="game-title" id="round-title">VICTORY</div>
+                <div id="round-message" style="margin: 15px 0; font-size: 14px; line-height: 1.8; color: #fff; text-align: center;"></div>
+                
+                <table class="payout-table" id="round-payout-table">
+                    <!-- Dynamic payout markers -->
+                </table>
+
+                <button class="menu-btn secondary-style" onclick="nextOpponent()">▶ 次の対戦相手に挑む</button>
+                <button class="menu-btn" onclick="cashOut()" style="background: linear-gradient(135deg, var(--tertiary), #2bc410); color: #000; box-shadow: 0 4px 15px rgba(57, 255, 20, 0.3);">▶ 勝ち逃げする (ポイント確定)</button>
+            </div>
+
+            <!-- RESULT SCREEN -->
+            <div id="screen-result" class="menu-screen" style="display:none;">
+                <div class="game-title" id="result-title">GAME OVER</div>
+                <div id="result-message" style="margin: 15px 0; font-size: 14px; line-height: 1.8; color: #fff; text-align: center;"></div>
+                <button class="menu-btn" onclick="resetGame()">▶ もう一度遊ぶ</button>
+                <button class="menu-btn secondary-style" onclick="goHome()">▶ ホームに戻る</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Audio System ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+            this.failed = false;
+        }
+        init() {
+            if (this.failed) return;
+            if (!this.ctx) {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) this.ctx = new AudioContextClass();
+                    else this.failed = true;
+                } catch(e) { this.failed = true; }
+            }
+        }
+        playTone(freq, duration, type = 'square', timeOffset = 0) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch(e){}
+        }
+        playPush() { this.playTone(300, 0.1, 'sawtooth'); }
+        playTsuppari() { this.playTone(450, 0.08, 'sawtooth'); this.playTone(600, 0.05, 'sawtooth', 0.03); }
+        playInasu() { this.playTone(500, 0.15, 'sine'); }
+        playOut() { this.playTone(150, 0.3, 'sawtooth'); }
+        playVictory() {
+            this.playTone(523, 0.1, 'square');
+            this.playTone(659, 0.1, 'square', 0.1);
+            this.playTone(784, 0.1, 'square', 0.2);
+            this.playTone(1046, 0.3, 'square', 0.3);
+        }
+    }
+    const sound = new SoundFX();
+
+    const canvas = document.getElementById('arenaCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Game States
+    let gameState = 'MENU'; // MENU, READY, FIGHT, ROUND_CLEAR, RESULT
+    let playerPoints = 0;
+    let playerName = "ゲスト";
+    let winsCount = 0;
+    let hasCollectionChance = false;
+    let goldenOpponentSpawned = false;
+    let isOpponentGolden = false;
+
+    // Entity States
+    const dohyo = { x: 160, y: 150, r: 85 }; // Canvas coords scale handled during resize
+    let player = { x: 160, y: 210, r: 16, color: '#00f0ff', balance: 100, maxBalance: 100, stamina: 100, action: 'idle', actionTimer: 0 };
+    let opponent = { x: 160, y: 90, r: 16, color: '#ff007f', balance: 100, maxBalance: 100, name: 'ネオン小結', level: 1, action: 'idle', actionTimer: 0 };
+
+    const PAYOUTS = [0, 30, 70, 120, 200, 400];
+    const MAX_LEVEL = 5;
+
+    let activeTimeouts = [];
+
+    function safeSetTimeout(callback, delay) {
+        let id;
+        id = setTimeout(() => {
+            activeTimeouts = activeTimeouts.filter(t => t !== id);
+            callback();
+        }, delay);
+        activeTimeouts.push(id);
+        return id;
+    }
+
+    function clearAllTimeouts() {
+        activeTimeouts.forEach(id => clearTimeout(id));
+        activeTimeouts = [];
+    }
+
+    window.onload = () => {
+        sound.init();
+        resizeCanvas();
+        loadPoints();
+        
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName && savedName.trim() !== "") {
+            playerName = savedName;
+            document.getElementById('player-name-text').innerText = playerName;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        requestAnimationFrame(renderLoop);
+    };
+
+    function resizeCanvas() {
+        canvas.width = canvas.clientWidth;
+        canvas.height = canvas.clientHeight;
+        
+        dohyo.x = canvas.width / 2;
+        dohyo.y = canvas.height / 2 - 20;
+        dohyo.r = Math.min(canvas.width, canvas.height) * 0.35;
+
+        if (gameState === 'MENU' || gameState === 'RESULT') {
+            resetPositions();
+        }
+    }
+
+    function loadPoints() {
+        if (window.parent && typeof window.parent.getPoints === 'function') {
+            playerPoints = window.parent.getPoints();
+        } else {
+            playerPoints = parseInt(localStorage.getItem('higeball_points') || '100', 10);
+        }
+        document.getElementById('current-points-lbl').innerText = playerPoints;
+    }
+
+    function entrySumoBattle() {
+        if (playerPoints < 50) {
+            alert('ポイントが足りません！他のゲームで増やしてください。');
+            return;
+        }
+
+        let spendSuccess = false;
+        if (window.parent && typeof window.parent.spendPoints === 'function') {
+            spendSuccess = window.parent.spendPoints(50);
+        } else {
+            playerPoints -= 50;
+            localStorage.setItem('higeball_points', playerPoints);
+            spendSuccess = true;
+        }
+
+        if (spendSuccess) {
+            clearAllTimeouts();
+            winsCount = 0;
+            hasCollectionChance = Math.random() < 0.33; // 33% Collection Chance
+            goldenOpponentSpawned = false;
+            document.getElementById('ui-overlay').style.display = 'none';
+            setupOpponent(1);
+            startFightSequence();
+        }
+    }
+
+    function setupOpponent(level) {
+        opponent.level = level;
+        opponent.balance = 80 + level * 20;
+        opponent.maxBalance = opponent.balance;
+        opponent.action = 'idle';
+        opponent.actionTimer = 0;
+
+        // Roll Golden Opponent Chance (usually at level 3 or 4 if collection chance is active)
+        if (hasCollectionChance && !goldenOpponentSpawned && (level === 3 || level === 4 || (level === 5 && Math.random() < 0.5))) {
+            isOpponentGolden = true;
+            goldenOpponentSpawned = true;
+            opponent.name = '👑 ゴールデン関脇';
+            opponent.color = '#ffd700'; // Gold
+            opponent.balance += 30; // Golden stat boost
+            opponent.maxBalance = opponent.balance;
+        } else {
+            isOpponentGolden = false;
+            opponent.color = '#ff007f';
+            const names = ['', 'ネオン前頭', 'サイバー小結', 'ホログラム関脇', 'デジタル大関', 'シンセ横綱'];
+            opponent.name = names[level] || '謎の力士';
+        }
+    }
+
+    function resetPositions() {
+        player.x = dohyo.x;
+        player.y = dohyo.y + dohyo.r * 0.5;
+        player.balance = player.maxBalance;
+        player.stamina = 100;
+        player.action = 'idle';
+        player.actionTimer = 0;
+
+        opponent.x = dohyo.x;
+        opponent.y = dohyo.y - dohyo.r * 0.5;
+        opponent.balance = opponent.maxBalance;
+        opponent.action = 'idle';
+        opponent.actionTimer = 0;
+    }
+
+    function startFightSequence() {
+        resetPositions();
+        gameState = 'READY';
+        document.getElementById('hud-wins').innerText = winsCount;
+        document.getElementById('hud-payout').innerText = PAYOUTS[winsCount];
+
+        const msg = document.getElementById('msg-overlay');
+        msg.innerText = 'はっけよい…';
+        msg.style.color = '#fff';
+        msg.style.display = 'block';
+
+        sound.playTone(400, 0.2);
+
+        safeSetTimeout(() => {
+            if (gameState !== 'READY') return;
+            gameState = 'FIGHT';
+            msg.innerText = 'のこった！';
+            msg.style.color = varColor('--secondary');
+            sound.playTone(800, 0.4);
+
+            safeSetTimeout(() => {
+                if (gameState === 'FIGHT') {
+                    msg.style.display = 'none';
+                }
+            }, 800);
+        }, 1500);
+    }
+
+    function varColor(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function performAction(action) {
+        if (gameState !== 'FIGHT') return;
+        if (player.action !== 'idle') return;
+
+        player.action = action;
+        player.actionTimer = 15; // length of action frame
+
+        if (action === 'push') {
+            sound.playPush();
+            player.stamina = Math.max(0, player.stamina - 8);
+            // Move toward opponent
+            let dx = opponent.x - player.x;
+            let dy = opponent.y - player.y;
+            let dist = Math.hypot(dx, dy);
+            if (dist > 0) {
+                player.x += (dx / dist) * 12;
+                player.y += (dy / dist) * 12;
+            }
+        } else if (action === 'tsuppari') {
+            sound.playTsuppari();
+            player.stamina = Math.max(0, player.stamina - 20);
+        } else if (action === 'inasu') {
+            sound.playInasu();
+            player.stamina = Math.max(0, player.stamina - 12);
+        }
+    }
+
+    // AI Opponent Strategy
+    function updateAI() {
+        if (gameState !== 'FIGHT') return;
+
+        // Recover stamina & balance slowly
+        opponent.balance = Math.min(opponent.maxBalance, opponent.balance + 0.1);
+        player.balance = Math.min(player.maxBalance, player.balance + 0.15);
+        player.stamina = Math.min(100, player.stamina + 0.3);
+
+        if (opponent.action !== 'idle') {
+            opponent.actionTimer--;
+            if (opponent.actionTimer <= 0) {
+                opponent.action = 'idle';
+            }
+            return;
+        }
+
+        // Action Decision logic
+        if (Math.random() < 0.04) {
+            let dx = player.x - opponent.x;
+            let dy = player.y - opponent.y;
+            let dist = Math.hypot(dx, dy);
+
+            // Evade (inasu) chance if player is pushing/striking
+            if (player.action === 'push' && dist < 50 && Math.random() < 0.4) {
+                opponent.action = 'inasu';
+                opponent.actionTimer = 18;
+                sound.playInasu();
+                return;
+            }
+
+            // Attack decisions
+            if (dist < 40) {
+                if (Math.random() < 0.4) {
+                    opponent.action = 'tsuppari';
+                    opponent.actionTimer = 15;
+                    sound.playTsuppari();
+                } else {
+                    opponent.action = 'push';
+                    opponent.actionTimer = 12;
+                    opponent.x += (dx / dist) * 10;
+                    opponent.y += (dy / dist) * 10;
+                    sound.playPush();
+                }
+            } else {
+                // Charge closer
+                opponent.action = 'push';
+                opponent.actionTimer = 12;
+                opponent.x += (dx / dist) * 14;
+                opponent.y += (dy / dist) * 14;
+                sound.playPush();
+            }
+        }
+    }
+
+    function checkPhysics() {
+        if (gameState !== 'FIGHT') return;
+
+        // Player cooldowns
+        if (player.action !== 'idle') {
+            player.actionTimer--;
+            if (player.actionTimer <= 0) {
+                player.action = 'idle';
+            }
+        }
+
+        // Distance & Collision
+        let dx = opponent.x - player.x;
+        let dy = opponent.y - player.y;
+        let dist = Math.hypot(dx, dy);
+
+        let overlap = (player.r + opponent.r) - dist;
+        if (overlap > 0) {
+            // Push apart slightly to prevent clipping
+            let ox = (dx / dist) * (overlap / 2);
+            let oy = (dy / dist) * (overlap / 2);
+            player.x -= ox;
+            player.y -= oy;
+            opponent.x += ox;
+            opponent.y += oy;
+
+            // Resolve actions combat
+            resolveCombatInteraction();
+        }
+
+        // Border constraints / Outer check
+        let distP = Math.hypot(player.x - dohyo.x, player.y - dohyo.y);
+        let distO = Math.hypot(opponent.x - dohyo.x, opponent.y - dohyo.y);
+
+        if (distP > dohyo.r + player.r * 0.3) {
+            handleFightEnd('loss');
+        } else if (distO > dohyo.r + opponent.r * 0.3) {
+            handleFightEnd('win');
+        }
+    }
+
+    function resolveCombatInteraction() {
+        let dx = opponent.x - player.x;
+        let dy = opponent.y - player.y;
+        let dist = Math.hypot(dx, dy);
+
+        if (player.action === 'push' && opponent.action === 'idle') {
+            // Player pushes Opponent
+            let force = 6 + (player.stamina > 20 ? 4 : 0);
+            opponent.x += (dx / dist) * force;
+            opponent.y += (dy / dist) * force;
+            opponent.balance = Math.max(0, opponent.balance - 5);
+        }
+        else if (opponent.action === 'push' && player.action === 'idle') {
+            // Opponent pushes Player
+            let force = 5 + (opponent.level * 0.8);
+            player.x -= (dx / dist) * force;
+            player.y -= (dy / dist) * force;
+            player.balance = Math.max(0, player.balance - 5);
+        }
+        else if (player.action === 'tsuppari') {
+            if (opponent.action === 'inasu') {
+                // Inasu counters Strike: Player slips forward
+                player.x += (dx / dist) * 15;
+                player.y += (dy / dist) * 15;
+                player.balance = Math.max(0, player.balance - 25);
+            } else {
+                // Hit strike
+                let force = 12 * (1 - opponent.balance / opponent.maxBalance);
+                opponent.x += (dx / dist) * force;
+                opponent.y += (dy / dist) * force;
+                opponent.balance = Math.max(0, opponent.balance - 18);
+            }
+        }
+        else if (opponent.action === 'tsuppari') {
+            if (player.action === 'inasu') {
+                // Opponent slips
+                opponent.x -= (dx / dist) * 15;
+                opponent.y -= (dy / dist) * 15;
+                opponent.balance = Math.max(0, opponent.balance - 25);
+            } else {
+                let force = 10 * (1 - player.balance / player.maxBalance);
+                player.x -= (dx / dist) * force;
+                player.y -= (dy / dist) * force;
+                player.balance = Math.max(0, player.balance - 18);
+            }
+        }
+        else if (player.action === 'push' && opponent.action === 'push') {
+            // Stall clash
+            player.balance = Math.max(0, player.balance - 2);
+            opponent.balance = Math.max(0, opponent.balance - 2);
+        }
+    }
+
+    function handleFightEnd(outcome) {
+        gameState = 'ROUND_CLEAR';
+        sound.playOut();
+
+        const msg = document.getElementById('msg-overlay');
+        msg.style.display = 'block';
+
+        if (outcome === 'win') {
+            winsCount++;
+            msg.innerText = '勝負あり！';
+            msg.style.color = varColor('--tertiary');
+            
+            safeSetTimeout(() => {
+                showRoundClearScreen();
+            }, 1200);
+        } else {
+            msg.innerText = '寄り切り！';
+            msg.style.color = varColor('--primary');
+            
+            safeSetTimeout(() => {
+                showGameOverScreen();
+            }, 1200);
+        }
+    }
+
+    function showRoundClearScreen() {
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-round').style.display = 'flex';
+        document.getElementById('screen-result').style.display = 'none';
+
+        const title = document.getElementById('round-title');
+        const msg = document.getElementById('round-message');
+
+        title.innerText = `勝ち抜き成功！`;
+        title.style.color = 'var(--tertiary)';
+        title.style.textShadow = '0 0 10px var(--tertiary)';
+
+        let statusText = `相手の <strong>${opponent.name}</strong> を寄り切りました！`;
+        if (isOpponentGolden) {
+            statusText += `<br><span style="color:var(--quaternary); font-weight:bold;">🌟 コレクション「ゴールド軍配」をアンロックしました！</span>`;
+            if (window.parent && typeof window.parent.unlockCollection === 'function') {
+                window.parent.unlockCollection('col-sumo');
+            }
+        }
+
+        msg.innerHTML = `
+            ${statusText}<br><br>
+            現在 <strong>${winsCount}人抜き</strong> 達成中！<br>
+            現在の配当ポイント: <strong style="color: var(--secondary); font-size:16px;">${PAYOUTS[winsCount]} pt</strong>
+        `;
+
+        renderRoundPayoutTable();
+    }
+
+    function renderRoundPayoutTable() {
+        const table = document.getElementById('round-payout-table');
+        table.innerHTML = `
+            <thead><tr><th>勝ち抜き数</th><th>払戻配当</th></tr></thead>
+            <tbody>
+                <tr class="${winsCount === 1 ? 'current-win' : ''}"><td>1人抜き</td><td>30 pt</td></tr>
+                <tr class="${winsCount === 2 ? 'current-win' : ''}"><td>2人抜き</td><td>70 pt</td></tr>
+                <tr class="${winsCount === 3 ? 'current-win' : ''}"><td>3人抜き</td><td>120 pt</td></tr>
+                <tr class="${winsCount === 4 ? 'current-win' : ''}"><td>4人抜き</td><td>200 pt</td></tr>
+                <tr class="${winsCount === 5 ? 'current-win' : ''}"><td>5人抜き (完全制覇)</td><td>400 pt!</td></tr>
+            </tbody>
+        `;
+
+        // If level 5, next opponent button hidden
+        const nextBtn = document.querySelector('#screen-round .secondary-style');
+        if (winsCount >= MAX_LEVEL) {
+            nextBtn.style.display = 'none';
+        } else {
+            nextBtn.style.display = 'block';
+        }
+    }
+
+    function nextOpponent() {
+        document.getElementById('ui-overlay').style.display = 'none';
+        setupOpponent(winsCount + 1);
+        startFightSequence();
+    }
+
+    function cashOut() {
+        let payout = PAYOUTS[winsCount];
+        if (window.parent && typeof window.parent.addPoints === 'function') {
+            window.parent.addPoints(payout);
+        } else {
+            playerPoints += payout;
+            localStorage.setItem('higeball_points', playerPoints);
+        }
+
+        sound.playVictory();
+        
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-round').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+
+        const title = document.getElementById('result-title');
+        const msg = document.getElementById('result-message');
+
+        title.innerText = `勝ち逃げ完了`;
+        title.style.color = 'var(--secondary)';
+        title.style.textShadow = '0 0 10px var(--secondary)';
+
+        msg.innerHTML = `
+            見事な引き際です！<br>
+            <strong>${winsCount}人抜き</strong> で勝ち逃げし、配当を獲得しました。<br><br>
+            獲得ポイント: <span style="color:var(--tertiary); font-size:16px; font-weight:bold;">+${payout} pt</span>
+        `;
+    }
+
+    function showGameOverScreen() {
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-round').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+
+        const title = document.getElementById('result-title');
+        const msg = document.getElementById('result-message');
+
+        title.innerText = `寄り切り敗北`;
+        title.style.color = 'var(--primary)';
+        title.style.textShadow = '0 0 10px var(--primary)';
+
+        msg.innerHTML = `
+            土俵を割ってしまいました…！<br>
+            対戦相手: <strong>${opponent.name}</strong><br><br>
+            配当ポイントは没収されました。<br>
+            失ったポイント: <span style="color:var(--primary); font-weight:bold;">-50 pt</span>
+        `;
+    }
+
+    function goHome() {
+        clearAllTimeouts();
+        if (window.parent && typeof window.parent.closeGame === 'function') {
+            window.parent.closeGame();
+        } else {
+            window.location.href = '../../index.html';
+        }
+    }
+
+    function resetGame() {
+        clearAllTimeouts();
+        gameState = 'MENU';
+        document.getElementById('screen-start').style.display = 'flex';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('screen-round').style.display = 'none';
+        document.getElementById('ui-overlay').style.display = 'flex';
+        loadPoints();
+    }
+
+    // --- Canvas Rendering Loop ---
+    function renderLoop() {
+        // Draw background grid
+        ctx.fillStyle = '#050414';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Grid lines (3D neon floor grid style)
+        ctx.strokeStyle = 'rgba(255, 0, 127, 0.05)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < canvas.width; i += 25) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+        }
+        for (let i = 0; i < canvas.height; i += 25) {
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        // Draw Dohyo (Sumo Ring)
+        // Outer ring
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.2)';
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(dohyo.x, dohyo.y, dohyo.r + 3, 0, Math.PI*2);
+        ctx.stroke();
+
+        // Inner neon ring
+        ctx.strokeStyle = '#00f0ff';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = '#00f0ff';
+        ctx.shadowBlur = 12;
+        ctx.beginPath();
+        ctx.arc(dohyo.x, dohyo.y, dohyo.r, 0, Math.PI*2);
+        ctx.stroke();
+        ctx.shadowBlur = 0; // reset
+
+        // Draw lines inside Dohyo (Shikiri-sen lines)
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(dohyo.x - 24, dohyo.y - 12);
+        ctx.lineTo(dohyo.x + 24, dohyo.y - 12);
+        ctx.moveTo(dohyo.x - 24, dohyo.y + 12);
+        ctx.lineTo(dohyo.x + 24, dohyo.y + 12);
+        ctx.stroke();
+
+        if (gameState === 'FIGHT' || gameState === 'READY' || gameState === 'ROUND_CLEAR') {
+            // Update physics & AI
+            if (gameState === 'FIGHT') {
+                updateAI();
+                checkPhysics();
+            }
+
+            // Draw Player
+            drawRikishi(player);
+            // Draw Opponent
+            drawRikishi(opponent);
+        }
+
+        requestAnimationFrame(renderLoop);
+    }
+
+    function drawRikishi(char) {
+        ctx.save();
+        ctx.translate(char.x, char.y);
+
+        // Draw action effects
+        if (char.action === 'push') {
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.3)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(0, 0, char.r + 6, 0, Math.PI*2);
+            ctx.stroke();
+        } else if (char.action === 'tsuppari') {
+            ctx.strokeStyle = 'rgba(255, 0, 127, 0.4)';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.arc(0, 0, char.r + 8, 0, Math.PI*2);
+            ctx.stroke();
+        }
+
+        // Body glow on low balance
+        let balanceRatio = char.balance / char.maxBalance;
+        if (balanceRatio < 0.4) {
+            ctx.shadowColor = '#ff0000';
+            ctx.shadowBlur = 10;
+        }
+
+        // Draw Core circle
+        ctx.fillStyle = char.color;
+        ctx.beginPath();
+        ctx.arc(0, 0, char.r, 0, Math.PI*2);
+        ctx.fill();
+
+        // Stroke body
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        // Hair knot symbol (Oicho topknot)
+        ctx.fillStyle = '#0a0a16';
+        ctx.beginPath();
+        ctx.arc(0, -char.r + 2, 6, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = char.color;
+        ctx.stroke();
+
+        ctx.restore();
+
+        // Draw HUD / Stats above Rikishi
+        ctx.font = 'bold 8px "Press Start 2P"';
+        ctx.fillStyle = '#fff';
+        ctx.textAlign = 'center';
+        ctx.fillText(char === player ? 'YOU' : char.name, char.x, char.y - char.r - 18);
+
+        // Balance health bar
+        let barW = 32;
+        let barH = 3;
+        let bx = char.x - barW / 2;
+        let by = char.y - char.r - 10;
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(bx, by, barW, barH);
+        ctx.fillStyle = balanceRatio > 0.4 ? 'var(--tertiary)' : '#ff0000';
+        ctx.fillRect(bx, by, barW * balanceRatio, barH);
+
+        // Display Stamina for Player only
+        if (char === player) {
+            let sx = char.x - barW / 2;
+            let sy = char.y - char.r - 6;
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(sx, sy, barW, 2);
+            ctx.fillStyle = '#00f0ff';
+            ctx.fillRect(sx, sy, barW * (char.stamina / 100), 2);
+        }
+    }
+</script>
+
+</body>
+</html>

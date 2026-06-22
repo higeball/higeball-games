@@ -683,6 +683,32 @@
                 </div>
             </div>
 
+            <!-- Game Card 7: サイバー相撲 勝ち抜き戦 -->
+            <div class="game-card">
+                <div class="thumbnail-container">
+                    <img src="assets/images/sumo_arena.jpg" alt="サイバー相撲 勝ち抜き戦">
+                    <span class="game-badge">PLAYABLE</span>
+                </div>
+                <div class="game-info">
+                    <h3 class="game-title">サイバー相撲 勝ち抜き戦</h3>
+                    <p class="game-description">サイバー空間の土俵で繰り広げられる近未来相撲！前進、つっぱり、いなしを使い分け、次々と現れる対戦相手の力士を土俵外へ寄り切れ！勝ち抜いた人数に応じてポイントを獲得！</p>
+                    <button onclick="openGame('games/sumo-arena/index.html')" class="btn-play">ゲームを始める</button>
+                </div>
+            </div>
+
+            <!-- Game Card 8: レトロフィッシング -->
+            <div class="game-card">
+                <div class="thumbnail-container">
+                    <img src="assets/images/retro_fishing.jpg" alt="レトロフィッシング">
+                    <span class="game-badge">PLAYABLE</span>
+                </div>
+                <div class="game-info">
+                    <h3 class="game-title">レトロフィッシング</h3>
+                    <p class="game-description">ネオン煌めく夜の湖で、サイバーフィッシング！ウキが沈んだ瞬間に合わせ、リールテンションを調節して大物を釣り上げよう！釣った魚の種類や最大サイズは記録として図鑑にコレクション可能！</p>
+                    <button onclick="openGame('games/retro-fishing/index.html')" class="btn-play">ゲームを始める</button>
+                </div>
+            </div>
+
         </div>
     </main>
 
@@ -720,7 +746,7 @@
                 <button class="shop-close-btn" onclick="closeCollections()">&times;</button>
             </div>
             <div class="shop-points-badge" style="background: rgba(255, 0, 127, 0.1); border-color: var(--primary-neon);">
-                アルバム達成度: <span id="col-progress-val" style="color: var(--primary-neon); font-weight: 800;">0 / 6</span>
+                アルバム達成度: <span id="col-progress-val" style="color: var(--primary-neon); font-weight: 800;">0 / 8</span>
             </div>
             <div id="collections-list" class="shop-content">
                 <!-- Loaded dynamically -->
@@ -755,7 +781,9 @@
         { id: 'col-stacker', name: 'クリスタルブロック', emoji: '💎', desc: 'ネオンブロックタワーで、稀に出現する虹色ブロックをPerfectで重ねると獲得できる。', game: 'ネオン ブロックタワー' },
         { id: 'col-snake', name: 'レインボーアップル', emoji: '🍎', desc: 'ネオンスネークで、稀に出現する虹色のエサを食べると獲得できる。', game: 'ネオン スネーク' },
         { id: 'col-defender', name: 'UFOのコアパーツ', emoji: '🛸', desc: 'ネオンディフェンダーで、稀に上空を高速横断するUFOを撃破すると獲得できる。', game: 'ネオン ディフェンダー' },
-        { id: 'col-arena', name: 'ゴールドトロフィー', emoji: '🏆', desc: 'サイバーモンスター闘技場で、極稀に参戦する「ゴールデンスライム」に賭けて見事勝利すると獲得できる。', game: 'サイバー モンスター闘技場' }
+        { id: 'col-arena', name: 'ゴールドトロフィー', emoji: '🏆', desc: 'サイバーモンスター闘技場で、極稀に参戦する「ゴールデンスライム」に賭けて見事勝利すると獲得できる。', game: 'サイバー モンスター闘技場' },
+        { id: 'col-sumo', name: 'ゴールド軍配', emoji: '⚔️', desc: 'サイバー相撲で、稀に対戦相手として登場する「ゴールデン力士」を寄り切ると獲得できる。', game: 'サイバー相撲 勝ち抜き戦' },
+        { id: 'col-fishing', name: '伝説の主のウロコ', emoji: '👑', desc: 'レトロフィッシングで、稀に遭遇する伝説の巨大魚「ヌシ」を釣り上げると獲得できる。', game: 'レトロフィッシング' }
     ];
 
     window.addEventListener('load', () => {

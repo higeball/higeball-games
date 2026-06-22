@@ -297,6 +297,8 @@
     let playerName = "";
     let towerHeight = 0;
     let highscore = 0;
+    let hasCollectionChance = false;
+    let crystalSpawned = false;
 
     // Game parameters
     let blocks = []; // list of placed blocks { x, w, color }
@@ -355,6 +357,9 @@
         perfectStreak = 0;
         cameraY = 0;
         targetCameraY = 0;
+        
+        hasCollectionChance = Math.random() < 0.33;
+        crystalSpawned = false;
 
         // Init base block
         blocks = [
@@ -373,7 +378,13 @@
         currentBlock.x = Math.random() < 0.5 ? 0 : (canvas.width - currentBlock.w);
         currentBlock.speed = 2.5 + Math.min(blocks.length * 0.12, 3.5); // Accelerate speed
         currentBlock.dir = currentBlock.x === 0 ? 1 : -1;
-        currentBlock.isCrystal = Math.random() < 0.15; // 15% chance to be a crystal block
+        
+        if (hasCollectionChance && !crystalSpawned && Math.random() < 0.12) {
+            currentBlock.isCrystal = true;
+            crystalSpawned = true;
+        } else {
+            currentBlock.isCrystal = false;
+        }
     }
 
     function triggerDrop() {
