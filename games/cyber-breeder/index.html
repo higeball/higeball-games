@@ -1,0 +1,2132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>サイバーモンスター育成戦 | Higeball Games</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@300;400;600;800&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff007f; /* Neon Pink */
+            --secondary: #00f0ff; /* Neon Cyan */
+            --tertiary: #39ff14; /* Neon Green */
+            --quaternary: #ffaa00; /* Neon Orange */
+            --dark: #070512;
+            --text: #f1f1f9;
+            --text-muted: #a0a0cf;
+            --card-bg: rgba(18, 16, 35, 0.6);
+            --font-game: 'Press Start 2P', cursive;
+            --font-sans: 'Outfit', 'Noto Sans JP', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+            overscroll-behavior: none;
+        }
+
+        #game-container {
+            position: relative;
+            background-color: var(--dark);
+            border: 4px solid var(--primary);
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.4);
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 720px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Screen Management */
+        .screen {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            padding: 20px;
+            overflow-y: auto;
+            z-index: 5;
+            background: rgba(7, 5, 18, 0.98);
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* Titles */
+        .game-title {
+            font-family: var(--font-game);
+            font-size: 22px;
+            color: #fff;
+            text-shadow: 0 0 8px var(--primary), 0 0 15px var(--primary);
+            margin-bottom: 5px;
+            text-align: center;
+            line-height: 1.4;
+        }
+
+        .game-title span {
+            color: var(--secondary);
+            text-shadow: 0 0 8px var(--secondary), 0 0 15px var(--secondary);
+        }
+
+        .game-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-align: center;
+            margin-bottom: 25px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* Common Elements */
+        .panel {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        .panel-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        /* Buttons */
+        .btn {
+            font-family: var(--font-sans);
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--primary), #d0006f);
+            color: #fff;
+            border: none;
+            padding: 12px 20px;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            box-shadow: 0 4px 12px rgba(255, 0, 127, 0.3);
+            text-align: center;
+            transition: transform 0.1s, opacity 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+
+        .btn.cyan {
+            background: linear-gradient(135deg, var(--secondary), #00aacf);
+            color: #000;
+            box-shadow: 0 4px 12px rgba(0, 240, 255, 0.3);
+        }
+
+        .btn.green {
+            background: linear-gradient(135deg, var(--tertiary), #2ccb10);
+            color: #000;
+            box-shadow: 0 4px 12px rgba(57, 255, 20, 0.3);
+        }
+
+        .btn.orange {
+            background: linear-gradient(135deg, var(--quaternary), #d58e00);
+            color: #000;
+            box-shadow: 0 4px 12px rgba(255, 170, 0, 0.3);
+        }
+
+        .btn:disabled {
+            background: rgba(255, 255, 255, 0.05) !important;
+            color: rgba(255, 255, 255, 0.2) !important;
+            box-shadow: none !important;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Hub Screen Specifics */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background: rgba(0, 240, 255, 0.05);
+            border: 1px solid var(--secondary);
+            border-radius: 10px;
+            padding: 10px 15px;
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.1);
+        }
+
+        .calendar-time {
+            font-family: var(--font-game);
+            font-size: 14px;
+            color: var(--secondary);
+            text-shadow: 0 0 5px var(--secondary);
+        }
+
+        .stamina-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .stamina-bar-bg {
+            flex: 1;
+            height: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 7px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .stamina-bar-fill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, var(--tertiary), #2ccb10);
+            box-shadow: 0 0 8px var(--tertiary);
+            transition: width 0.3s ease;
+        }
+
+        .stamina-text {
+            font-size: 11px;
+            font-weight: 800;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        /* Monster Info Card */
+        .monster-card-hub {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .monster-avatar-large {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.04);
+            border: 2px solid var(--secondary);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            animation: bounceIdle 3s ease-in-out infinite;
+        }
+
+        .monster-desc-hub {
+            flex: 1;
+        }
+
+        .monster-name-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 5px;
+        }
+
+        .monster-name-lbl {
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .btn-rename {
+            font-size: 10px;
+            color: var(--secondary);
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .monster-level-badge {
+            font-family: var(--font-game);
+            font-size: 10px;
+            color: var(--quaternary);
+            text-shadow: 0 0 5px var(--quaternary);
+        }
+
+        /* Progress Bars */
+        .stat-row {
+            margin-bottom: 8px;
+        }
+
+        .stat-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 3px;
+        }
+
+        .stat-name {
+            font-weight: bold;
+            color: var(--text-muted);
+        }
+
+        .stat-val {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .stat-bar-bg {
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stat-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--secondary), #00b0df);
+            box-shadow: 0 0 6px var(--secondary);
+            transition: width 0.3s ease;
+        }
+
+        .stat-bar-fill.exp {
+            background: linear-gradient(90deg, var(--quaternary), #e09000);
+            box-shadow: 0 0 6px var(--quaternary);
+        }
+
+        /* Actions Grid */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        /* Tabs Navigation */
+        .tab-nav {
+            display: flex;
+            border-bottom: 2px solid rgba(255,255,255,0.08);
+            margin-bottom: 12px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            text-align: center;
+        }
+
+        .tab-btn.active {
+            color: var(--secondary);
+            border-bottom: 2px solid var(--secondary);
+            text-shadow: 0 0 5px rgba(0, 240, 255, 0.5);
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Future slots list */
+        .party-slot {
+            background: rgba(255,255,255,0.02);
+            border: 1px dashed rgba(255,255,255,0.15);
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+            opacity: 0.6;
+        }
+
+        .party-slot-locked-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .skill-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .skill-name {
+            font-weight: bold;
+            color: var(--secondary);
+        }
+
+        .skill-power {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Mini-game Arena */
+        #training-canvas {
+            background: #05030f;
+            border: 2px solid var(--secondary);
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.2);
+            display: block;
+            width: 100%;
+            height: 140px;
+            margin-bottom: 20px;
+        }
+
+        /* Arena Selection View */
+        .rank-card {
+            background: rgba(255,255,255,0.03);
+            border: 2px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            transition: all 0.2s;
+        }
+
+        .rank-card.unlocked {
+            border-color: var(--secondary);
+            background: rgba(0, 240, 255, 0.03);
+            cursor: pointer;
+        }
+
+        .rank-card.unlocked.cleared {
+            border-color: var(--tertiary);
+            background: rgba(57, 255, 20, 0.03);
+        }
+
+        .rank-card.locked {
+            opacity: 0.4;
+        }
+
+        .rank-badge {
+            font-family: var(--font-game);
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+            width: 40px;
+        }
+
+        .rank-card.unlocked .rank-badge {
+            color: var(--secondary);
+            text-shadow: 0 0 5px var(--secondary);
+        }
+
+        .rank-card.unlocked.cleared .rank-badge {
+            color: var(--tertiary);
+            text-shadow: 0 0 5px var(--tertiary);
+        }
+
+        .rank-opp-details {
+            flex: 1;
+            padding-left: 15px;
+            text-align: left;
+        }
+
+        .rank-opp-name {
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .rank-opp-stats {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .rank-reward {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--quaternary);
+            text-align: right;
+        }
+
+        /* Arena Battle View */
+        #battle-canvas {
+            background: #05030f;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+            display: block;
+            width: 100%;
+            height: 240px;
+        }
+
+        .arena-hud {
+            padding: 10px 15px;
+            background: #0b0918;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .speed-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .speed-btn.active {
+            background: var(--tertiary);
+            color: #000;
+            border-color: var(--tertiary);
+            box-shadow: 0 0 8px var(--tertiary);
+        }
+
+        #battle-log {
+            flex: 1;
+            background: #030209;
+            padding: 12px 15px;
+            overflow-y: auto;
+            font-family: var(--font-sans);
+            font-size: 12px;
+            line-height: 1.5;
+            color: #b0b0df;
+        }
+
+        .log-line {
+            margin-bottom: 4px;
+            animation: logFade 0.2s ease-out;
+        }
+
+        .log-dmg { color: var(--primary); font-weight: bold; }
+        .log-heal { color: var(--tertiary); font-weight: bold; }
+        .log-skill { color: var(--secondary); font-weight: bold; }
+        .log-defeat { color: #888; text-decoration: line-through; }
+        .log-win { color: var(--tertiary); font-weight: bold; font-size: 13px; }
+
+        /* Dialog Rename Overlay */
+        .overlay-dialog {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .overlay-dialog.active {
+            display: flex;
+        }
+
+        .dialog-box {
+            background: #0d0b1a;
+            border: 2px solid var(--secondary);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 320px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.3);
+            animation: zoomIn 0.25s ease-out;
+        }
+
+        .dialog-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #fff;
+            margin-bottom: 12px;
+        }
+
+        .dialog-input {
+            width: 100%;
+            padding: 10px;
+            background: #05040e;
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 8px;
+            color: #fff;
+            text-align: center;
+            font-size: 15px;
+            font-weight: bold;
+            outline: none;
+            margin-bottom: 15px;
+        }
+
+        .dialog-input:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+        }
+
+        .dialog-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Level Up Special View */
+        .lv-up-title {
+            font-family: var(--font-game);
+            font-size: 24px;
+            color: var(--quaternary);
+            text-shadow: 0 0 10px var(--quaternary), 0 0 20px var(--quaternary);
+            margin-bottom: 15px;
+            animation: pulse 1s infinite alternate;
+        }
+
+        .lv-up-stats-box {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--quaternary);
+            border-radius: 12px;
+            padding: 15px;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .lv-up-stat-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: bold;
+        }
+
+        .lv-up-stat-diff {
+            color: var(--tertiary);
+        }
+
+        /* Animations */
+        @keyframes bounceIdle {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            100% { transform: scale(1.05); }
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes logFade {
+            from { transform: translateY(4px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* Exit Link Styling */
+        .exit-link {
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .exit-link a {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 12px;
+            border-bottom: 1px dotted var(--primary);
+            padding-bottom: 2px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        
+        <!-- ==================== SCREEN 1: TITLE SCREEN ==================== -->
+        <div id="screen-title" class="screen active">
+            <div style="margin: auto 0; width: 100%; display: flex; flex-direction: column; align-items: center;">
+                <div class="game-title">CYBER<br><span>BREEDER</span></div>
+                <div class="game-subtitle">サイバーモンスター育成戦</div>
+                
+                <div class="monster-avatar-large" style="width: 100px; height: 100px; font-size: 60px; margin-bottom: 30px; border-color: var(--primary); box-shadow: 0 0 20px rgba(255, 0, 127, 0.3);">
+                    💧
+                </div>
+
+                <div class="panel" style="width: 100%; text-align: center;">
+                    <div class="panel-title" style="justify-content: center;">モンスター名</div>
+                    <input type="text" id="monster-initial-name" class="dialog-input" value="ネオンスライム" maxlength="10" style="margin-bottom: 0;">
+                </div>
+
+                <button class="btn" onclick="startGame()">ブリード開始</button>
+                
+                <div class="exit-link">
+                    <a onclick="window.parent.closeGame()">ロビーへもどる</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== SCREEN 2: BREEDING HUB ==================== -->
+        <div id="screen-hub" class="screen">
+            <!-- Calendar & Stamina Header -->
+            <div class="calendar-header">
+                <span class="calendar-time" id="hub-calendar-lbl">1年目 1月 1週</span>
+                <div class="stamina-container" style="max-width: 180px;">
+                    <span style="font-size:10px; color: var(--text-muted); font-weight: bold;">STAMINA</span>
+                    <div class="stamina-bar-bg">
+                        <div class="stamina-bar-fill" id="hub-stamina-fill"></div>
+                    </div>
+                    <span class="stamina-text" id="hub-stamina-lbl">100/100</span>
+                </div>
+            </div>
+
+            <!-- Monster Info Card -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>モンスター情報</span>
+                    <span class="monster-level-badge" id="hub-monster-lvl">LV. 1</span>
+                </div>
+                <div class="monster-card-hub">
+                    <div class="monster-avatar-large" id="hub-monster-emoji">💧</div>
+                    <div class="monster-desc-hub">
+                        <div class="monster-name-row">
+                            <span class="monster-name-lbl" id="hub-monster-name">ネオンスライム</span>
+                            <span class="btn-rename" onclick="openRenameDialog()">[名前変更]</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">種族: スライム</div>
+                        
+                        <!-- EXP Bar -->
+                        <div class="stat-row" style="margin-bottom: 0;">
+                            <div class="stat-info" style="font-size: 10px;">
+                                <span class="stat-name">EXP</span>
+                                <span class="stat-val" id="hub-monster-exp-val">0 / 20</span>
+                            </div>
+                            <div class="stat-bar-bg" style="height: 6px;">
+                                <div class="stat-bar-fill exp" id="hub-monster-exp-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Status Details Panel -->
+            <div class="panel">
+                <div class="panel-title">パラメータ</div>
+                <div class="stat-row">
+                    <div class="stat-info">
+                        <span class="stat-name">HP (ライフ)</span>
+                        <span class="stat-val" id="hub-stat-hp">50 / 50</span>
+                    </div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill" id="hub-bar-hp" style="background: linear-gradient(90deg, #ff0055, var(--primary)); box-shadow: 0 0 6px var(--primary);"></div>
+                    </div>
+                </div>
+                <div class="stat-row">
+                    <div class="stat-info">
+                        <span class="stat-name">ATK (攻撃力)</span>
+                        <span class="stat-val" id="hub-stat-atk">12</span>
+                    </div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill" id="hub-bar-atk" style="background: linear-gradient(90deg, var(--quaternary), #d58e00); box-shadow: 0 0 6px var(--quaternary);"></div>
+                    </div>
+                </div>
+                <div class="stat-row">
+                    <div class="stat-info">
+                        <span class="stat-name">DEF (防御力)</span>
+                        <span class="stat-val" id="hub-stat-def">10</span>
+                    </div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill" id="hub-bar-def" style="background: linear-gradient(90deg, #00ffaa, var(--tertiary)); box-shadow: 0 0 6px var(--tertiary);"></div>
+                    </div>
+                </div>
+                <div class="stat-row" style="margin-bottom: 0;">
+                    <div class="stat-info">
+                        <span class="stat-name">SPD (すばやさ)</span>
+                        <span class="stat-val" id="hub-stat-spd">15</span>
+                    </div>
+                    <div class="stat-bar-bg">
+                        <div class="stat-bar-fill" id="hub-bar-spd" style="background: linear-gradient(90deg, var(--secondary), #00b0df); box-shadow: 0 0 6px var(--secondary);"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab Navigation (Party / Skills) -->
+            <div class="panel" style="padding-bottom: 8px;">
+                <div class="tab-nav">
+                    <button class="tab-btn active" onclick="switchTab('tab-skills', this)">習得スキル</button>
+                    <button class="tab-btn" onclick="switchTab('tab-party', this)">仲間・編成</button>
+                </div>
+                
+                <!-- Tab Panel 1: Skills -->
+                <div id="tab-skills" class="tab-panel active">
+                    <div id="hub-skills-list">
+                        <!-- Loaded dynamically -->
+                    </div>
+                </div>
+
+                <!-- Tab Panel 2: Party (Future Proofing) -->
+                <div id="tab-party" class="tab-panel">
+                    <div class="party-slot" style="opacity: 1; border-style: solid; border-color: var(--secondary); background: rgba(0,240,255,0.02);">
+                        <div class="party-slot-locked-icon" style="background: rgba(0, 240, 255, 0.1); border: 1px solid var(--secondary); color: var(--secondary);">💧</div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 13px; color: #fff;">ネオンスライム (メイン)</div>
+                            <div style="font-size: 11px; color: var(--text-muted);">バトルに出撃するアクティブモンスター</div>
+                        </div>
+                    </div>
+                    <div class="party-slot">
+                        <div class="party-slot-locked-icon">🔒</div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 13px; color: #777;">仲間スロット 2 (Coming Soon)</div>
+                            <div style="font-size: 10px; color: #555;">今後のアップデートで仲間を編成できます。</div>
+                        </div>
+                    </div>
+                    <div class="party-slot" style="margin-bottom: 0;">
+                        <div class="party-slot-locked-icon">🔒</div>
+                        <div>
+                            <div style="font-weight: bold; font-size: 13px; color: #777;">仲間スロット 3 (Coming Soon)</div>
+                            <div style="font-size: 10px; color: #555;">最大3体のチームを組めるようになります。</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action buttons -->
+            <div class="panel">
+                <div class="panel-title">トレーニング</div>
+                <div class="actions-grid">
+                    <button class="btn orange" onclick="startTraining('atk')">💪 筋トレ <span style="font-size: 9px; font-weight: normal;">(ATK/HP -25)</span></button>
+                    <button class="btn cyan" onclick="startTraining('spd')">🏃 敏捷 <span style="font-size: 9px; font-weight: normal;">(SPD/DEF -25)</span></button>
+                </div>
+                <button class="btn green" onclick="startTraining('meditation')" style="margin-bottom: 12px;">🧘 瞑想・実戦訓練 <span style="font-size: 9px; font-weight: normal;">(EXP/HP -25)</span></button>
+                
+                <div class="panel-title" style="margin-top: 15px;">育成サポート / バトル</div>
+                <div class="actions-grid">
+                    <button class="btn cyan" onclick="restMonster()" style="background: linear-gradient(135deg, #ae00ff, #7f00ff); box-shadow: 0 4px 12px rgba(127, 0, 255, 0.3); color: #fff;">💤 休む <span style="font-size: 9px; font-weight: normal;">(回復/1週進む)</span></button>
+                    <button class="btn" onclick="openArenaSelect()" style="background: linear-gradient(135deg, var(--tertiary), #2ccb10); color: #000; box-shadow: 0 4px 12px rgba(57,255,20,0.3);">⚔️ 闘技場</button>
+                </div>
+            </div>
+
+            <div class="exit-link">
+                <a onclick="window.parent.closeGame()">保存してロビーに戻る</a>
+            </div>
+        </div>
+
+        <!-- ==================== SCREEN 3: TRAINING GAME ==================== -->
+        <div id="screen-training" class="screen">
+            <div style="margin: auto 0; width: 100%; text-align: center;">
+                <div class="game-title" id="training-title">トレーニング</div>
+                <div class="game-subtitle" id="training-desc-sub">ゲージが中央のピンクゾーンに来た瞬間に止めよう！</div>
+
+                <canvas id="training-canvas" width="360" height="140"></canvas>
+
+                <div id="training-result-box" class="panel" style="display:none; text-align: center; border-color: var(--quaternary); animation: zoomIn 0.2s;">
+                    <div id="training-rating-text" style="font-family: var(--font-game); font-size: 20px; color: var(--quaternary); margin-bottom: 10px;">PERFECT!!</div>
+                    <div id="training-stat-up-text" style="font-size: 14px; font-weight: bold; line-height: 1.6; color: #fff;">ATK +3 & HP +5 <br> EXP +10</div>
+                </div>
+
+                <button class="btn" id="btn-stop-training" onclick="stopTrainingGauge()" style="padding: 18px 0; font-size: 18px;">STOP</button>
+                <button class="btn cyan" id="btn-return-training" onclick="finishTraining()" style="display:none; padding: 14px 0; font-size: 15px;">ブリードハブに戻る</button>
+            </div>
+        </div>
+
+        <!-- ==================== SCREEN 4: ARENA SELECTION ==================== -->
+        <div id="screen-arena-select" class="screen">
+            <div class="game-title">CYBER <span>ARENA</span></div>
+            <div class="game-subtitle">闘技場リーグ選択 (ランクAでクリア)</div>
+
+            <div id="arena-list" style="flex: 1; overflow-y: auto; margin-bottom: 20px;">
+                <!-- Loaded dynamically -->
+            </div>
+
+            <button class="btn cyan" onclick="goBackToHub()">戻る</button>
+        </div>
+
+        <!-- ==================== SCREEN 5: BATTLE SCREEN ==================== -->
+        <div id="screen-battle" class="screen" style="padding: 0; overflow: hidden; background: #05030f;">
+            <div style="height: 100%; display: flex; flex-direction: column;">
+                
+                <!-- Battle Screen Canvas -->
+                <canvas id="battle-canvas" width="320" height="240"></canvas>
+
+                <!-- Speed / Skip Controls -->
+                <div class="arena-hud">
+                    <span id="battle-status-indicator" style="font-size: 12px; color: var(--text-muted); font-weight: bold;">戦闘開始...</span>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="speed-btn" id="btn-battle-speed" onclick="toggleBattleSpeed()">はやさ 1x</button>
+                        <button class="speed-btn" onclick="skipBattle()">スキップ</button>
+                    </div>
+                </div>
+
+                <!-- Battle Log -->
+                <div id="battle-log">
+                    <!-- Logs loaded dynamically -->
+                </div>
+
+                <!-- Post-Battle Overlay (Hidden initially) -->
+                <div id="battle-result-overlay" style="display: none; padding: 15px; background: rgba(7, 5, 18, 0.95); border-top: 2px solid var(--secondary); flex-direction: column; gap: 12px;">
+                    <div id="battle-result-title" style="font-family: var(--font-game); font-size: 20px; text-align: center; color: var(--tertiary); text-shadow: 0 0 10px var(--tertiary);">VICTORY!</div>
+                    <div id="battle-result-desc" style="font-size: 13px; text-align: center; color: #fff;">ランクEを突破しました！</div>
+                    <button class="btn cyan" id="btn-battle-end" onclick="finishBattle()">闘技場に戻る</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== SCREEN 6: GAME CLEAR ==================== -->
+        <div id="screen-clear" class="screen">
+            <div style="margin: auto 0; width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center;">
+                <div class="game-title" style="color: var(--quaternary); text-shadow: 0 0 15px var(--quaternary);">CONGRATULATIONS!</div>
+                <div class="game-subtitle" style="color: #fff;">ランクAリーグ制覇 - ゲームクリア！</div>
+
+                <div class="monster-avatar-large" style="width: 110px; height: 110px; font-size: 64px; margin: 20px 0; border-color: var(--quaternary); box-shadow: 0 0 20px var(--quaternary); background: rgba(255, 170, 0, 0.1);">
+                    👑
+                </div>
+
+                <div class="panel" style="width:100%;">
+                    <div style="font-size: 16px; font-weight: bold; color: var(--tertiary); margin-bottom: 8px;">マスターブリーダー認定</div>
+                    <p style="font-size: 13px; color: var(--text-muted); line-height: 1.6;">
+                        あなたはすべてのランク戦を勝ち抜き、最強のスライムを育て上げました！<br>
+                        ロビーに「マスターブリーダー証」が追加されます。
+                    </p>
+                </div>
+
+                <div class="panel" style="width: 100%; text-align: center; background: rgba(0, 240, 255, 0.05); border-color: var(--secondary);">
+                    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 4px;">クリア特典</div>
+                    <div style="font-size: 18px; font-weight: 800; color: var(--secondary);">3000 PT 獲得！</div>
+                </div>
+
+                <button class="btn" onclick="exitClearToLobby()">ロビーに戻る</button>
+            </div>
+        </div>
+
+        <!-- ==================== LEVEL UP SCREEN ==================== -->
+        <div id="screen-lvlup" class="screen" style="z-index: 20; background: rgba(7, 5, 18, 0.99);">
+            <div style="margin: auto 0; width: 100%; text-align: center; display: flex; flex-direction: column; align-items: center;">
+                <div class="lv-up-title">LEVEL UP!</div>
+                <div style="font-size: 18px; font-weight: bold; color: #fff; margin-bottom: 20px;" id="lvlup-desc-text">ネオンスライム が LV. 2 になった！</div>
+
+                <div class="lv-up-stats-box">
+                    <div class="lv-up-stat-item">
+                        <span>HP (ライフ)</span>
+                        <span id="lvlup-stat-hp">50 -> 62 <span class="lv-up-stat-diff">(+12)</span></span>
+                    </div>
+                    <div class="lv-up-stat-item">
+                        <span>ATK (攻撃力)</span>
+                        <span id="lvlup-stat-atk">12 -> 16 <span class="lv-up-stat-diff">(+4)</span></span>
+                    </div>
+                    <div class="lv-up-stat-item">
+                        <span>DEF (防御力)</span>
+                        <span id="lvlup-stat-def">10 -> 13 <span class="lv-up-stat-diff">(+3)</span></span>
+                    </div>
+                    <div class="lv-up-stat-item" style="margin-bottom: 0;">
+                        <span>SPD (すばやさ)</span>
+                        <span id="lvlup-stat-spd">15 -> 19 <span class="lv-up-stat-diff">(+4)</span></span>
+                    </div>
+                </div>
+
+                <div id="lvlup-skill-alert" class="panel" style="width: 100%; border-color: var(--secondary); background: rgba(0, 240, 255, 0.04); display: none;">
+                    <div style="font-size: 12px; color: var(--secondary); font-weight: bold; margin-bottom: 4px;">新しいスキルを覚えた！</div>
+                    <div style="font-size: 15px; font-weight: 800; color: #fff;" id="lvlup-skill-name">サイバースパーク</div>
+                </div>
+
+                <button class="btn cyan" onclick="closeLevelUpScreen()">閉じる</button>
+            </div>
+        </div>
+
+        <!-- ==================== DIALOG: RENAME ==================== -->
+        <div id="rename-overlay" class="overlay-dialog" onclick="if(event.target === this) closeRenameDialog()">
+            <div class="dialog-box">
+                <div class="dialog-title">モンスター名変更</div>
+                <input type="text" id="rename-input" class="dialog-input" maxlength="10" placeholder="なまえをいれてね">
+                <div class="dialog-btns">
+                    <button class="btn cyan" style="flex:1;" onclick="saveRename()">変更</button>
+                    <button class="btn" style="flex:1; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); box-shadow:none; color:#fff;" onclick="closeRenameDialog()">キャンセル</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+    // --- Sound Effects using Web Audio API ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+            this.failed = false;
+        }
+        init() {
+            if (this.failed) return;
+            if (!this.ctx) {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) this.ctx = new AudioContextClass();
+                    else this.failed = true;
+                } catch(e) { this.failed = true; }
+            }
+            if (this.ctx && this.ctx.state === 'suspended') {
+                this.ctx.resume().catch(()=>{});
+            }
+        }
+        playTone(freq, duration, type = 'square', timeOffset = 0, volume = 0.08) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(volume, now);
+                gain.gain.exponentialRampToValueAtTime(0.005, now + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch(e){}
+        }
+        playClick() { this.playTone(600, 0.06, 'sine'); }
+        playCancel() { this.playTone(300, 0.08, 'sine'); }
+        playStopSuccess() {
+            this.playTone(523.25, 0.06, 'square');
+            this.playTone(659.25, 0.06, 'square', 0.06);
+            this.playTone(783.99, 0.12, 'square', 0.12);
+        }
+        playStopPerfect() {
+            this.playTone(523.25, 0.05, 'square');
+            this.playTone(659.25, 0.05, 'square', 0.05);
+            this.playTone(783.99, 0.05, 'square', 0.1);
+            this.playTone(1046.50, 0.25, 'square', 0.15, 0.1);
+        }
+        playStopMiss() {
+            this.playTone(180, 0.25, 'sawtooth');
+        }
+        playLvlUp() {
+            const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+            notes.forEach((freq, idx) => {
+                this.playTone(freq, 0.15, 'square', idx * 0.07, 0.08);
+            });
+        }
+        playHit() { this.playTone(150, 0.1, 'sawtooth', 0, 0.15); }
+        playSkill() {
+            this.playTone(880, 0.08, 'square');
+            this.playTone(1200, 0.12, 'sawtooth', 0.05, 0.1);
+        }
+        playHeal() {
+            this.playTone(440, 0.08, 'sine');
+            this.playTone(554.37, 0.08, 'sine', 0.08);
+            this.playTone(659.25, 0.08, 'sine', 0.16);
+            this.playTone(880, 0.25, 'sine', 0.24, 0.08);
+        }
+        playDefeat() {
+            this.playTone(392.00, 0.2, 'sine');
+            this.playTone(349.23, 0.2, 'sine', 0.2);
+            this.playTone(311.13, 0.2, 'sine', 0.4);
+            this.playTone(261.63, 0.4, 'sine', 0.6);
+        }
+    }
+    const sound = new SoundFX();
+
+    // Trigger AudioContext on any interaction for Safari/iOS WebApp
+    document.addEventListener('touchstart', () => sound.init(), { passive: true });
+    document.addEventListener('mousedown', () => sound.init(), { passive: true });
+
+    // --- State and Constants ---
+    const POINTS_KEY = 'higeball_points';
+    const NICKNAME_KEY = 'umpire_nickname_v2';
+    const BREEDER_UNLOCKED_RANK_KEY = 'cyber_breeder_unlocked_rank';
+    const BREEDER_CLEARED_RANK_KEY = 'cyber_breeder_cleared_rank';
+    const BREEDER_MONSTER_KEY = 'cyber_breeder_monster';
+    const BREEDER_CALENDAR_KEY = 'cyber_breeder_calendar';
+    const BREEDER_STAMINA_KEY = 'cyber_breeder_stamina';
+
+    let activeTimeouts = [];
+    function safeSetTimeout(callback, delay) {
+        let id;
+        id = setTimeout(() => {
+            activeTimeouts = activeTimeouts.filter(t => t !== id);
+            callback();
+        }, delay);
+        activeTimeouts.push(id);
+        return id;
+    }
+    function clearAllTimeouts() {
+        activeTimeouts.forEach(id => clearTimeout(id));
+        activeTimeouts = [];
+    }
+
+    // Party List of Monsters (Future-proofing layout structure)
+    let activeMonster = {
+        name: "ネオンスライム",
+        species: "スライム",
+        level: 1,
+        hp: 50,
+        maxHp: 50,
+        atk: 12,
+        def: 10,
+        spd: 15,
+        exp: 0,
+        nextExp: 20,
+        emoji: "💧",
+        skills: [
+            { name: "たいあたり", power: 1.0, type: "normal", desc: "たいあたりで攻撃する" }
+        ]
+    };
+
+    let calendar = { year: 1, month: 1, week: 1 };
+    let stamina = 100;
+    let unlockedRank = 0; // 0: E, 1: D, 2: C, 3: B, 4: A
+    let clearedRank = -1;  // 0: E, 1: D, 2: C, 3: B, 4: A
+
+    // All skills available for Slime
+    const SKILLS_DATABASE = [
+        { level: 3, name: "サイバースパーク", power: 1.4, type: "electric", desc: "電撃を放ち、大ダメージ" },
+        { level: 5, name: "リカバーコア", power: 0, type: "heal", desc: "自己のHPを最大HPの40%回復" },
+        { level: 8, name: "プラズマキャノン", power: 1.9, type: "laser", desc: "レーザー光線で超大ダメージ" },
+        { level: 10, name: "ギガボルトノヴァ", power: 2.6, type: "nova", desc: "臨界限界のメガ爆発魔法" }
+    ];
+
+    // Arena Ranks Opponents
+    const RANKS = [
+        {
+            id: 0, rankName: "E", oppName: "バグニードル", oppEmoji: "👾",
+            hp: 60, maxHp: 60, atk: 12, def: 8, spd: 10,
+            rewardPoints: 100,
+            desc: "入門者向けリーグ。レベル3前後が目安。"
+        },
+        {
+            id: 1, rankName: "D", oppName: "グリッドウルフ", oppEmoji: "🐺",
+            hp: 110, maxHp: 110, atk: 20, def: 14, spd: 18,
+            rewardPoints: 250,
+            desc: "中級者向けリーグ。レベル5前後が目安。"
+        },
+        {
+            id: 2, rankName: "C", oppName: "サイバースコーピオン", oppEmoji: "🦂",
+            hp: 185, maxHp: 185, atk: 30, def: 24, spd: 25,
+            rewardPoints: 600,
+            desc: "上級者向けリーグ。レベル8前後が目安。"
+        },
+        {
+            id: 3, rankName: "B", oppName: "レーザードラゴン", oppEmoji: "🐉",
+            hp: 300, maxHp: 300, atk: 45, def: 36, spd: 35,
+            rewardPoints: 1200,
+            desc: "超級リーグ。限界突破して立ち向かえ！"
+        },
+        {
+            id: 4, rankName: "A", oppName: "マザーフレーム", oppEmoji: "🔥",
+            hp: 480, maxHp: 480, atk: 62, def: 52, spd: 46,
+            rewardPoints: 3000,
+            desc: "チャンピオン決定戦。レベル10推奨の最終決戦。"
+        }
+    ];
+
+    // Load Local Data
+    window.addEventListener('load', () => {
+        loadGameData();
+        updateHubUI();
+    });
+
+    function loadGameData() {
+        const savedMonster = localStorage.getItem(BREEDER_MONSTER_KEY);
+        if (savedMonster) {
+            try {
+                activeMonster = JSON.parse(savedMonster);
+            } catch(e){}
+        }
+
+        const savedCal = localStorage.getItem(BREEDER_CALENDAR_KEY);
+        if (savedCal) {
+            try {
+                calendar = JSON.parse(savedCal);
+            } catch(e){}
+        }
+
+        const savedStamina = localStorage.getItem(BREEDER_STAMINA_KEY);
+        if (savedStamina !== null) {
+            stamina = parseInt(savedStamina, 10);
+        }
+
+        const savedUnlocked = localStorage.getItem(BREEDER_UNLOCKED_RANK_KEY);
+        if (savedUnlocked !== null) {
+            unlockedRank = parseInt(savedUnlocked, 10);
+        }
+
+        const savedCleared = localStorage.getItem(BREEDER_CLEARED_RANK_KEY);
+        if (savedCleared !== null) {
+            clearedRank = parseInt(savedCleared, 10);
+        }
+    }
+
+    function saveGameData() {
+        localStorage.setItem(BREEDER_MONSTER_KEY, JSON.stringify(activeMonster));
+        localStorage.setItem(BREEDER_CALENDAR_KEY, JSON.stringify(calendar));
+        localStorage.setItem(BREEDER_STAMINA_KEY, stamina.toString());
+        localStorage.setItem(BREEDER_UNLOCKED_RANK_KEY, unlockedRank.toString());
+        localStorage.setItem(BREEDER_CLEARED_RANK_KEY, clearedRank.toString());
+    }
+
+    function updateHubUI() {
+        // Calendar
+        document.getElementById('hub-calendar-lbl').innerText = `${calendar.year}年目 ${calendar.month}月 ${calendar.week}週`;
+        
+        // Stamina
+        document.getElementById('hub-stamina-lbl').innerText = `${stamina}/100`;
+        document.getElementById('hub-stamina-fill').style.width = `${stamina}%`;
+
+        // Monster Info
+        document.getElementById('hub-monster-name').innerText = activeMonster.name;
+        document.getElementById('hub-monster-emoji').innerText = activeMonster.emoji;
+        document.getElementById('hub-monster-lvl').innerText = `LV. ${activeMonster.level}`;
+        
+        // EXP
+        document.getElementById('hub-monster-exp-val').innerText = `${activeMonster.exp} / ${activeMonster.nextExp}`;
+        const expPct = Math.min(100, (activeMonster.exp / activeMonster.nextExp) * 100);
+        document.getElementById('hub-monster-exp-fill').style.width = `${expPct}%`;
+
+        // Stats
+        document.getElementById('hub-stat-hp').innerText = `${activeMonster.hp} / ${activeMonster.maxHp}`;
+        document.getElementById('hub-bar-hp').style.width = `${(activeMonster.hp / activeMonster.maxHp) * 100}%`;
+        
+        document.getElementById('hub-stat-atk').innerText = activeMonster.atk;
+        document.getElementById('hub-bar-atk').style.width = `${Math.min(100, (activeMonster.atk / 100) * 100)}%`;
+
+        document.getElementById('hub-stat-def').innerText = activeMonster.def;
+        document.getElementById('hub-bar-def').style.width = `${Math.min(100, (activeMonster.def / 100) * 100)}%`;
+
+        document.getElementById('hub-stat-spd').innerText = activeMonster.spd;
+        document.getElementById('hub-bar-spd').style.width = `${Math.min(100, (activeMonster.spd / 100) * 100)}%`;
+
+        // Skills List
+        const listDiv = document.getElementById('hub-skills-list');
+        listDiv.innerHTML = '';
+        activeMonster.skills.forEach(skill => {
+            const skillRow = document.createElement('div');
+            skillRow.className = 'skill-item';
+            
+            let powerDesc = skill.power > 0 ? `威力:${skill.power}x` : '回復/コア修復';
+            skillRow.innerHTML = `
+                <div>
+                    <span class="skill-name">${skill.name}</span>
+                    <div style="font-size: 10px; color: var(--text-muted); margin-top:2px;">${skill.desc}</div>
+                </div>
+                <span class="skill-power">${powerDesc}</span>
+            `;
+            listDiv.appendChild(skillRow);
+        });
+
+        // Upcoming Skills Info
+        const nextSkills = SKILLS_DATABASE.filter(s => s.level > activeMonster.level);
+        if (nextSkills.length > 0) {
+            const divider = document.createElement('div');
+            divider.style.margin = '10px 0 6px';
+            divider.style.fontSize = '10px';
+            divider.style.color = 'var(--text-muted)';
+            divider.style.fontWeight = 'bold';
+            divider.innerText = '習得可能なスキル';
+            listDiv.appendChild(divider);
+
+            nextSkills.forEach(skill => {
+                const sRow = document.createElement('div');
+                sRow.className = 'skill-item';
+                sRow.style.opacity = '0.5';
+                sRow.innerHTML = `
+                    <div>
+                        <span class="skill-name" style="color: #888;">${skill.name}</span>
+                        <div style="font-size: 10px; color:#555; margin-top:2px;">${skill.desc}</div>
+                    </div>
+                    <span class="skill-power" style="color: var(--quaternary); font-weight: bold;">LV.${skill.level}</span>
+                `;
+                listDiv.appendChild(sRow);
+            });
+        }
+    }
+
+    // --- Screen Transitions ---
+    function changeScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(scr => scr.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    // Start Breeding Trigger
+    function startGame() {
+        sound.playClick();
+        const initialName = document.getElementById('monster-initial-name').value.trim();
+        if (initialName) {
+            activeMonster.name = initialName;
+        }
+        saveGameData();
+        changeScreen('screen-hub');
+        updateHubUI();
+    }
+
+    // Hub Tabs switching
+    function switchTab(panelId, btn) {
+        sound.playClick();
+        // Remove active class from buttons and panels
+        btn.parentNode.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        
+        const parent = btn.parentNode.parentNode;
+        parent.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        parent.querySelector(`#${panelId}`).classList.add('active');
+    }
+
+    // Monster Renaming modal
+    function openRenameDialog() {
+        sound.playClick();
+        document.getElementById('rename-input').value = activeMonster.name;
+        document.getElementById('rename-overlay').classList.add('active');
+    }
+
+    function closeRenameDialog() {
+        sound.playCancel();
+        document.getElementById('rename-overlay').classList.remove('active');
+    }
+
+    function saveRename() {
+        const input = document.getElementById('rename-input').value.trim();
+        if (!input) {
+            alert('なまえを入力してください');
+            return;
+        }
+        activeMonster.name = input;
+        saveGameData();
+        document.getElementById('rename-overlay').classList.remove('active');
+        updateHubUI();
+    }
+
+    // --- Training Mini-game Logic ---
+    let trainingType = 'atk'; // atk, spd, meditation
+    let canvasT = 0.5; // Gauge position: 0 to 1
+    let gaugeDirection = 1;
+    let animId = null;
+    let isGaugeRunning = false;
+    let tCanvas = document.getElementById('training-canvas');
+    let tCtx = tCanvas.getContext('2d');
+    let baseSpeed = 0.02;
+
+    function startTraining(type) {
+        if (stamina < 25) {
+            alert('スタミナが足りません！休ませてあげましょう。');
+            return;
+        }
+        sound.playClick();
+        trainingType = type;
+        
+        let title = "筋力トレーニング (ATK)";
+        if (type === 'spd') title = "敏捷トレーニング (SPD)";
+        if (type === 'meditation') title = "瞑想・実戦訓練 (EXP)";
+        document.getElementById('training-title').innerText = title;
+
+        // Reset elements
+        document.getElementById('training-result-box').style.display = 'none';
+        document.getElementById('btn-stop-training').style.display = 'block';
+        document.getElementById('btn-return-training').style.display = 'none';
+
+        changeScreen('screen-training');
+        
+        // Gauge parameters
+        canvasT = 0.0;
+        gaugeDirection = 1;
+        isGaugeRunning = true;
+        
+        // Speed scaling based on stats slightly to keep it challenging
+        if (type === 'atk') baseSpeed = 0.022 + (activeMonster.atk * 0.0001);
+        else if (type === 'spd') baseSpeed = 0.026 + (activeMonster.spd * 0.0001);
+        else baseSpeed = 0.020;
+
+        renderTrainingGauge();
+    }
+
+    function renderTrainingGauge() {
+        if (!isGaugeRunning) return;
+        
+        // Update Gauge index
+        canvasT += baseSpeed * gaugeDirection;
+        if (canvasT >= 1.0) {
+            canvasT = 1.0;
+            gaugeDirection = -1;
+        } else if (canvasT <= 0) {
+            canvasT = 0;
+            gaugeDirection = 1;
+        }
+
+        // Draw Gauge Canvas
+        drawGauge();
+
+        animId = requestAnimationFrame(renderTrainingGauge);
+    }
+
+    function drawGauge() {
+        const W = tCanvas.width;
+        const H = tCanvas.height;
+        tCtx.clearRect(0, 0, W, H);
+
+        // Background grid
+        tCtx.fillStyle = '#060410';
+        tCtx.fillRect(0, 0, W, H);
+
+        // Outer bar border
+        const barX = 20;
+        const barY = 50;
+        const barW = W - 40;
+        const barH = 36;
+
+        tCtx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+        tCtx.strokeRect(barX, barY, barW, barH);
+
+        // Zone 1: Outer Blue Zone (Good Zone - width 50%)
+        tCtx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+        tCtx.fillRect(barX + barW * 0.25, barY, barW * 0.5, barH);
+
+        // Zone 2: Green Zone (Great Zone - width 20%)
+        tCtx.fillStyle = 'rgba(57, 255, 20, 0.3)';
+        tCtx.fillRect(barX + barW * 0.40, barY, barW * 0.20, barH);
+
+        // Zone 3: Pink Bullseye (Perfect Zone - width 6%)
+        tCtx.fillStyle = 'rgba(255, 0, 127, 0.5)';
+        tCtx.fillRect(barX + barW * 0.47, barY, barW * 0.06, barH);
+
+        // Floating Target Indicator label
+        tCtx.font = "bold 11px Outfit";
+        tCtx.fillStyle = 'var(--primary)';
+        tCtx.fillText("PERFECT", barX + barW * 0.47 - 12, barY - 10);
+
+        // Draw current cursor position
+        const cursorX = barX + barW * canvasT;
+        tCtx.fillStyle = '#fff';
+        tCtx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+        tCtx.shadowBlur = 10;
+        tCtx.fillRect(cursorX - 4, barY - 4, 8, barH + 8);
+        tCtx.shadowBlur = 0; // reset
+    }
+
+    function stopTrainingGauge() {
+        if (!isGaugeRunning) return;
+        sound.playClick();
+        isGaugeRunning = false;
+        cancelAnimationFrame(animId);
+
+        // Evaluate location
+        const accuracy = canvasT; // 0 to 1
+        let rating = "MISS";
+        let statsUp = { atk: 0, def: 0, spd: 0, hp: 0, exp: 0 };
+        let ratingColor = '#888';
+
+        // Perfect: 0.47 to 0.53 (6%)
+        if (accuracy >= 0.47 && accuracy <= 0.53) {
+            rating = "PERFECT!!";
+            ratingColor = 'var(--primary)';
+            sound.playStopPerfect();
+            if (trainingType === 'atk') {
+                statsUp = { atk: 3, hp: 6, exp: 12 };
+            } else if (trainingType === 'spd') {
+                statsUp = { spd: 3, def: 3, exp: 12 };
+            } else {
+                statsUp = { hp: 12, exp: 20 };
+            }
+        } 
+        // Great: 0.40 to 0.60 (20%)
+        else if (accuracy >= 0.40 && accuracy <= 0.60) {
+            rating = "GREAT!";
+            ratingColor = 'var(--secondary)';
+            sound.playStopSuccess();
+            if (trainingType === 'atk') {
+                statsUp = { atk: 2, hp: 4, exp: 8 };
+            } else if (trainingType === 'spd') {
+                statsUp = { spd: 2, def: 2, exp: 8 };
+            } else {
+                statsUp = { hp: 8, exp: 12 };
+            }
+        } 
+        // Good: 0.25 to 0.75 (50%)
+        else if (accuracy >= 0.25 && accuracy <= 0.75) {
+            rating = "GOOD";
+            ratingColor = 'var(--tertiary)';
+            sound.playStopSuccess();
+            if (trainingType === 'atk') {
+                statsUp = { atk: 1, hp: 2, exp: 4 };
+            } else if (trainingType === 'spd') {
+                statsUp = { spd: 1, def: 1, exp: 4 };
+            } else {
+                statsUp = { hp: 4, exp: 6 };
+            }
+        } 
+        // Miss
+        else {
+            rating = "MISS...";
+            ratingColor = '#777';
+            sound.playStopMiss();
+            statsUp = { exp: 1 };
+        }
+
+        // Apply stat upgrades
+        let oldMonster = JSON.parse(JSON.stringify(activeMonster));
+        
+        activeMonster.atk += statsUp.atk || 0;
+        activeMonster.def += statsUp.def || 0;
+        activeMonster.spd += statsUp.spd || 0;
+        activeMonster.maxHp += statsUp.hp || 0;
+        activeMonster.hp = Math.min(activeMonster.maxHp, activeMonster.hp + (statsUp.hp || 0));
+        activeMonster.exp += statsUp.exp || 0;
+
+        stamina = Math.max(0, stamina - 25);
+        advanceCalendar();
+
+        // Check level up
+        let levelUpOccurred = false;
+        let learnedNewSkill = null;
+        if (activeMonster.exp >= activeMonster.nextExp) {
+            levelUpOccurred = true;
+            // Stat increases on level up
+            const levelUpHp = 10 + Math.floor(Math.random() * 4);
+            const levelUpAtk = 3 + Math.floor(Math.random() * 3);
+            const levelUpDef = 2 + Math.floor(Math.random() * 3);
+            const levelUpSpd = 3 + Math.floor(Math.random() * 3);
+
+            activeMonster.level += 1;
+            activeMonster.exp -= activeMonster.nextExp;
+            activeMonster.nextExp = Math.floor(20 * Math.pow(1.35, activeMonster.level - 1));
+            
+            activeMonster.maxHp += levelUpHp;
+            activeMonster.hp = activeMonster.maxHp;
+            activeMonster.atk += levelUpAtk;
+            activeMonster.def += levelUpDef;
+            activeMonster.spd += levelUpSpd;
+
+            // Check if learns skill
+            const skillLearned = SKILLS_DATABASE.find(s => s.level === activeMonster.level);
+            if (skillLearned) {
+                activeMonster.skills.push({
+                    name: skillLearned.name,
+                    power: skillLearned.power,
+                    type: skillLearned.type,
+                    desc: skillLearned.desc
+                });
+                learnedNewSkill = skillLearned.name;
+            }
+
+            // Setup level up popup parameters
+            document.getElementById('lvlup-desc-text').innerText = `${activeMonster.name} が LV. ${activeMonster.level} になった！`;
+            document.getElementById('lvlup-stat-hp').innerHTML = `${oldMonster.maxHp} -> ${activeMonster.maxHp} <span class="lv-up-stat-diff">(+${activeMonster.maxHp - oldMonster.maxHp})</span>`;
+            document.getElementById('lvlup-stat-atk').innerHTML = `${oldMonster.atk} -> ${activeMonster.atk} <span class="lv-up-stat-diff">(+${activeMonster.atk - oldMonster.atk})</span>`;
+            document.getElementById('lvlup-stat-def').innerHTML = `${oldMonster.def} -> ${activeMonster.def} <span class="lv-up-stat-diff">(+${activeMonster.def - oldMonster.def})</span>`;
+            document.getElementById('lvlup-stat-spd').innerHTML = `${oldMonster.spd} -> ${activeMonster.spd} <span class="lv-up-stat-diff">(+${activeMonster.spd - oldMonster.spd})</span>`;
+            
+            const skillAlert = document.getElementById('lvlup-skill-alert');
+            if (learnedNewSkill) {
+                document.getElementById('lvlup-skill-name').innerText = learnedNewSkill;
+                skillAlert.style.display = 'block';
+            } else {
+                skillAlert.style.display = 'none';
+            }
+        }
+
+        saveGameData();
+
+        // Draw stopped gauge
+        drawGauge();
+
+        // Display results
+        document.getElementById('training-rating-text').innerText = rating;
+        document.getElementById('training-rating-text').style.color = ratingColor;
+
+        let details = "";
+        if (statsUp.atk) details += `ATK +${statsUp.atk} `;
+        if (statsUp.def) details += `DEF +${statsUp.def} `;
+        if (statsUp.spd) details += `SPD +${statsUp.spd} `;
+        if (statsUp.hp) details += `HP +${statsUp.hp} `;
+        if (statsUp.exp) details += `EXP +${statsUp.exp}`;
+
+        document.getElementById('training-stat-up-text').innerHTML = details ? details : "パラメータ変化なし";
+        document.getElementById('training-result-box').style.display = 'block';
+        
+        document.getElementById('btn-stop-training').style.display = 'none';
+        
+        if (levelUpOccurred) {
+            safeSetTimeout(() => {
+                sound.playLvlUp();
+                changeScreen('screen-lvlup');
+            }, 800);
+        } else {
+            document.getElementById('btn-return-training').style.display = 'block';
+        }
+    }
+
+    function closeLevelUpScreen() {
+        sound.playClick();
+        changeScreen('screen-hub');
+        updateHubUI();
+    }
+
+    function finishTraining() {
+        sound.playClick();
+        changeScreen('screen-hub');
+        updateHubUI();
+    }
+
+    // Rest Action (Advance calendar, recover stamina)
+    function restMonster() {
+        sound.playHeal();
+        stamina = Math.min(100, stamina + 60);
+        activeMonster.hp = activeMonster.maxHp;
+        advanceCalendar();
+        saveGameData();
+        updateHubUI();
+        alert('モンスターを休ませました！体力が全回復し、スタミナが回復しました。 (1週間進みました)');
+    }
+
+    function advanceCalendar() {
+        calendar.week += 1;
+        if (calendar.week > 4) {
+            calendar.week = 1;
+            calendar.month += 1;
+            if (calendar.month > 12) {
+                calendar.month = 1;
+                calendar.year += 1;
+            }
+        }
+    }
+
+    // --- Arena Selection / Challengers ---
+    function openArenaSelect() {
+        sound.playClick();
+        changeScreen('screen-arena-select');
+        renderArenaList();
+    }
+
+    function goBackToHub() {
+        sound.playCancel();
+        changeScreen('screen-hub');
+        updateHubUI();
+    }
+
+    function renderArenaList() {
+        const listDiv = document.getElementById('arena-list');
+        listDiv.innerHTML = '';
+
+        RANKS.forEach(rank => {
+            const isUnlocked = rank.id <= unlockedRank;
+            const isCleared = rank.id <= clearedRank;
+
+            const card = document.createElement('div');
+            card.className = `rank-card ${isUnlocked ? 'unlocked' : 'locked'} ${isCleared ? 'cleared' : ''}`;
+            
+            if (isUnlocked) {
+                card.onclick = () => challengeRank(rank.id);
+            }
+
+            let statusIcon = "";
+            if (isCleared) statusIcon = "👑 CLEAR";
+            else if (!isUnlocked) statusIcon = "🔒 LOCKED";
+            else statusIcon = "⚔️ CHALLENGE";
+
+            card.innerHTML = `
+                <div class="rank-badge">ランク${rank.rankName}</div>
+                <div class="rank-opp-details">
+                    <div class="rank-opp-name">${rank.oppEmoji} ${rank.oppName}</div>
+                    <div class="rank-opp-stats">HP:${rank.hp} / ATK:${rank.atk} / DEF:${rank.def} / SPD:${rank.spd}</div>
+                    <div style="font-size: 9px; color: var(--text-muted); margin-top:2px;">${rank.desc}</div>
+                </div>
+                <div>
+                    <div class="rank-reward">+${rank.rewardPoints} pt</div>
+                    <div style="font-size:9px; font-weight:bold; color: ${isCleared ? 'var(--tertiary)' : 'var(--secondary)'}; margin-top:2px; text-align:right;">${statusIcon}</div>
+                </div>
+            `;
+            listDiv.appendChild(card);
+        });
+    }
+
+    // --- Arena Battle Logic ---
+    let battleOpponent = null;
+    let bPlayerHp = 50;
+    let bOpponentHp = 50;
+    let battleSpeed = 1; // 1 or 2
+    let isBattleOver = false;
+    let battleAnimTimer = 0;
+    let battleLoopId = null;
+    
+    // Graphical variables for drawing
+    let bPlayerVisual = { x: 60, y: 130, scale: 1, hitFlash: 0, jump: 0 };
+    let bOpponentVisual = { x: 260, y: 130, scale: 1, hitFlash: 0, jump: 0 };
+    let bFloatingTexts = []; // { x, y, text, color, timer }
+
+    const bCanvas = document.getElementById('battle-canvas');
+    const bCtx = bCanvas.getContext('2d');
+
+    function challengeRank(rankId) {
+        sound.playClick();
+        battleOpponent = JSON.parse(JSON.stringify(RANKS[rankId]));
+        
+        // Reset Battle state
+        bPlayerHp = activeMonster.hp;
+        bOpponentHp = battleOpponent.hp;
+        isBattleOver = false;
+        bFloatingTexts = [];
+        battleSpeed = 1;
+        document.getElementById('btn-battle-speed').innerText = "はやさ 1x";
+        document.getElementById('btn-battle-speed').className = "speed-btn";
+
+        // Setup visual entities
+        bPlayerVisual = { x: 70, y: 130, scale: 1.2, hitFlash: 0, jump: 0 };
+        bOpponentVisual = { x: 250, y: 130, scale: 1.2, hitFlash: 0, jump: 0 };
+
+        // Reset HUD and overlay
+        document.getElementById('battle-result-overlay').style.display = 'none';
+        document.getElementById('battle-status-indicator').innerText = "戦闘開始...";
+        const logDiv = document.getElementById('battle-log');
+        logDiv.innerHTML = '';
+
+        changeScreen('screen-battle');
+
+        // Start animation loop
+        if (battleLoopId) cancelAnimationFrame(battleLoopId);
+        runBattleLoop();
+
+        // Queue fight steps
+        executeBattleTurn();
+    }
+
+    function toggleBattleSpeed() {
+        sound.playClick();
+        if (battleSpeed === 1) {
+            battleSpeed = 2;
+            document.getElementById('btn-battle-speed').innerText = "はやさ 2x";
+            document.getElementById('btn-battle-speed').className = "speed-btn active";
+        } else {
+            battleSpeed = 1;
+            document.getElementById('btn-battle-speed').innerText = "はやさ 1x";
+            document.getElementById('btn-battle-speed').className = "speed-btn";
+        }
+    }
+
+    function addBattleLog(line, cssClass = '') {
+        const logDiv = document.getElementById('battle-log');
+        const entry = document.createElement('div');
+        entry.className = `log-line ${cssClass}`;
+        entry.innerHTML = line;
+        logDiv.appendChild(entry);
+        logDiv.scrollTop = logDiv.scrollHeight;
+    }
+
+    function createBattleFloatingText(x, y, text, color) {
+        bFloatingTexts.push({ x: x, y: y, text: text, color: color, timer: 30 });
+    }
+
+    // Execute battle sequence
+    function executeBattleTurn() {
+        if (isBattleOver) return;
+
+        // Base Action Timer Delay, scales down on speed 2x
+        const turnDelay = battleSpeed === 2 ? 600 : 1200;
+
+        // Quick check
+        if (bPlayerHp <= 0 || bOpponentHp <= 0) {
+            handleBattleEnd();
+            return;
+        }
+
+        // Action scheduling: Whichever is speedier goes or standard turn roll
+        // Let's decide who goes based on speed and random roll
+        const pSpeedRoll = activeMonster.spd + Math.floor(Math.random() * 10);
+        const oSpeedRoll = battleOpponent.spd + Math.floor(Math.random() * 10);
+
+        let attacker, defender, attVisual, defVisual, isPlayerAttacking;
+
+        if (pSpeedRoll >= oSpeedRoll) {
+            attacker = activeMonster;
+            defender = battleOpponent;
+            attVisual = bPlayerVisual;
+            defVisual = bOpponentVisual;
+            isPlayerAttacking = true;
+        } else {
+            attacker = battleOpponent;
+            defender = activeMonster;
+            attVisual = bOpponentVisual;
+            defVisual = bPlayerVisual;
+            isPlayerAttacking = false;
+        }
+
+        // Calculate skill usage
+        let skillUsed = { name: "通常攻撃", power: 1.0, type: "normal" };
+        if (isPlayerAttacking) {
+            // Player uses random learned skill (70% standard attack, 30% special skill, heal skill only if HP < 60%)
+            if (activeMonster.skills.length > 1 && Math.random() < 0.45) {
+                const skillsPool = activeMonster.skills.filter(s => {
+                    if (s.type === 'heal') return bPlayerHp < activeMonster.maxHp * 0.6;
+                    return true;
+                });
+                if (skillsPool.length > 0) {
+                    skillUsed = skillsPool[Math.floor(Math.random() * skillsPool.length)];
+                }
+            }
+        } else {
+            // Opponent uses standard or signature skill
+            if (Math.random() < 0.3) {
+                if (battleOpponent.id === 0) skillUsed = { name: "とげ攻撃", power: 1.2, type: "normal" };
+                else if (battleOpponent.id === 1) skillUsed = { name: "サイバーバイト", power: 1.3, type: "normal" };
+                else if (battleOpponent.id === 2) skillUsed = { name: "ポイズンテイル", power: 1.4, type: "normal" };
+                else if (battleOpponent.id === 3) skillUsed = { name: "レーザーブレス", power: 1.6, type: "normal" };
+                else if (battleOpponent.id === 4) skillUsed = { name: "ギガフレア", power: 2.0, type: "laser" };
+            }
+        }
+
+        // Perform Action
+        // Attack Jump Animation
+        attVisual.jump = 1;
+        const jumpDir = isPlayerAttacking ? 1.5 : -1.5;
+        attVisual.x += jumpDir * 20;
+
+        safeSetTimeout(() => {
+            // Return visual position
+            attVisual.x = isPlayerAttacking ? 70 : 250;
+            attVisual.jump = 0;
+
+            // Attack Resolve
+            if (skillUsed.type === 'heal') {
+                sound.playHeal();
+                const healAmt = Math.floor(activeMonster.maxHp * 0.40);
+                bPlayerHp = Math.min(activeMonster.maxHp, bPlayerHp + healAmt);
+                createBattleFloatingText(bPlayerVisual.x, bPlayerVisual.y - 30, `+${healAmt}`, 'var(--tertiary)');
+                addBattleLog(`🔧 <span class="log-skill">[${attacker.name}]</span> の ${skillUsed.name}! コアが活性化し <span class="log-heal">${healAmt}</span> 回復した！`, 'log-heal');
+            } else {
+                // Sound and Hit Animation
+                if (skillUsed.power > 1.0) sound.playSkill();
+                else sound.playHit();
+
+                defVisual.hitFlash = 10;
+                
+                // Damage math
+                const baseDmg = attacker.atk * skillUsed.power;
+                let damage = Math.max(1, Math.floor(baseDmg - defender.def / 2));
+                // Add random variance (90% to 110%)
+                damage = Math.floor(damage * (0.9 + Math.random() * 0.2));
+
+                if (isPlayerAttacking) {
+                    bOpponentHp = Math.max(0, bOpponentHp - damage);
+                    createBattleFloatingText(bOpponentVisual.x, bOpponentVisual.y - 30, `-${damage}`, 'var(--primary)');
+                    addBattleLog(`💥 <span class="log-skill">[${attacker.name}]</span> の ${skillUsed.name}! <span class="log-dmg">${damage}</span> のダメージ！`);
+                } else {
+                    bPlayerHp = Math.max(0, bPlayerHp - damage);
+                    createBattleFloatingText(bPlayerVisual.x, bPlayerVisual.y - 30, `-${damage}`, 'var(--primary)');
+                    addBattleLog(`🤖 <span class="log-skill">[${attacker.name}]</span> の ${skillUsed.name}! <span class="log-dmg">${damage}</span> のダメージ！`);
+                }
+            }
+
+            // Schedule next action
+            safeSetTimeout(() => {
+                if (bPlayerHp <= 0 || bOpponentHp <= 0) {
+                    handleBattleEnd();
+                } else {
+                    executeBattleTurn();
+                }
+            }, turnDelay / 2);
+
+        }, 200);
+    }
+
+    function handleBattleEnd() {
+        isBattleOver = true;
+        
+        let titleText = "DEFEAT...";
+        let descText = `${battleOpponent.oppName} に敗北した...。さらにトレーニングを重ねよう！`;
+        let rewardClass = 'log-defeat';
+        let titleColor = '#888';
+
+        if (bPlayerHp > 0) {
+            sound.playStopPerfect(); // Victory chime
+            titleText = "VICTORY!";
+            titleColor = 'var(--tertiary)';
+            rewardClass = 'log-win';
+            
+            const pointsToGain = battleOpponent.rewardPoints;
+            descText = `対戦相手を撃破！ランク${battleOpponent.rankName}突破！ (+${pointsToGain} pt 獲得)`;
+            
+            // Allocate Points to parent
+            if (window.parent && window.parent.addPoints) {
+                window.parent.addPoints(pointsToGain);
+            }
+
+            // Update local achievements
+            if (battleOpponent.id === unlockedRank && unlockedRank < 4) {
+                unlockedRank += 1;
+            }
+            if (battleOpponent.id > clearedRank) {
+                clearedRank = battleOpponent.id;
+            }
+
+            saveGameData();
+        } else {
+            sound.playDefeat();
+        }
+
+        // Setup Overlay display
+        document.getElementById('battle-result-title').innerText = titleText;
+        document.getElementById('battle-result-title').style.color = titleColor;
+        document.getElementById('battle-result-title').style.textShadow = `0 0 10px ${titleColor}`;
+        document.getElementById('battle-result-desc').innerText = descText;
+        document.getElementById('battle-result-overlay').style.display = 'flex';
+
+        addBattleLog(`🏆 戦闘終了: ${titleText === 'VICTORY!' ? 'あなたの勝ち！' : 'あなたの負け...'}`, rewardClass);
+
+        // Check A rank clear for game completion
+        if (bPlayerHp > 0 && battleOpponent.id === 4) {
+            // Setup game clear screen delay
+            safeSetTimeout(() => {
+                triggerGameClear();
+            }, 1800);
+        }
+    }
+
+    function skipBattle() {
+        if (isBattleOver) return;
+        sound.playClick();
+        clearAllTimeouts();
+
+        // Perform instant auto simulation to the end
+        while (bPlayerHp > 0 && bOpponentHp > 0) {
+            const pSpeedRoll = activeMonster.spd + Math.floor(Math.random() * 10);
+            const oSpeedRoll = battleOpponent.spd + Math.floor(Math.random() * 10);
+
+            let attacker, defender, isPlayerAttacking;
+            if (pSpeedRoll >= oSpeedRoll) {
+                attacker = activeMonster;
+                defender = battleOpponent;
+                isPlayerAttacking = true;
+            } else {
+                attacker = battleOpponent;
+                defender = activeMonster;
+                isPlayerAttacking = false;
+            }
+
+            let skillUsed = { name: "通常攻撃", power: 1.0, type: "normal" };
+            if (isPlayerAttacking) {
+                if (activeMonster.skills.length > 1 && Math.random() < 0.45) {
+                    const skillsPool = activeMonster.skills.filter(s => {
+                        if (s.type === 'heal') return bPlayerHp < activeMonster.maxHp * 0.6;
+                        return true;
+                    });
+                    if (skillsPool.length > 0) {
+                        skillUsed = skillsPool[Math.floor(Math.random() * skillsPool.length)];
+                    }
+                }
+            } else {
+                if (Math.random() < 0.3) {
+                    if (battleOpponent.id === 0) skillUsed = { name: "とげ攻撃", power: 1.2, type: "normal" };
+                    else if (battleOpponent.id === 1) skillUsed = { name: "サイバーバイト", power: 1.3, type: "normal" };
+                    else if (battleOpponent.id === 2) skillUsed = { name: "ポイズンテイル", power: 1.4, type: "normal" };
+                    else if (battleOpponent.id === 3) skillUsed = { name: "レーザーブレス", power: 1.6, type: "normal" };
+                    else if (battleOpponent.id === 4) skillUsed = { name: "ギガフレア", power: 2.0, type: "laser" };
+                }
+            }
+
+            if (skillUsed.type === 'heal') {
+                const healAmt = Math.floor(activeMonster.maxHp * 0.40);
+                bPlayerHp = Math.min(activeMonster.maxHp, bPlayerHp + healAmt);
+                addBattleLog(`🔧 [${attacker.name}] の ${skillUsed.name}! <span class="log-heal">${healAmt}</span> 回復！`, 'log-heal');
+            } else {
+                const baseDmg = attacker.atk * skillUsed.power;
+                let damage = Math.max(1, Math.floor(baseDmg - defender.def / 2));
+                damage = Math.floor(damage * (0.9 + Math.random() * 0.2));
+
+                if (isPlayerAttacking) {
+                    bOpponentHp = Math.max(0, bOpponentHp - damage);
+                    addBattleLog(`💥 [${attacker.name}] の ${skillUsed.name}! <span class="log-dmg">${damage}</span> ダメージ！`);
+                } else {
+                    bPlayerHp = Math.max(0, bPlayerHp - damage);
+                    addBattleLog(`🤖 [${attacker.name}] の ${skillUsed.name}! <span class="log-dmg">${damage}</span> ダメージ！`);
+                }
+            }
+        }
+
+        handleBattleEnd();
+    }
+
+    function finishBattle() {
+        sound.playClick();
+        if (battleLoopId) cancelAnimationFrame(battleLoopId);
+        changeScreen('screen-arena-select');
+        renderArenaList();
+    }
+
+    function triggerGameClear() {
+        if (battleLoopId) cancelAnimationFrame(battleLoopId);
+        
+        // Unlock collection in parent window
+        if (window.parent && window.parent.unlockCollection) {
+            window.parent.unlockCollection('col-breeder');
+        }
+        
+        changeScreen('screen-clear');
+    }
+
+    function exitClearToLobby() {
+        sound.playClick();
+        if (window.parent && window.parent.closeGame) {
+            window.parent.closeGame();
+        }
+    }
+
+    // --- Battle Draw loop ---
+    function runBattleLoop() {
+        if (document.getElementById('screen-battle').classList.contains('active')) {
+            drawBattleArena();
+            battleLoopId = requestAnimationFrame(runBattleLoop);
+        }
+    }
+
+    function drawBattleArena() {
+        const W = bCanvas.width;
+        const H = bCanvas.height;
+        bCtx.clearRect(0, 0, W, H);
+
+        // Cyber Grid Background
+        bCtx.fillStyle = '#060410';
+        bCtx.fillRect(0, 0, W, H);
+
+        bCtx.strokeStyle = 'rgba(255, 0, 127, 0.15)';
+        bCtx.lineWidth = 1;
+        // Draw grid lines
+        for (let x = 0; x < W; x += 20) {
+            bCtx.beginPath();
+            bCtx.moveTo(x, 0);
+            bCtx.lineTo(x, H);
+            bCtx.stroke();
+        }
+        for (let y = 0; y < H; y += 20) {
+            bCtx.beginPath();
+            bCtx.moveTo(0, y);
+            bCtx.lineTo(W, y);
+            bCtx.stroke();
+        }
+
+        // Draw Stage Floor line
+        bCtx.strokeStyle = 'var(--secondary)';
+        bCtx.lineWidth = 3;
+        bCtx.shadowColor = 'var(--secondary)';
+        bCtx.shadowBlur = 8;
+        bCtx.beginPath();
+        bCtx.moveTo(10, 150);
+        bCtx.lineTo(W - 10, 150);
+        bCtx.stroke();
+        bCtx.shadowBlur = 0; // reset
+
+        // Draw player monster
+        drawMonster(bPlayerVisual.x, bPlayerVisual.y, activeMonster.emoji, activeMonster.name, bPlayerHp, activeMonster.maxHp, bPlayerVisual.hitFlash, bPlayerVisual.jump);
+
+        // Draw opponent monster
+        drawMonster(bOpponentVisual.x, bOpponentVisual.y, battleOpponent.oppEmoji, battleOpponent.oppName, bOpponentHp, battleOpponent.hp, bOpponentVisual.hitFlash, bOpponentVisual.jump);
+
+        // Update & Draw Floating texts
+        bFloatingTexts.forEach((ft, index) => {
+            ft.y -= 1.2;
+            ft.timer -= 1;
+
+            bCtx.font = "bold 15px var(--font-game)";
+            bCtx.fillStyle = ft.color;
+            bCtx.shadowColor = ft.color;
+            bCtx.shadowBlur = 6;
+            bCtx.fillText(ft.text, ft.x - 15, ft.y);
+            bCtx.shadowBlur = 0;
+        });
+        bFloatingTexts = bFloatingTexts.filter(ft => ft.timer > 0);
+
+        // Reduce hit flashes
+        if (bPlayerVisual.hitFlash > 0) bPlayerVisual.hitFlash--;
+        if (bOpponentVisual.hitFlash > 0) bOpponentVisual.hitFlash--;
+    }
+
+    function drawMonster(x, y, emoji, name, currentHp, maxHp, hitFlash, jump) {
+        bCtx.save();
+        
+        // Jump offset
+        const yOffset = jump ? -15 : 0;
+
+        // Apply hit flash (shake monster slightly)
+        let shakeX = 0;
+        if (hitFlash > 0) {
+            shakeX = Math.sin(hitFlash * 2.5) * 5;
+            bCtx.fillStyle = 'rgba(255, 0, 0, 0.4)';
+            bCtx.beginPath();
+            bCtx.arc(x + shakeX, y + yOffset - 15, 30, 0, Math.PI * 2);
+            bCtx.fill();
+        }
+
+        // Draw Glow shadow
+        bCtx.shadowColor = 'var(--secondary)';
+        bCtx.shadowBlur = 12;
+
+        // Render emoji avatar
+        bCtx.font = "40px Noto Sans JP";
+        bCtx.textAlign = 'center';
+        bCtx.fillText(emoji, x + shakeX, y + yOffset - 5);
+        bCtx.shadowBlur = 0; // reset
+
+        // Name
+        bCtx.font = "bold 10px var(--font-sans)";
+        bCtx.fillStyle = '#fff';
+        bCtx.fillText(name, x, y - 55);
+
+        // HP bar outline
+        const hpBarW = 70;
+        const hpBarH = 6;
+        bCtx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        bCtx.fillRect(x - hpBarW / 2, y - 50, hpBarW, hpBarH);
+
+        // HP fill
+        const hpPct = currentHp / maxHp;
+        const fillW = hpBarW * hpPct;
+        if (hpPct > 0) {
+            bCtx.fillStyle = hpPct > 0.4 ? 'var(--tertiary)' : 'var(--primary)';
+            bCtx.fillRect(x - hpBarW / 2, y - 50, fillW, hpBarH);
+        }
+
+        // HP numbers
+        bCtx.font = "bold 9px var(--font-game)";
+        bCtx.fillStyle = '#fff';
+        bCtx.fillText(`${currentHp}/${maxHp}`, x, y - 38);
+
+        bCtx.restore();
+    }
+
+</script>
+</body>
+</html>

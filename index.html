@@ -709,6 +709,19 @@
                 </div>
             </div>
 
+            <!-- Game Card 9: サイバーモンスター育成戦 -->
+            <div class="game-card">
+                <div class="thumbnail-container">
+                    <img src="assets/images/cyber_breeder.jpg" alt="サイバーモンスター育成戦">
+                    <span class="game-badge">PLAYABLE</span>
+                </div>
+                <div class="game-info">
+                    <h3 class="game-title">サイバーモンスター育成戦</h3>
+                    <p class="game-description">スライムをトレーニングで育成し、ランクEからランクAのバトルリーグを勝ち上がれ！レベルを上げ、パラメータを強化して最強のモンスターを育て上げるベースシミュレーター！</p>
+                    <button onclick="openGame('games/cyber-breeder/index.html')" class="btn-play">ゲームを始める</button>
+                </div>
+            </div>
+
         </div>
     </main>
 
@@ -746,7 +759,7 @@
                 <button class="shop-close-btn" onclick="closeCollections()">&times;</button>
             </div>
             <div class="shop-points-badge" style="background: rgba(255, 0, 127, 0.1); border-color: var(--primary-neon);">
-                アルバム達成度: <span id="col-progress-val" style="color: var(--primary-neon); font-weight: 800;">0 / 8</span>
+                アルバム達成度: <span id="col-progress-val" style="color: var(--primary-neon); font-weight: 800;">0 / 9</span>
             </div>
             <div id="collections-list" class="shop-content">
                 <!-- Loaded dynamically -->
@@ -783,7 +796,8 @@
         { id: 'col-defender', name: 'UFOのコアパーツ', emoji: '🛸', desc: 'ネオンディフェンダーで、稀に上空を高速横断するUFOを撃破すると獲得できる。', game: 'ネオン ディフェンダー' },
         { id: 'col-arena', name: 'ゴールドトロフィー', emoji: '🏆', desc: 'サイバーモンスター闘技場で、極稀に参戦する「ゴールデンスライム」に賭けて見事勝利すると獲得できる。', game: 'サイバー モンスター闘技場' },
         { id: 'col-sumo', name: 'ゴールド軍配', emoji: '⚔️', desc: 'サイバー相撲で、稀に対戦相手として登場する「ゴールデン力士」を寄り切ると獲得できる。', game: 'サイバー相撲 勝ち抜き戦' },
-        { id: 'col-fishing', name: '伝説の主のウロコ', emoji: '👑', desc: 'レトロフィッシングで、稀に遭遇する伝説の巨大魚「ヌシ」を釣り上げると獲得できる。', game: 'レトロフィッシング' }
+        { id: 'col-fishing', name: '伝説の主のウロコ', emoji: '👑', desc: 'レトロフィッシングで、稀に遭遇する伝説の巨大魚「ヌシ」を釣り上げると獲得できる。', game: 'レトロフィッシング' },
+        { id: 'col-breeder', name: 'マスターブリーダー証', emoji: '🎖️', desc: 'サイバーモンスター育成戦で、すべてのランク戦を勝ち抜き「ランクA」を制覇すると獲得できる。', game: 'サイバーモンスター育成戦' }
     ];
 
     window.addEventListener('load', () => {
