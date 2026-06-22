@@ -1078,9 +1078,11 @@
                     else this.failed = true;
                 } catch(e) { this.failed = true; }
             }
-            if (this.ctx && this.ctx.state === 'suspended') {
-                this.ctx.resume().catch(()=>{});
-            }
+            try {
+                if (this.ctx && this.ctx.state === 'suspended' && typeof this.ctx.resume === 'function') {
+                    this.ctx.resume().catch(()=>{});
+                }
+            } catch(e){}
         }
         playTone(freq, duration, type = 'square', timeOffset = 0, volume = 0.08) {
             this.init();
@@ -1246,55 +1248,79 @@
         }
     ];
 
-    // Load Local Data
-    window.addEventListener('load', () => {
+    // Load Local Data Safely
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
         loadGameData();
         updateHubUI();
-    });
+    } else {
+        window.addEventListener('DOMContentLoaded', () => {
+            loadGameData();
+            updateHubUI();
+        });
+    }
 
     function loadGameData() {
         const savedParty = localStorage.getItem(BREEDER_PARTY_KEY);
         const savedActiveIdx = localStorage.getItem(BREEDER_ACTIVE_INDEX_KEY);
         if (savedParty) {
             try {
-                playerParty = JSON.parse(savedParty);
+                const parsed = JSON.parse(savedParty);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    playerParty = parsed;
+                }
             } catch(e){}
         }
         if (savedActiveIdx !== null) {
             activeMonsterIndex = parseInt(savedActiveIdx, 10);
+            if (isNaN(activeMonsterIndex) || activeMonsterIndex < 0 || activeMonsterIndex >= playerParty.length) {
+                activeMonsterIndex = 0;
+            }
         }
         activeMonster = playerParty[activeMonsterIndex] || playerParty[0];
 
         const savedCal = localStorage.getItem(BREEDER_CALENDAR_KEY);
         if (savedCal) {
             try {
-                calendar = JSON.parse(savedCal);
+                const parsedCal = JSON.parse(savedCal);
+                if (parsedCal && typeof parsedCal.year === 'number') {
+                    calendar = parsedCal;
+                }
             } catch(e){}
         }
 
         const savedStamina = localStorage.getItem(BREEDER_STAMINA_KEY);
         if (savedStamina !== null) {
-            stamina = parseInt(savedStamina, 10);
+            const parsedStamina = parseInt(savedStamina, 10);
+            if (!isNaN(parsedStamina)) stamina = parsedStamina;
         }
 
         const savedUnlockedRanks = localStorage.getItem(BREEDER_UNLOCKED_RANK_KEY);
         if (savedUnlockedRanks) {
             try {
-                unlockedRanks = JSON.parse(savedUnlockedRanks);
+                const parsed = JSON.parse(savedUnlockedRanks);
+                if (Array.isArray(parsed) && parsed.length === 2) {
+                    unlockedRanks = parsed;
+                }
             } catch(e){}
         }
 
         const savedClearedRanks = localStorage.getItem(BREEDER_CLEARED_RANK_KEY);
         if (savedClearedRanks) {
             try {
-                clearedRanks = JSON.parse(savedClearedRanks);
+                const parsed = JSON.parse(savedClearedRanks);
+                if (Array.isArray(parsed) && parsed.length === 2) {
+                    clearedRanks = parsed;
+                }
             } catch(e){}
         }
 
         const savedTUnlocked = localStorage.getItem(BREEDER_TOURNAMENTS_UNLOCKED_KEY);
         if (savedTUnlocked) {
             try {
-                tournamentsUnlocked = JSON.parse(savedTUnlocked);
+                const parsed = JSON.parse(savedTUnlocked);
+                if (Array.isArray(parsed) && parsed.length === 2) {
+                    tournamentsUnlocked = parsed;
+                }
             } catch(e){}
         }
     }
