@@ -292,6 +292,7 @@
     let meteors = [];
     let bullets = [];
     let explosions = [];
+    let ufos = [];
     let spawnTimer = 0;
     let baseCannon = { x: 160, y: 390 };
 
@@ -355,6 +356,7 @@
         meteors = [];
         bullets = [];
         explosions = [];
+        ufos = [];
         spawnTimer = 0;
 
         sound.init();
@@ -418,15 +420,28 @@
             }
         }
 
-        // 2. Spawn Meteors
+        // 2. Spawn Meteors or UFOs
         spawnTimer--;
         if (spawnTimer <= 0) {
-            meteors.push({
-                x: 20 + Math.random() * (canvas.width - 40),
-                y: -10,
-                vy: 0.8 + Math.random() * 0.7 + (score * 0.02), // accelerate velocity with score
-                radius: 6 + Math.random() * 6
-            });
+            let isUfo = Math.random() < 0.12;
+            if (isUfo && ufos.length === 0) {
+                let fromLeft = Math.random() < 0.5;
+                ufos.push({
+                    x: fromLeft ? -20 : canvas.width + 20,
+                    y: 40 + Math.random() * 50,
+                    vx: fromLeft ? 2.5 : -2.5,
+                    vy: 0,
+                    radius: 12,
+                    isUfo: true
+                });
+            } else {
+                meteors.push({
+                    x: 20 + Math.random() * (canvas.width - 40),
+                    y: -10,
+                    vy: 0.8 + Math.random() * 0.7 + (score * 0.02), // accelerate velocity with score
+                    radius: 6 + Math.random() * 6
+                });
+            }
             spawnTimer = 80 - Math.min(score * 0.5, 45); // faster spawn with score
         }
 
@@ -465,6 +480,43 @@
                     sound.playExplode(true);
                     score += e.combo ? 2 : 1; // Double score on combo chain
                     meteors.splice(i, 1);
+                    break;
+                }
+            }
+        }
+
+        // 3.5 Move and collide UFOs
+        for (let i = ufos.length - 1; i >= 0; i--) {
+            let u = ufos[i];
+            u.x += u.vx;
+
+            if ((u.vx > 0 && u.x > canvas.width + 30) || (u.vx < 0 && u.x < -30)) {
+                ufos.splice(i, 1);
+                continue;
+            }
+
+            // Check collision with explosions
+            for (let j = 0; j < explosions.length; j++) {
+                let e = explosions[j];
+                let dist = Math.hypot(u.x - e.x, u.y - e.y);
+                if (dist < u.radius + e.radius) {
+                    // Destroy UFO!
+                    explosions.push({
+                        x: u.x,
+                        y: u.y,
+                        radius: 2,
+                        maxRadius: 32,
+                        growing: true,
+                        combo: true
+                    });
+                    sound.playExplode(true);
+                    score += 15; // Score reward
+                    ufos.splice(i, 1);
+
+                    // Unlock Collection
+                    if (window.parent && typeof window.parent.unlockCollection === 'function') {
+                        window.parent.unlockCollection('col-defender');
+                    }
                     break;
                 }
             }
@@ -522,6 +574,26 @@
         ctx.beginPath();
         ctx.arc(baseCannon.x, baseCannon.y, 14, Math.PI, 0);
         ctx.fill();
+
+        // Draw UFOs
+        ufos.forEach(u => {
+            ctx.fillStyle = '#ffd700'; // Gold center dome
+            ctx.beginPath();
+            ctx.ellipse(u.x, u.y, u.radius, u.radius * 0.4, 0, 0, Math.PI*2);
+            ctx.fill();
+            
+            ctx.strokeStyle = '#00f0ff'; // Neon Cyan rim
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.ellipse(u.x, u.y, u.radius * 1.4, u.radius * 0.3, 0, 0, Math.PI*2);
+            ctx.stroke();
+
+            // Cockpit glass
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.arc(u.x, u.y - 3, u.radius * 0.3, 0, Math.PI, true);
+            ctx.fill();
+        });
 
         // Draw meteors (glowing neon orange/red)
         meteors.forEach(m => {

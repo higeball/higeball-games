@@ -504,6 +504,7 @@
     let selectedMonsterId = 'dragon';
     let betAmount = 50;
     let playerName = "ゲスト";
+    let slimeIsGolden = false;
 
     // Battle Simulator States
     let gameState = 'MENU'; // MENU, BATTLE, RESULT
@@ -675,8 +676,25 @@
             JSON.parse(JSON.stringify(MONSTER_PROFILES.phantom))
         ];
 
+        // 15% chance to promote slime to Gold Slime
+        slimeIsGolden = Math.random() < 0.15;
+        if (slimeIsGolden) {
+            let s = monsters[0];
+            s.name = 'ゴールデンスライム';
+            s.emoji = '👑';
+            s.hp = 60;
+            s.maxHp = 60;
+            s.atk = 18;
+            s.spd = 24;
+            s.color = '#ffd700';
+            s.odds = 7.7;
+        }
+
         addLog(`バトルロイヤル 闘技戦 が はじまった！`, 'log-skill');
-        addLog(`あなたの賭け: <strong>${MONSTER_PROFILES[selectedMonsterId].name}</strong> に ${betAmount} pt`, 'log-victory');
+        if (slimeIsGolden) {
+            addLog(`🚨 闘技場に <strong>ゴールデンスライム</strong> が あらわれた！`, 'log-victory');
+        }
+        addLog(`あなたの賭け: <strong>${selectedMonsterId === 'slime' && slimeIsGolden ? 'ゴールデンスライム' : MONSTER_PROFILES[selectedMonsterId].name}</strong> に ${betAmount} pt`, 'log-victory');
         
         // Start battle frame ticker loop
         requestAnimationFrame(renderLoop);
@@ -890,9 +908,15 @@
                 return; // callback handles double turn
             } else if (actor.id === 'slime') {
                 // NEON SLIME: Bio Regenerate
-                addLog(`➔ <strong>ネオンプラズマ</strong>！ 自己再生した。`, 'log-skill');
-                actor.hp = Math.min(actor.maxHp, actor.hp + 25);
-                createFloatingText(actor.x, actor.y - 15, `+25 RECOVER`, '#39ff14');
+                if (slimeIsGolden) {
+                    addLog(`➔ <strong>プラズマバリア</strong>！ 自己HPを大幅に回復した。`, 'log-skill');
+                    actor.hp = Math.min(actor.maxHp, actor.hp + 30);
+                    createFloatingText(actor.x, actor.y - 15, `+30 HEAL`, '#ffd700');
+                } else {
+                    addLog(`➔ <strong>ネオンプラズマ</strong>！ 自己再生した。`, 'log-skill');
+                    actor.hp = Math.min(actor.maxHp, actor.hp + 25);
+                    createFloatingText(actor.x, actor.y - 15, `+25 RECOVER`, '#39ff14');
+                }
             }
 
             if (callback) callback();
@@ -917,7 +941,8 @@
 
         if (isBetWinner) {
             sound.playVictory();
-            let payout = Math.floor(betAmount * winner.odds);
+            let actualWinnerOdds = winner.id === 'slime' && slimeIsGolden ? 7.7 : winner.odds;
+            let payout = Math.floor(betAmount * actualWinnerOdds);
             
             // Add Points to parent
             if (window.parent && typeof window.parent.addPoints === 'function') {
@@ -927,14 +952,21 @@
                 localStorage.setItem('higeball_points', playerPoints);
             }
 
+            // Check Gold Trophy Collection
+            if (winner.id === 'slime' && slimeIsGolden) {
+                if (window.parent && typeof window.parent.unlockCollection === 'function') {
+                    window.parent.unlockCollection('col-arena');
+                }
+            }
+
             resTitle.innerHTML = `🌟 ベット的中！`;
             resTitle.style.color = 'var(--tertiary)';
             resTitle.style.textShadow = '0 0 10px var(--tertiary)';
             
             resMsg.innerHTML = `
                 おめでとうございます！<br>
-                <strong>${playerName}</strong> 監督の賭けた <strong>${winner.name}</strong> が最後まで勝ち残りました！<br><br>
-                オッズ倍率: <span style="color:var(--quaternary); font-weight:bold;">${winner.odds}x</span><br>
+                <strong>${playerName}</strong> 監督の賭けた <strong>${winner.id === 'slime' && slimeIsGolden ? 'ゴールデンスライム' : winner.name}</strong> が最後まで勝ち残りました！<br><br>
+                オッズ倍率: <span style="color:var(--quaternary); font-weight:bold;">${actualWinnerOdds}x</span><br>
                 ベット額: ${betAmount} pt<br>
                 払戻ゴールド: <span style="color:var(--tertiary); font-size:16px; font-weight:bold;">+${payout} pt</span>
             `;
@@ -946,8 +978,8 @@
             
             resMsg.innerHTML = `
                 残念！<br>
-                <strong>${playerName}</strong> 監督の賭けた <strong>${MONSTER_PROFILES[selectedMonsterId].name}</strong> は敗北しました。<br>
-                今回の勝者: <strong>${winner.name}</strong><br><br>
+                <strong>${playerName}</strong> 監督の賭けた <strong>${selectedMonsterId === 'slime' && slimeIsGolden ? 'ゴールデンスライム' : MONSTER_PROFILES[selectedMonsterId].name}</strong> は敗北しました。<br>
+                今回の勝者: <strong>${winner.id === 'slime' && slimeIsGolden ? 'ゴールデンスライム' : winner.name}</strong><br><br>
                 失ったポイント: <span style="color:var(--primary); font-weight:bold;">-${betAmount} pt</span>
             `;
         }

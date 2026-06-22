@@ -419,6 +419,8 @@
     let homeRuns = 0;
     let maxDistance = 0;
     let playerName = "";
+    let ballIsGolden = false;
+    let flyBallIsGolden = false;
 
     // Pitch variables
     let ballX = 160, ballY = 80, ballZ = 0; // Z goes from 0 (Pitcher) to 1.2 (Catch)
@@ -523,6 +525,7 @@
         batterSwingSide = null;
         batterSwingFrame = 0;
         hitTimingResult = "";
+        ballIsGolden = Math.random() < 0.15; // 15% chance for a golden ball
 
         // Randomize pitch
         // Decide Course (Left=130 or Right=190)
@@ -609,6 +612,7 @@
         flyBallY = ballY;
         flyBallRadius = 8;
         flyBallZ = 0;
+        flyBallIsGolden = ballIsGolden;
 
         // Strong launch angle (slightly upwards)
         let angle = -Math.PI / 2 + (Math.random() - 0.5) * 0.3; // almost straight up
@@ -634,6 +638,7 @@
         flyBallY = ballY;
         flyBallRadius = 8;
         flyBallZ = 0;
+        flyBallIsGolden = ballIsGolden;
 
         // Foul or grounder
         let angle = -Math.PI / 2 + (Math.random() < 0.5 ? -1.0 : 1.0) * (0.6 + Math.random() * 0.4); // skewed angle
@@ -749,6 +754,13 @@
                             maxDistance = Math.floor(flyDistance);
                         }
                         sound.playFanfare();
+                        
+                        // Check Golden Ball Collection
+                        if (flyBallIsGolden) {
+                            if (window.parent && typeof window.parent.unlockCollection === 'function') {
+                                window.parent.unlockCollection('col-derby');
+                            }
+                        }
                     } else if (flyDistance >= 50) {
                         flyResultText = "HIT!";
                         sound.playCheer();
@@ -931,10 +943,17 @@
             ctx.fillStyle = 'rgba(0,0,0,0.2)'; // Shadow
             ctx.fillRect(ballX - r/2, ballY + r + 4, r, 2);
 
-            ctx.fillStyle = '#fff';
+            if (ballIsGolden) {
+                ctx.fillStyle = '#ffd700'; // Gold
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 10;
+            } else {
+                ctx.fillStyle = '#fff';
+            }
             ctx.beginPath();
             ctx.arc(ballX, ballY, r, 0, Math.PI*2);
             ctx.fill();
+            ctx.shadowBlur = 0;
         }
 
         // Render Timing/Hit feedback
@@ -975,13 +994,20 @@
         ctx.fillStyle = 'rgba(0,0,0,0.3)'; // Shadow
         ctx.fillRect(flyBallX - flyBallRadius/2, flyBallY + flyBallRadius + 10, flyBallRadius, 3);
 
-        ctx.fillStyle = '#fff';
+        if (flyBallIsGolden) {
+            ctx.fillStyle = '#ffd700';
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 12;
+        } else {
+            ctx.fillStyle = '#fff';
+        }
         ctx.beginPath();
         ctx.arc(flyBallX, flyBallY - flyBallZ * 2, flyBallRadius, 0, Math.PI*2);
         ctx.fill();
+        ctx.shadowBlur = 0;
         
         // Add neon glow trail to ball
-        ctx.strokeStyle = 'rgba(0, 240, 255, 0.5)';
+        ctx.strokeStyle = flyBallIsGolden ? 'rgba(255, 215, 0, 0.7)' : 'rgba(0, 240, 255, 0.5)';
         ctx.lineWidth = flyBallRadius * 0.8;
         ctx.beginPath();
         ctx.moveTo(flyBallX - flyBallVx * 2, (flyBallY - flyBallVy * 2) - flyBallZ * 2);

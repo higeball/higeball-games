@@ -418,6 +418,7 @@
                 }
             }
         }
+        food.isRainbow = Math.random() < 0.15; // 15% chance to spawn a rainbow apple
     }
 
     function gameStep() {
@@ -450,6 +451,14 @@
         if (head.x === food.x && head.y === food.y) {
             score++;
             sound.playEat();
+            
+            // Check Rainbow Apple collection
+            if (food.isRainbow) {
+                if (window.parent && typeof window.parent.unlockCollection === 'function') {
+                    window.parent.unlockCollection('col-snake');
+                }
+            }
+            
             spawnFood();
         } else {
             // Remove tail if didn't eat food
@@ -495,12 +504,23 @@
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
         }
 
-        // Draw food (neon pink pulsing box)
-        ctx.fillStyle = varColor('--secondary');
+        // Draw food
+        if (food.isRainbow) {
+            let t = Date.now() / 200;
+            let r = Math.sin(t) * 127 + 128;
+            let g = Math.sin(t + 2) * 127 + 128;
+            let b = Math.sin(t + 4) * 127 + 128;
+            ctx.fillStyle = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
+            ctx.shadowColor = `rgb(${Math.floor(r)}, ${Math.floor(g)}, ${Math.floor(b)})`;
+            ctx.shadowBlur = 8;
+        } else {
+            ctx.fillStyle = varColor('--secondary');
+        }
         ctx.fillRect(food.x * gridSize + 1, food.y * gridSize + 1, gridSize - 2, gridSize - 2);
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 1;
         ctx.strokeRect(food.x * gridSize + 1, food.y * gridSize + 1, gridSize - 2, gridSize - 2);
+        ctx.shadowBlur = 0;
 
         // Draw snake (glowing neon green)
         for (let i = 0; i < snake.length; i++) {

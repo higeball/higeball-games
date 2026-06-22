@@ -422,12 +422,17 @@
             }
         }
 
-        // Spawn obstacles
+        // Spawn obstacles or Star
         spawnTimer--;
         if (spawnTimer <= 0) {
-            let type = Math.random() < 0.5 ? 'low' : 'high'; // low needs JUMP, high needs SLIDE
-            let obsY = type === 'low' ? runner.groundY + 16 : runner.groundY - 10;
-            obstacles.push({ x: 340, y: obsY, w: 18, h: 20, type: type });
+            let isStar = Math.random() < 0.15; // 15% chance to spawn a star item
+            if (isStar) {
+                obstacles.push({ x: 340, y: runner.groundY - 30, w: 16, h: 16, type: 'star' });
+            } else {
+                let type = Math.random() < 0.5 ? 'low' : 'high'; // low needs JUMP, high needs SLIDE
+                let obsY = type === 'low' ? runner.groundY + 16 : runner.groundY - 10;
+                obstacles.push({ x: 340, y: obsY, w: 18, h: 20, type: type });
+            }
             spawnTimer = 70 + Math.random() * 60 - speed * 2;
         }
 
@@ -439,8 +444,18 @@
             // Collision box check
             if (runner.x < o.x + o.w && runner.x + runner.w > o.x &&
                 runner.y < o.y + o.h && runner.y + runner.h > o.y) {
-                // CRASH!
-                triggerGameOver();
+                if (o.type === 'star') {
+                    // Collect Star!
+                    sound.playCheer();
+                    obstacles.splice(i, 1);
+                    if (window.parent && typeof window.parent.unlockCollection === 'function') {
+                        window.parent.unlockCollection('col-runner');
+                    }
+                    continue;
+                } else {
+                    // CRASH!
+                    triggerGameOver();
+                }
             }
 
             if (o.x < -20) obstacles.splice(i, 1);
@@ -495,13 +510,24 @@
         ctx.lineWidth = 1.5;
         ctx.strokeRect(runner.x, runner.y, runner.w, runner.h);
 
-        // Draw obstacles
+        // Draw obstacles / stars
         obstacles.forEach(o => {
-            ctx.fillStyle = o.type === 'low' ? '#ff3300' : '#ffdd00';
-            ctx.fillRect(o.x, o.y, o.w, o.h);
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 1.5;
-            ctx.strokeRect(o.x, o.y, o.w, o.h);
+            if (o.type === 'star') {
+                ctx.fillStyle = '#ffd700'; // Gold star
+                ctx.font = 'bold 16px "Press Start 2P"';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 10;
+                ctx.fillText('★', o.x + o.w/2, o.y + o.h/2);
+                ctx.shadowBlur = 0;
+            } else {
+                ctx.fillStyle = o.type === 'low' ? '#ff3300' : '#ffdd00';
+                ctx.fillRect(o.x, o.y, o.w, o.h);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.strokeRect(o.x, o.y, o.w, o.h);
+            }
         });
 
         // HUD distance

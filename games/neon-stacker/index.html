@@ -373,6 +373,7 @@
         currentBlock.x = Math.random() < 0.5 ? 0 : (canvas.width - currentBlock.w);
         currentBlock.speed = 2.5 + Math.min(blocks.length * 0.12, 3.5); // Accelerate speed
         currentBlock.dir = currentBlock.x === 0 ? 1 : -1;
+        currentBlock.isCrystal = Math.random() < 0.15; // 15% chance to be a crystal block
     }
 
     function triggerDrop() {
@@ -382,7 +383,9 @@
         let diff = currentBlock.x - baseBlock.x;
         let absDiff = Math.abs(diff);
 
-        if (absDiff < 4) {
+        let isPerfectStack = (absDiff < 4);
+
+        if (isPerfectStack) {
             // PERFECT stack!
             currentBlock.x = baseBlock.x; // Align perfectly
             perfectStreak++;
@@ -392,6 +395,13 @@
             if (perfectStreak >= 5) {
                 currentBlock.w = Math.min(160, currentBlock.w + 8);
                 perfectStreak = 0;
+            }
+            
+            // Check Crystal Block Collection
+            if (currentBlock.isCrystal) {
+                if (window.parent && typeof window.parent.unlockCollection === 'function') {
+                    window.parent.unlockCollection('col-stacker');
+                }
             }
         } else {
             perfectStreak = 0;
@@ -418,7 +428,7 @@
         blocks.push({
             x: currentBlock.x,
             w: currentBlock.w,
-            color: stackColors[blocks.length % stackColors.length]
+            color: currentBlock.isCrystal ? 'crystal' : stackColors[blocks.length % stackColors.length]
         });
 
         towerHeight = blocks.length - 1;
@@ -486,21 +496,43 @@
             let b = blocks[i];
             let y = canvas.height - 40 - (i * blockHeight);
             
-            ctx.fillStyle = b.color;
+            if (b.color === 'crystal') {
+                let grad = ctx.createLinearGradient(b.x, 0, b.x + b.w, 0);
+                grad.addColorStop(0, '#ff007f');
+                grad.addColorStop(0.5, '#00f0ff');
+                grad.addColorStop(1, '#39ff14');
+                ctx.fillStyle = grad;
+                ctx.shadowColor = '#00f0ff';
+                ctx.shadowBlur = 8;
+            } else {
+                ctx.fillStyle = b.color;
+            }
             ctx.fillRect(b.x, y, b.w, blockHeight);
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
             ctx.lineWidth = 1.5;
             ctx.strokeRect(b.x, y, b.w, blockHeight);
+            ctx.shadowBlur = 0;
         }
 
         // Draw current moving block
         if (gameState === 'PLAYING') {
             let y = canvas.height - 40 - (blocks.length * blockHeight);
-            ctx.fillStyle = stackColors[blocks.length % stackColors.length];
+            if (currentBlock.isCrystal) {
+                let grad = ctx.createLinearGradient(currentBlock.x, 0, currentBlock.x + currentBlock.w, 0);
+                grad.addColorStop(0, '#ff007f');
+                grad.addColorStop(0.5, '#00f0ff');
+                grad.addColorStop(1, '#39ff14');
+                ctx.fillStyle = grad;
+                ctx.shadowColor = '#00f0ff';
+                ctx.shadowBlur = 10;
+            } else {
+                ctx.fillStyle = stackColors[blocks.length % stackColors.length];
+            }
             ctx.fillRect(currentBlock.x, y, currentBlock.w, blockHeight);
             ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
             ctx.strokeRect(currentBlock.x, y, currentBlock.w, blockHeight);
+            ctx.shadowBlur = 0;
         }
 
         ctx.restore();
