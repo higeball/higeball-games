@@ -532,6 +532,10 @@
         activeTimeouts = [];
     }
 
+    function createFloatingText(x, y, text, color) {
+        floatingTexts.push({ x: x, y: y, text: text, color: color, timer: 30 });
+    }
+
     // Monster Profiles Data (Aligned horizontally side-by-side)
     const MONSTER_PROFILES = {
         slime: { id: 'slime', name: 'ネオンスライム', emoji: '💧', hp: 80, maxHp: 80, atk: 12, spd: 18, odds: 4.5, color: '#39ff14', x: 45, y: 130 },
