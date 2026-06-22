@@ -416,6 +416,7 @@
     let reelDistance = 0; // 0 to 100 (100 is caught)
     let caughtFish = null;
     let isLegendary = false;
+    let lineDurability = 100;
 
     // Fish Database
     const FISH_DATABASE = [
@@ -618,6 +619,7 @@
         // Initialize reel stats
         reelTension = 50;
         reelDistance = 0;
+        lineDurability = 100;
     }
 
     function gameFightStep() {
@@ -652,11 +654,20 @@
             fishCaughtSuccess();
         }
 
-        // Defeat Check (Tension limits)
-        if (reelTension >= 100) {
-            fightFailed('LINE BREAK (糸が切れました)');
-        } else if (reelTension <= 0) {
-            fightFailed('HOOK OUT (針が外れました)');
+        // Evaluate line durability (Tension limits 0-20% and 80-100% deal durability damage)
+        if (reelTension < 20 || reelTension > 80) {
+            lineDurability = Math.max(0, lineDurability - 0.7); // takes about 2.5 seconds of continuous danger to lose
+        } else {
+            lineDurability = Math.min(100, lineDurability + 0.35);
+        }
+
+        // Defeat Check
+        if (lineDurability <= 0) {
+            if (reelTension >= 80) {
+                fightFailed('LINE BREAK (糸が切れました)');
+            } else {
+                fightFailed('HOOK OUT (針が外れました)');
+            }
         }
     }
 
@@ -861,6 +872,10 @@
 
                 // Bobber float
                 let floatY = Math.sin(Date.now() / 200) * 1.5;
+                if (fishShadow.active && fishShadow.state === 'bite') {
+                    // Splash/vibrate vigorously (激しい上下の往復振動)
+                    floatY = Math.sin(Date.now() / 50) * 10;
+                }
                 ctx.fillStyle = '#ff007f';
                 ctx.beginPath();
                 ctx.arc(bobber.x, bobber.y + floatY, 6, 0, Math.PI*2);
@@ -936,8 +951,8 @@
             }
         } 
         else if (fishShadow.state === 'bite') {
-            // Bite: limit window to tap (600ms to 900ms depending on speed multiplier)
-            let limit = isLegendary ? 50 : 80;
+            // Bite: limit window to tap (2.5 seconds of generous duration)
+            let limit = 150;
             if (fishShadow.timer > limit) {
                 // Escape!
                 document.getElementById('alert-overlay').style.display = 'none';
@@ -999,6 +1014,14 @@
         ctx.font = '7px "Press Start 2P"';
         ctx.fillStyle = 'var(--secondary)';
         ctx.fillText(`PULL IN: ${Math.floor(reelDistance)}%`, canvas.width/2, py2 + 16);
+
+        // Draw Durability Warnings
+        if (lineDurability < 70) {
+            ctx.font = 'bold 8px "Press Start 2P"';
+            ctx.fillStyle = lineDurability < 35 && Math.sin(Date.now() / 80) > 0 ? '#ff0000' : 'var(--quaternary)';
+            ctx.textAlign = 'center';
+            ctx.fillText(`🚨 LINE DAMAGE: ${Math.floor(lineDurability)}% 🚨`, canvas.width/2, gy + gaugeH + 20);
+        }
     }
 </script>
 
