@@ -598,6 +598,19 @@
                 </div>
             </div>
 
+            <!-- Game Card 6: サイバー モンスター闘技場 -->
+            <div class="game-card">
+                <div class="thumbnail-container">
+                    <img src="assets/images/cyber_arena.jpg" alt="サイバー モンスター闘技場">
+                    <span class="game-badge">PLAYABLE</span>
+                </div>
+                <div class="game-info">
+                    <h3 class="game-title">サイバー モンスター闘技場</h3>
+                    <p class="game-description">所持ポイントを賭けて闘技場バトルに挑め！4体のネオンモンスターが自動で闘うバトルロイヤル。オッズを見極め、最も勝ち残りそうなモンスターにベットしてポイントを増やそう！</p>
+                    <button onclick="openGame('games/cyber-arena/index.html')" class="btn-play">ゲームを始める</button>
+                </div>
+            </div>
+
         </div>
     </main>
 
@@ -668,6 +681,19 @@
     }
     // Expose globally for iframe child windows
     window.addPoints = addPoints;
+
+    function spendPoints(pts) {
+        if (typeof pts !== 'number' || isNaN(pts) || pts <= 0) return false;
+        const currentPoints = getPoints();
+        if (currentPoints < pts) return false;
+        const nextPoints = currentPoints - pts;
+        localStorage.setItem(POINTS_KEY, nextPoints);
+        
+        document.getElementById('global-points-val').innerText = nextPoints;
+        showToast(`-${pts} pt ベット！`);
+        return true;
+    }
+    window.spendPoints = spendPoints;
 
     function showToast(text) {
         let toast = document.getElementById('toast-notification');

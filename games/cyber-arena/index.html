@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>サイバーモンスター闘技場 | Higeball Games</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Outfit:wght@400;700&family=Noto+Sans+JP:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ff007f; /* Neon Pink */
+            --secondary: #00f0ff; /* Neon Cyan */
+            --tertiary: #39ff14; /* Neon Green */
+            --quaternary: #ffaa00; /* Neon Orange */
+            --dark: #0a0a16;
+            --text: #f1f1f9;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Outfit', 'Noto Sans JP', sans-serif;
+            background-color: var(--dark);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            touch-action: none;
+            overscroll-behavior: none;
+        }
+
+        #game-container {
+            position: relative;
+            background-color: var(--dark);
+            border: 4px solid var(--secondary);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.4);
+            width: 100%;
+            max-width: 480px;
+            height: 100vh;
+            max-height: 720px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Screen overlays */
+        #ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: rgba(10, 10, 22, 0.95);
+            z-index: 10;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .menu-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            margin: auto 0;
+        }
+
+        .game-title {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 18px;
+            color: #fff;
+            text-shadow: 0 0 8px var(--secondary), 0 0 15px var(--secondary);
+            margin-bottom: 20px;
+            text-align: center;
+            line-height: 1.5;
+        }
+
+        .game-title span {
+            color: var(--primary);
+            text-shadow: 0 0 8px var(--primary), 0 0 15px var(--primary);
+        }
+
+        /* Betting & Odds Layout */
+        .odds-container {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .monster-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .monster-card:active {
+            transform: scale(0.98);
+        }
+
+        .monster-card.selected {
+            background: rgba(0, 240, 255, 0.08);
+            border-color: var(--secondary);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+        }
+
+        .monster-info-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .monster-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .monster-details {
+            display: flex;
+            flex-direction: column;
+            text-align: left;
+        }
+
+        .monster-name {
+            font-weight: bold;
+            font-size: 14px;
+            color: #fff;
+        }
+
+        .monster-stats {
+            font-size: 11px;
+            color: #a0a0cf;
+            margin-top: 2px;
+        }
+
+        .monster-odds {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 12px;
+            color: var(--quaternary);
+            text-shadow: 0 0 6px rgba(255, 170, 0, 0.4);
+            text-align: right;
+        }
+
+        /* Bet Settings */
+        .bet-setup {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .bet-setup-title {
+            font-size: 11px;
+            color: #a0a0cf;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .points-box {
+            font-size: 15px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #fff;
+        }
+
+        .bet-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .bet-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 8px 4px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .bet-btn:active {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .bet-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(255, 0, 127, 0.4);
+        }
+
+        .custom-bet-input {
+            width: 100%;
+            background: #060510;
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 6px;
+            color: #fff;
+            padding: 10px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            outline: none;
+        }
+
+        .custom-bet-input:focus {
+            border-color: var(--secondary);
+            box-shadow: 0 0 8px rgba(0, 240, 255, 0.3);
+        }
+
+        .menu-btn {
+            font-family: 'Noto Sans JP', sans-serif;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--secondary), #00b0df);
+            color: #000;
+            border: none;
+            padding: 14px 28px;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 10px 0;
+            width: 100%;
+            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);
+            text-align: center;
+        }
+
+        .menu-btn:active {
+            transform: scale(0.98);
+        }
+
+        .menu-btn:disabled {
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.2);
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        #back-link {
+            margin-top: 15px;
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 12px;
+            border-bottom: 1px dotted var(--primary);
+            padding-bottom: 2px;
+        }
+
+        /* Game Arena Stuffs */
+        canvas {
+            display: block;
+            width: 100%;
+            height: 240px;
+            background-color: #050414;
+        }
+
+        .arena-controls {
+            padding: 10px 15px;
+            background: #0d0b20;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .speed-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .speed-btn.active {
+            background: var(--tertiary);
+            color: #000;
+            border-color: var(--tertiary);
+            box-shadow: 0 0 8px var(--tertiary);
+        }
+
+        /* Battle Log */
+        #battle-log {
+            flex: 1;
+            background: #060510;
+            padding: 15px;
+            overflow-y: auto;
+            border-top: 2px solid rgba(255, 255, 255, 0.08);
+            font-family: 'Noto Sans JP', sans-serif;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #b0b0df;
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            animation: logFade 0.2s ease-out;
+        }
+
+        @keyframes logFade {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .log-damage { color: var(--primary); font-weight: bold; }
+        .log-skill { color: var(--secondary); font-weight: bold; }
+        .log-defeat { color: #888; text-decoration: line-through; }
+        .log-victory { color: var(--tertiary); font-weight: bold; font-size: 13px; }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <!-- Interactive Arena Canvas -->
+        <canvas id="arenaCanvas" width="320" height="200"></canvas>
+        
+        <!-- Speed & Skip Controls -->
+        <div class="arena-controls">
+            <span id="arena-info-status" style="font-size: 11px; color: #a0a0cf; font-weight: bold;">闘技場バトル</span>
+            <div style="display: flex; gap: 8px;">
+                <button class="speed-btn" id="btn-speed" onclick="toggleSpeed()">はやさ 1x</button>
+                <button class="speed-btn" onclick="skipBattle()">スキップ</button>
+            </div>
+        </div>
+
+        <!-- Scrollable Battle Log -->
+        <div id="battle-log">
+            <!-- Game logs appear here -->
+        </div>
+
+        <!-- UI Screen Overlay -->
+        <div id="ui-overlay">
+            <!-- START / BET SCREEN -->
+            <div id="screen-start" class="menu-screen" style="width:100%;">
+                <div class="game-title">CYBER<br>MONSTER<br><span>ARENA</span></div>
+                <div id="player-display" style="font-size: 14px; margin-bottom: 15px; font-weight: bold; color: var(--tertiary);">PLAYER: <span id="player-name-text">---</span></div>
+                
+                <div class="bet-setup">
+                    <div class="bet-setup-title">所持ポイント</div>
+                    <div class="points-box">
+                        所持: <span id="current-points-lbl" style="color: var(--secondary); font-weight: 800;">0</span> pt
+                    </div>
+                    <div class="bet-setup-title">ベット額</div>
+                    <div class="bet-buttons">
+                        <button class="bet-btn" onclick="setBetAmount(10)">10</button>
+                        <button class="bet-btn" onclick="setBetAmount(50)">50</button>
+                        <button class="bet-btn" onclick="setBetAmount(100)">100</button>
+                        <button class="bet-btn" onclick="setBetAmount('ALL')">ALL</button>
+                    </div>
+                    <input type="number" id="bet-input" class="custom-bet-input" placeholder="掛けるポイントを入力" min="1" value="50" oninput="validateBetInput()">
+                </div>
+
+                <div class="odds-container">
+                    <div class="bet-setup-title" style="text-align: left; padding-left: 5px;">賭けるモンスターを選択</div>
+                    <!-- Monster 1 -->
+                    <div class="monster-card" id="card-slime" onclick="selectMonster('slime')">
+                        <div class="monster-info-left">
+                            <div class="monster-avatar" style="border: 2px solid var(--tertiary); box-shadow: 0 0 6px var(--tertiary);">💧</div>
+                            <div class="monster-details">
+                                <span class="monster-name">ネオンスライム</span>
+                                <span class="monster-stats">HP 80 | ATK 12 | 回避高</span>
+                            </div>
+                        </div>
+                        <div class="monster-odds">オッズ 4.5x</div>
+                    </div>
+                    <!-- Monster 2 -->
+                    <div class="monster-card" id="card-dragon" onclick="selectMonster('dragon')">
+                        <div class="monster-info-left">
+                            <div class="monster-avatar" style="border: 2px solid var(--quaternary); box-shadow: 0 0 6px var(--quaternary);">🔥</div>
+                            <div class="monster-details">
+                                <span class="monster-name">サイバードラゴン</span>
+                                <span class="monster-stats">HP 160 | ATK 22 | 全体火炎</span>
+                            </div>
+                        </div>
+                        <div class="monster-odds">オッズ 1.8x</div>
+                    </div>
+                    <!-- Monster 3 -->
+                    <div class="monster-card" id="card-golem" onclick="selectMonster('golem')">
+                        <div class="monster-info-left">
+                            <div class="monster-avatar" style="border: 2px solid var(--primary); box-shadow: 0 0 6px var(--primary);">🛡️</div>
+                            <div class="monster-details">
+                                <span class="monster-name">メタルグリッド</span>
+                                <span class="monster-stats">HP 120 | ATK 16 | 防御高</span>
+                            </div>
+                        </div>
+                        <div class="monster-odds">オッズ 2.6x</div>
+                    </div>
+                    <!-- Monster 4 -->
+                    <div class="monster-card" id="card-phantom" onclick="selectMonster('phantom')">
+                        <div class="monster-info-left">
+                            <div class="monster-avatar" style="border: 2px solid var(--secondary); box-shadow: 0 0 6px var(--secondary);">🤖</div>
+                            <div class="monster-details">
+                                <span class="monster-name">ファントムボット</span>
+                                <span class="monster-stats">HP 100 | ATK 18 | 2回行動有</span>
+                            </div>
+                        </div>
+                        <div class="monster-odds">オッズ 3.2x</div>
+                    </div>
+                </div>
+
+                <button class="menu-btn" id="btn-fight-start" onclick="startArenaBattle()">バトル開始！</button>
+                
+                <div style="display:flex; justify-content:center; width:100%; margin-top:5px; gap: 15px;">
+                    <button class="speed-btn" id="btn-points-recovery" onclick="recoverPoints()" style="display:none; background: rgba(57, 255, 20, 0.15); border-color: var(--tertiary); color: var(--tertiary);">救済措置 (+100pt)</button>
+                </div>
+                <a href="#" onclick="goHome(); return false;" id="back-link">BACK TO HUB</a>
+            </div>
+
+            <!-- RESULT SCREEN -->
+            <div id="screen-result" class="menu-screen" style="display:none; width:100%;">
+                <div class="game-title" id="result-title">しあいしゅうりょう</div>
+                <div id="result-message" style="margin: 15px 0; font-size: 14px; line-height: 1.8; color: #fff; width: 100%; text-align: left;"></div>
+                <button class="menu-btn" onclick="resetGame()" style="background: linear-gradient(135deg, var(--secondary), #00b0df); box-shadow: 0 4px 15px rgba(0, 240, 255, 0.4);">▶ もう一度賭ける</button>
+                <button class="menu-btn" onclick="goHome()" style="background: linear-gradient(135deg, #a0a0cf, #7070a0); box-shadow: 0 4px 15px rgba(160, 160, 207, 0.4); margin-top: 10px;">▶ ホームに戻る</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- Audio System ---
+    class SoundFX {
+        constructor() {
+            this.ctx = null;
+            this.failed = false;
+        }
+        init() {
+            if (this.failed) return;
+            if (!this.ctx) {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContextClass) this.ctx = new AudioContextClass();
+                    else this.failed = true;
+                } catch(e) { this.failed = true; }
+            }
+        }
+        playTone(freq, duration, type = 'square', timeOffset = 0) {
+            this.init();
+            if (this.failed || !this.ctx) return;
+            try {
+                let now = this.ctx.currentTime + timeOffset;
+                let osc = this.ctx.createOscillator();
+                let gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, now);
+                gain.gain.setValueAtTime(0.08, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + duration);
+            } catch(e){}
+        }
+        playAttack() { this.playTone(400, 0.08, 'sawtooth'); }
+        playHit() { this.playTone(180, 0.12, 'sawtooth'); }
+        playSkill() { this.playTone(600, 0.15, 'sine'); this.playTone(850, 0.15, 'sine', 0.08); }
+        playDefeat() { this.playTone(150, 0.3, 'sawtooth'); }
+        playVictory() {
+            this.playTone(523, 0.1, 'square');
+            this.playTone(659, 0.1, 'square', 0.1);
+            this.playTone(784, 0.1, 'square', 0.2);
+            this.playTone(1046, 0.3, 'square', 0.3);
+        }
+    }
+    const sound = new SoundFX();
+
+    const canvas = document.getElementById('arenaCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // Betting States
+    let playerPoints = 0;
+    let selectedMonsterId = 'dragon';
+    let betAmount = 50;
+    let playerName = "ゲスト";
+
+    // Battle Simulator States
+    let gameState = 'MENU'; // MENU, BATTLE, RESULT
+    let monsters = [];
+    let battleLogs = [];
+    let speedMultiplier = 1; // 1, 2
+    let battleTimer = null;
+    let currentTurnIndex = 0;
+    let floatingTexts = [];
+
+    // Monseter Profiles Data
+    const MONSTER_PROFILES = {
+        slime: { id: 'slime', name: 'ネオンスライム', emoji: '💧', hp: 80, maxHp: 80, atk: 12, spd: 18, odds: 4.5, color: '#39ff14', x: 60, y: 70 },
+        dragon: { id: 'dragon', name: 'サイバードラゴン', emoji: '🔥', hp: 160, maxHp: 160, atk: 22, spd: 8, odds: 1.8, color: '#ffaa00', x: 260, y: 70 },
+        golem: { id: 'golem', name: 'メタルグリッド', emoji: '🛡️', hp: 120, maxHp: 120, atk: 16, spd: 12, odds: 2.6, color: '#ff007f', x: 60, y: 150 },
+        phantom: { id: 'phantom', name: 'ファントムボット', emoji: '🤖', hp: 100, maxHp: 100, atk: 18, spd: 14, odds: 3.2, color: '#00f0ff', x: 260, y: 150 }
+    };
+
+    window.onload = () => {
+        sound.init();
+        loadPoints();
+        
+        const savedName = localStorage.getItem('umpire_nickname_v2');
+        if (savedName && savedName.trim() !== "") {
+            playerName = savedName;
+            document.getElementById('player-name-text').innerText = playerName;
+        }
+
+        selectMonster('dragon');
+        drawStaticArena();
+    };
+
+    function loadPoints() {
+        if (window.parent && typeof window.parent.getPoints === 'function') {
+            playerPoints = window.parent.getPoints();
+        } else {
+            playerPoints = parseInt(localStorage.getItem('higeball_points') || '100', 10);
+        }
+        document.getElementById('current-points-lbl').innerText = playerPoints;
+        
+        // Rescue Points Recovery trigger
+        const recoveryBtn = document.getElementById('btn-points-recovery');
+        if (playerPoints <= 0) {
+            recoveryBtn.style.display = 'block';
+        } else {
+            recoveryBtn.style.display = 'none';
+        }
+        
+        validateBetInput();
+    }
+
+    function recoverPoints() {
+        sound.playVictory();
+        if (window.parent && typeof window.parent.addPoints === 'function') {
+            window.parent.addPoints(100);
+        } else {
+            let pts = parseInt(localStorage.getItem('higeball_points') || '0', 10) + 100;
+            localStorage.setItem('higeball_points', pts);
+        }
+        loadPoints();
+    }
+
+    function setBetAmount(amount) {
+        if (amount === 'ALL') {
+            betAmount = playerPoints;
+        } else {
+            betAmount = amount;
+        }
+        document.getElementById('bet-input').value = betAmount;
+        validateBetInput();
+    }
+
+    function validateBetInput() {
+        const inputVal = parseInt(document.getElementById('bet-input').value, 10);
+        const startBtn = document.getElementById('btn-fight-start');
+        
+        if (isNaN(inputVal) || inputVal <= 0) {
+            startBtn.disabled = true;
+            return;
+        }
+
+        betAmount = inputVal;
+
+        if (betAmount > playerPoints) {
+            startBtn.disabled = true;
+        } else {
+            startBtn.disabled = false;
+        }
+    }
+
+    function selectMonster(id) {
+        selectedMonsterId = id;
+        
+        // Remove selections
+        document.querySelectorAll('.monster-card').forEach(card => card.classList.remove('selected'));
+        // Set selection
+        const selectedCard = document.getElementById(`card-${id}`);
+        if (selectedCard) selectedCard.classList.add('selected');
+    }
+
+    function goHome() {
+        if (window.parent && typeof window.parent.closeGame === 'function') {
+            window.parent.closeGame();
+        } else {
+            window.location.href = '../../index.html';
+        }
+    }
+
+    function addLog(text, className = '') {
+        const logBox = document.getElementById('battle-log');
+        const entry = document.createElement('div');
+        entry.className = `log-entry ${className}`;
+        entry.innerHTML = text;
+        logBox.appendChild(entry);
+        logBox.scrollTop = logBox.scrollHeight;
+        battleLogs.push(text);
+    }
+
+    function clearLog() {
+        document.getElementById('battle-log').innerHTML = '';
+        battleLogs = [];
+    }
+
+    function toggleSpeed() {
+        if (speedMultiplier === 1) {
+            speedMultiplier = 2;
+            document.getElementById('btn-speed').innerText = 'はやさ 2x';
+            document.getElementById('btn-speed').classList.add('active');
+        } else {
+            speedMultiplier = 1;
+            document.getElementById('btn-speed').innerText = 'はやさ 1x';
+            document.getElementById('btn-speed').classList.remove('active');
+        }
+    }
+
+    function getAliveMonsters() {
+        return monsters.filter(m => m.hp > 0);
+    }
+
+    function startArenaBattle() {
+        // Point deduction
+        let deductionSuccess = false;
+        if (window.parent && typeof window.parent.spendPoints === 'function') {
+            deductionSuccess = window.parent.spendPoints(betAmount);
+        } else {
+            if (playerPoints >= betAmount) {
+                playerPoints -= betAmount;
+                localStorage.setItem('higeball_points', playerPoints);
+                deductionSuccess = true;
+            }
+        }
+
+        if (!deductionSuccess) {
+            alert('ポイントが不足しています！');
+            return;
+        }
+
+        // Initialize Battle Entities
+        gameState = 'BATTLE';
+        document.getElementById('ui-overlay').style.display = 'none';
+        clearLog();
+        floatingTexts = [];
+
+        // Deep Copy monsters details
+        monsters = [
+            JSON.parse(JSON.stringify(MONSTER_PROFILES.slime)),
+            JSON.parse(JSON.stringify(MONSTER_PROFILES.dragon)),
+            JSON.parse(JSON.stringify(MONSTER_PROFILES.golem)),
+            JSON.parse(JSON.stringify(MONSTER_PROFILES.phantom))
+        ];
+
+        addLog(`バトルロイヤル 闘技戦 が はじまった！`, 'log-skill');
+        addLog(`あなたの賭け: <strong>${MONSTER_PROFILES[selectedMonsterId].name}</strong> に ${betAmount} pt`, 'log-victory');
+        
+        // Start battle frame ticker loop
+        requestAnimationFrame(renderLoop);
+        
+        // Start Turn Process
+        setTimeout(processBattleTurn, 1000);
+    }
+
+    function skipBattle() {
+        if (gameState !== 'BATTLE') return;
+        
+        // Instant battle solver
+        while (getAliveMonsters().length > 1) {
+            let alive = getAliveMonsters();
+            
+            // Sort by Speed
+            alive.sort((a, b) => b.spd - a.spd);
+            
+            for (let actor of alive) {
+                if (actor.hp <= 0) continue;
+                let targets = alive.filter(m => m.id !== actor.id);
+                if (targets.length === 0) break;
+                
+                let target = targets[Math.floor(Math.random() * targets.length)];
+                
+                // Action Solver
+                let randAction = Math.random();
+                if (randAction < 0.25) {
+                    // Skill Trigger
+                    executeSkillInstant(actor, targets, target);
+                } else {
+                    // Regular Attack
+                    executeAttackInstant(actor, target);
+                }
+            }
+        }
+        
+        // Instant End Game
+        endGameProcess();
+    }
+
+    function executeAttackInstant(actor, target) {
+        let isEvaded = (target.id === 'slime' && Math.random() < 0.35);
+        if (isEvaded) return;
+        
+        let dmg = actor.atk + Math.floor(Math.random() * 5) - 2;
+        if (target.id === 'golem') dmg = Math.max(2, Math.floor(dmg * 0.7)); // Golem block
+        
+        target.hp = Math.max(0, target.hp - dmg);
+    }
+
+    function executeSkillInstant(actor, targets, target) {
+        if (actor.id === 'dragon') {
+            // Splash Fire
+            targets.forEach(t => {
+                let dmg = 12 + Math.floor(Math.random() * 6);
+                t.hp = Math.max(0, t.hp - dmg);
+            });
+        } else if (actor.id === 'golem') {
+            // Block Defense (Actually heals HP slightly as a virtual block buffer)
+            actor.hp = Math.min(actor.maxHp, actor.hp + 20);
+        } else if (actor.id === 'phantom') {
+            // Double Attack
+            executeAttackInstant(actor, target);
+            executeAttackInstant(actor, target);
+        } else if (actor.id === 'slime') {
+            // Quick Heal
+            actor.hp = Math.min(actor.maxHp, actor.hp + 25);
+        }
+    }
+
+    function processBattleTurn() {
+        if (gameState !== 'BATTLE') return;
+
+        let alive = getAliveMonsters();
+        if (alive.length <= 1) {
+            endGameProcess();
+            return;
+        }
+
+        // Setup turns order (Sorted by Speed + randomness)
+        alive.sort((a, b) => (b.spd + Math.random()*5) - (a.spd + Math.random()*5));
+        
+        currentTurnIndex = 0;
+        executeNextActorTurn(alive);
+    }
+
+    function executeNextActorTurn(aliveQueue) {
+        if (gameState !== 'BATTLE') return;
+
+        // Clean dead ones from queue
+        let alive = getAliveMonsters();
+        if (alive.length <= 1) {
+            endGameProcess();
+            return;
+        }
+
+        if (currentTurnIndex >= aliveQueue.length) {
+            // End of round, wait for next round
+            setTimeout(processBattleTurn, 1000 / speedMultiplier);
+            return;
+        }
+
+        let actor = aliveQueue[currentTurnIndex];
+        currentTurnIndex++;
+
+        // If actor died during this round, skip
+        if (actor.hp <= 0) {
+            executeNextActorTurn(aliveQueue);
+            return;
+        }
+
+        document.getElementById('arena-info-status').innerText = `${actor.name} のターン`;
+
+        // Target pick
+        let targets = alive.filter(m => m.id !== actor.id);
+        let target = targets[Math.floor(Math.random() * targets.length)];
+
+        // Decide attack or skill
+        let rand = Math.random();
+        if (rand < 0.3) {
+            // Use Skill!
+            triggerSkillAnim(actor, targets, target, () => {
+                setTimeout(() => executeNextActorTurn(aliveQueue), 800 / speedMultiplier);
+            });
+        } else {
+            // Standard attack
+            triggerAttackAnim(actor, target, () => {
+                setTimeout(() => executeNextActorTurn(aliveQueue), 800 / speedMultiplier);
+            });
+        }
+    }
+
+    function triggerAttackAnim(actor, target, callback) {
+        sound.playAttack();
+        addLog(`<strong>${actor.name}</strong> の こうげき！`);
+        
+        // Dash animation simulated by changing target coordinates slightly or flash
+        actor.isDashing = true;
+        
+        setTimeout(() => {
+            actor.isDashing = false;
+            
+            // Check Evasion (Slime bonus)
+            let isEvaded = (target.id === 'slime' && Math.random() < 0.35);
+            
+            if (isEvaded) {
+                sound.playSkill();
+                addLog(`➔ ${target.name} は ひらりと みかわした！`, 'log-skill');
+                createFloatingText(target.x, target.y - 15, 'MISS', '#00f0ff');
+            } else {
+                sound.playHit();
+                let dmg = actor.atk + Math.floor(Math.random() * 5) - 2;
+                if (target.id === 'golem') {
+                    dmg = Math.max(2, Math.floor(dmg * 0.7)); // Metal Golem passive block
+                    addLog(`➔ ${target.name} は 硬い装甲で ダメージをカット！`, 'log-skill');
+                }
+                
+                target.hp = Math.max(0, target.hp - dmg);
+                addLog(`➔ ${target.name} に <span class="log-damage">${dmg} ダメージ</span>！`);
+                createFloatingText(target.x, target.y - 15, `-${dmg}`, '#ff007f');
+
+                // Shake target
+                target.shakeTimer = 8;
+
+                if (target.hp <= 0) {
+                    sound.playDefeat();
+                    addLog(`💀 <strong>${target.name}</strong> は ちからつきた。`, 'log-defeat');
+                }
+            }
+
+            if (callback) callback();
+        }, 300 / speedMultiplier);
+    }
+
+    function triggerSkillAnim(actor, targets, target, callback) {
+        sound.playSkill();
+        addLog(`★ <strong>${actor.name}</strong> の スキル発動！`, 'log-skill');
+        actor.isSkillGlowing = 15;
+
+        setTimeout(() => {
+            if (actor.id === 'dragon') {
+                // CYBER DRAGON: Flame Breath
+                addLog(`➔ <strong>れんごくの火炎</strong> を はきだした！`, 'log-skill');
+                targets.forEach(t => {
+                    let dmg = 12 + Math.floor(Math.random() * 6);
+                    t.hp = Math.max(0, t.hp - dmg);
+                    createFloatingText(t.x, t.y - 15, `-${dmg} (火炎)`, '#ffaa00');
+                    t.shakeTimer = 8;
+                    if (t.hp <= 0) {
+                        addLog(`💀 <strong>${t.name}</strong> は ちからつきた。`, 'log-defeat');
+                    }
+                });
+            } else if (actor.id === 'golem') {
+                // METAL GRID: Fortify (Gain Shield buffer)
+                addLog(`➔ <strong>グリッドリペア</strong>！ ナノバリアを 展開した。`, 'log-skill');
+                actor.hp = Math.min(actor.maxHp, actor.hp + 20);
+                createFloatingText(actor.x, actor.y - 15, `+20 BARRIER`, '#ff007f');
+            } else if (actor.id === 'phantom') {
+                // PHANTOM BOT: Double Slash
+                addLog(`➔ <strong>アクセラレート</strong>！ 2連続攻撃！`, 'log-skill');
+                triggerAttackAnim(actor, target, () => {
+                    setTimeout(() => {
+                        if (target.hp > 0) {
+                            triggerAttackAnim(actor, target, callback);
+                        } else {
+                            callback();
+                        }
+                    }, 300 / speedMultiplier);
+                });
+                return; // callback handles double turn
+            } else if (actor.id === 'slime') {
+                // NEON SLIME: Bio Regenerate
+                addLog(`➔ <strong>ネオンプラズマ</strong>！ 自己再生した。`, 'log-skill');
+                actor.hp = Math.min(actor.maxHp, actor.hp + 25);
+                createFloatingText(actor.x, actor.y - 15, `+25 RECOVER`, '#39ff14');
+            }
+
+            if (callback) callback();
+        }, 400 / speedMultiplier);
+    }
+
+    function endGameProcess() {
+        gameState = 'RESULT';
+        
+        let alive = getAliveMonsters();
+        let winner = alive.length > 0 ? alive[0] : MONSTER_PROFILES.dragon; // Safe Fallback
+
+        // Check if player won
+        let isBetWinner = (winner.id === selectedMonsterId);
+        
+        document.getElementById('ui-overlay').style.display = 'flex';
+        document.getElementById('screen-start').style.display = 'none';
+        document.getElementById('screen-result').style.display = 'flex';
+        
+        const resTitle = document.getElementById('result-title');
+        const resMsg = document.getElementById('result-message');
+
+        if (isBetWinner) {
+            sound.playVictory();
+            let payout = Math.floor(betAmount * winner.odds);
+            
+            // Add Points to parent
+            if (window.parent && typeof window.parent.addPoints === 'function') {
+                window.parent.addPoints(payout);
+            } else {
+                playerPoints += payout;
+                localStorage.setItem('higeball_points', playerPoints);
+            }
+
+            resTitle.innerHTML = `🌟 ベット的中！`;
+            resTitle.style.color = 'var(--tertiary)';
+            resTitle.style.textShadow = '0 0 10px var(--tertiary)';
+            
+            resMsg.innerHTML = `
+                おめでとうございます！<br>
+                <strong>${playerName}</strong> 監督の賭けた <strong>${winner.name}</strong> が最後まで勝ち残りました！<br><br>
+                オッズ倍率: <span style="color:var(--quaternary); font-weight:bold;">${winner.odds}x</span><br>
+                ベット額: ${betAmount} pt<br>
+                払戻ゴールド: <span style="color:var(--tertiary); font-size:16px; font-weight:bold;">+${payout} pt</span>
+            `;
+        } else {
+            sound.playDefeat();
+            resTitle.innerHTML = `💀 予想はずれ`;
+            resTitle.style.color = 'var(--primary)';
+            resTitle.style.textShadow = '0 0 10px var(--primary)';
+            
+            resMsg.innerHTML = `
+                残念！<br>
+                <strong>${playerName}</strong> 監督の賭けた <strong>${MONSTER_PROFILES[selectedMonsterId].name}</strong> は敗北しました。<br>
+                今回の勝者: <strong>${winner.name}</strong><br><br>
+                失ったポイント: <span style="color:var(--primary); font-weight:bold;">-${betAmount} pt</span>
+            `;
+        }
+    }
+
+    // --- Floating text management on canvas ---
+    function createFloatingText(x, y, text, color) {
+        floatingTexts.push({
+            x: x,
+            y: y,
+            text: text,
+            color: color,
+            timer: 45 // Frames life
+        });
+    }
+
+    // --- Canvas Rendering Loop ---
+    function renderLoop() {
+        if (gameState !== 'BATTLE') return;
+
+        // Clear Canvas
+        ctx.fillStyle = '#050414';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Grid Design Decor
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.05)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < canvas.width; i += 20) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+        }
+        for (let i = 0; i < canvas.height; i += 20) {
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        // Draw Monsters
+        monsters.forEach(m => {
+            if (m.hp <= 0) return; // Hide dead ones
+
+            ctx.save();
+
+            // Dash effect offsets
+            let ox = 0, oy = 0;
+            if (m.isDashing) {
+                // Dash vibration toward center
+                ox = (160 - m.x) * 0.4;
+                oy = (110 - m.y) * 0.4;
+            }
+            if (m.shakeTimer > 0) {
+                ox += (Math.random() - 0.5) * 6;
+                m.shakeTimer--;
+            }
+
+            ctx.translate(m.x + ox, m.y + oy);
+
+            // Neon outer glow on skill active
+            if (m.isSkillGlowing > 0) {
+                ctx.shadowColor = m.color;
+                ctx.shadowBlur = m.isSkillGlowing;
+                m.isSkillGlowing--;
+            }
+
+            // Draw Monster Symbol Body (Neon style vectors)
+            ctx.strokeStyle = m.color;
+            ctx.lineWidth = 3;
+            
+            if (m.id === 'slime') {
+                // Vector dropshape
+                ctx.beginPath();
+                ctx.moveTo(0, -15);
+                ctx.bezierCurveTo(15, -10, 18, 12, 0, 15);
+                ctx.bezierCurveTo(-18, 12, -15, -10, 0, -15);
+                ctx.closePath();
+                ctx.stroke();
+            } else if (m.id === 'dragon') {
+                // Triangle Dragon head + Spikes
+                ctx.beginPath();
+                ctx.moveTo(0, -18);
+                ctx.lineTo(15, 6);
+                ctx.lineTo(5, 12);
+                ctx.lineTo(-5, 12);
+                ctx.lineTo(-15, 6);
+                ctx.closePath();
+                ctx.stroke();
+                // Dragon wings
+                ctx.beginPath();
+                ctx.moveTo(-10, -5); ctx.lineTo(-24, -12); ctx.lineTo(-15, 6);
+                ctx.moveTo(10, -5); ctx.lineTo(24, -12); ctx.lineTo(15, 6);
+                ctx.stroke();
+            } else if (m.id === 'golem') {
+                // Hard Metal Shield Grid box
+                ctx.strokeRect(-14, -14, 28, 28);
+                ctx.strokeStyle = '#fff';
+                ctx.strokeRect(-8, -8, 16, 16);
+            } else if (m.id === 'phantom') {
+                // Octagon Bot
+                ctx.beginPath();
+                ctx.moveTo(-6, -15);
+                ctx.lineTo(6, -15);
+                ctx.lineTo(15, -6);
+                ctx.lineTo(15, 6);
+                ctx.lineTo(6, 15);
+                ctx.lineTo(-6, 15);
+                ctx.lineTo(-15, 6);
+                ctx.lineTo(-15, -6);
+                ctx.closePath();
+                ctx.stroke();
+            }
+
+            ctx.restore();
+
+            // HP Bar drawing
+            let barW = 36;
+            let barH = 4;
+            let bx = m.x - barW / 2;
+            let by = m.y + 22;
+            let hpRatio = m.hp / m.maxHp;
+
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+            ctx.fillRect(bx, by, barW, barH);
+            ctx.fillStyle = m.color;
+            ctx.fillRect(bx, by, barW * hpRatio, barH);
+
+            // Draw emoji icon above
+            ctx.font = '12px "Press Start 2P"';
+            ctx.fillStyle = '#fff';
+            ctx.textAlign = 'center';
+            ctx.fillText(m.emoji, m.x, m.y - 20);
+
+            // Draw short HP text
+            ctx.font = '7px "Press Start 2P"';
+            ctx.fillStyle = '#a0a0cf';
+            ctx.fillText(`${m.hp}/${m.maxHp}`, m.x, m.y + 34);
+        });
+
+        // Update & Render Floating damage text
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+            let t = floatingTexts[i];
+            t.y -= 0.6;
+            t.timer--;
+
+            ctx.font = 'bold 11px "Press Start 2P"';
+            ctx.fillStyle = t.color;
+            ctx.textAlign = 'center';
+            ctx.fillText(t.text, t.x, t.y);
+
+            if (t.timer <= 0) floatingTexts.splice(i, 1);
+        }
+
+        requestAnimationFrame(renderLoop);
+    }
+
+    function drawStaticArena() {
+        ctx.fillStyle = '#050414';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.1)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < canvas.width; i += 20) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, canvas.height); ctx.stroke();
+        }
+        for (let i = 0; i < canvas.height; i += 20) {
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(canvas.width, i); ctx.stroke();
+        }
+
+        // Just draw decorative static lines for initial arena feel
+        ctx.fillStyle = '#0d0b20';
+        ctx.fillRect(10, 10, canvas.width - 20, canvas.height - 20);
+        ctx.strokeStyle = 'rgba(0, 240, 255, 0.4)';
+        ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
+
+        ctx.font = '10px "Press Start 2P"';
+        ctx.fillStyle = 'rgba(255,255,255,0.4)';
+        ctx.textAlign = 'center';
+        ctx.fillText('SELECT MONSTER & BET', 160, 100);
+    }
+
+    function resetGame() {
+        gameState = 'MENU';
+        document.getElementById('screen-start').style.display = 'flex';
+        document.getElementById('screen-result').style.display = 'none';
+        document.getElementById('ui-overlay').style.display = 'flex';
+        
+        loadPoints();
+        selectMonster('dragon');
+        drawStaticArena();
+    }
+</script>
+
+</body>
+</html>
